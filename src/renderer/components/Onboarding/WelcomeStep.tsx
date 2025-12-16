@@ -1,4 +1,4 @@
-import { Sparkles, TrendingUp, Shield, Brain } from 'lucide-react'
+import { TrendingUp, Shield, Brain } from 'lucide-react'
 
 interface WelcomeStepProps {
   stepNumber: number
@@ -18,8 +18,8 @@ export function WelcomeStep({ stepNumber, totalSteps }: WelcomeStepProps) {
 
       {/* Welcome Header */}
       <div className="text-center py-4">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-terminal-amber/10 border border-terminal-amber rounded-full mb-4">
-          <Sparkles className="w-8 h-8 text-terminal-amber" />
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-terminal-amber/10 border border-terminal-amber rounded-full mb-4 overflow-hidden">
+          <img src="/richdad-logo.png" alt="RichDad" className="w-12 h-12 object-contain" />
         </div>
         <h2 className="text-white text-2xl font-semibold mb-2">
           Welcome to RichDad

@@ -6,6 +6,7 @@ interface SettingsState {
   showVolume: boolean
   refreshInterval: number
   zoomLevel: number
+  tickerSpeed: 'slow' | 'normal' | 'fast'
   panelSizes: {
     leftPanel: number    // percentage (default 20)
     rightPanel: number   // percentage (default 25)
@@ -17,6 +18,7 @@ interface SettingsState {
   toggleVolume: () => void
   setRefreshInterval: (interval: number) => void
   setZoomLevel: (level: number) => void
+  setTickerSpeed: (speed: 'slow' | 'normal' | 'fast') => void
   zoomIn: () => void
   zoomOut: () => void
   resetZoom: () => void
@@ -31,6 +33,7 @@ export const useSettingsStore = create<SettingsState>()(
       showVolume: true,
       refreshInterval: 5000,
       zoomLevel: 100,
+      tickerSpeed: 'normal',
       panelSizes: {
         leftPanel: 20,
         rightPanel: 25,
@@ -55,6 +58,10 @@ export const useSettingsStore = create<SettingsState>()(
 
       setRefreshInterval: (interval) => {
         set({ refreshInterval: interval })
+      },
+
+      setTickerSpeed: (speed) => {
+        set({ tickerSpeed: speed })
       },
 
       setZoomLevel: (level) => {

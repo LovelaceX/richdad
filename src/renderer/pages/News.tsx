@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Newspaper, Filter, TrendingUp, TrendingDown, Minus, ChevronRight } from 'lucide-react'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { useNewsStore } from '../stores/newsStore'
 import { useMarketStore } from '../stores/marketStore'
 import type { NewsItem } from '../types'
@@ -46,8 +47,17 @@ export function News() {
     return date.toLocaleDateString()
   }
 
-  const handleNewsClick = (item: NewsItem) => {
-    if (item.url) {
+  const handleNewsClick = async (item: NewsItem) => {
+    if (!item.url) {
+      console.warn('News item has no URL:', item.headline)
+      return
+    }
+
+    try {
+      await openUrl(item.url)
+    } catch (error) {
+      console.error('Failed to open URL:', error)
+      // Fallback to window.open in case we're in browser dev mode
       window.open(item.url, '_blank', 'noopener,noreferrer')
     }
   }

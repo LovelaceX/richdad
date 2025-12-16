@@ -22,7 +22,9 @@ import {
   Wifi,
   Monitor,
   TrendingUp,
-  ExternalLink
+  ExternalLink,
+  Newspaper,
+  X
 } from 'lucide-react'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useProTraderStore } from '../stores/proTraderStore'
@@ -100,6 +102,8 @@ export function Settings() {
   const toggleCvdMode = useSettingsStore(state => state.toggleCvdMode)
   const zoomLevel = useSettingsStore(state => state.zoomLevel)
   const setZoomLevel = useSettingsStore(state => state.setZoomLevel)
+  const tickerSpeed = useSettingsStore(state => state.tickerSpeed)
+  const setTickerSpeed = useSettingsStore(state => state.setTickerSpeed)
 
   // Pro Traders state
   const { traders, loadTraders, addTrader, removeTrader, toggleTrader } = useProTraderStore()
@@ -247,6 +251,18 @@ export function Settings() {
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file')
+        return
+      }
+
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size must be less than 5MB')
+        return
+      }
+
       const reader = new FileReader()
       reader.onload = () => {
         const base64 = reader.result as string
@@ -254,6 +270,10 @@ export function Settings() {
       }
       reader.readAsDataURL(file)
     }
+  }
+
+  const handleRemovePhoto = async () => {
+    await saveProfile({ avatarUrl: undefined })
   }
 
   // Sound playback using Web Audio API
@@ -983,26 +1003,42 @@ export function Settings() {
                 <div className="flex items-start gap-6">
                   {/* Left: Photo */}
                   <div className="flex-shrink-0">
-                    <div
-                      className="relative group cursor-pointer"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      {profile.avatarUrl ? (
-                        <img
-                          src={profile.avatarUrl}
-                          alt="Profile"
-                          className="w-24 h-24 rounded-full object-cover border-2 border-terminal-border"
-                        />
-                      ) : (
-                        <div className="w-24 h-24 rounded-full bg-terminal-amber/20 border-2 border-terminal-border flex items-center justify-center">
-                          <User className="w-12 h-12 text-terminal-amber" />
-                        </div>
-                      )}
+                    <div className="relative group">
+                      <div
+                        className="cursor-pointer"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        {profile.avatarUrl ? (
+                          <img
+                            src={profile.avatarUrl}
+                            alt="Profile"
+                            className="w-24 h-24 rounded-full object-cover border-2 border-terminal-border"
+                          />
+                        ) : (
+                          <div className="w-24 h-24 rounded-full bg-terminal-amber/20 border-2 border-terminal-border flex items-center justify-center">
+                            <User className="w-12 h-12 text-terminal-amber" />
+                          </div>
+                        )}
 
-                      {/* Edit overlay on hover */}
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-full transition-opacity">
-                        <Edit className="w-6 h-6 text-white" />
+                        {/* Edit overlay on hover */}
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-full transition-opacity">
+                          <Edit className="w-6 h-6 text-white" />
+                        </div>
                       </div>
+
+                      {/* Remove button (only shows when there's a photo) */}
+                      {profile.avatarUrl && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleRemovePhoto()
+                          }}
+                          className="absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 transition-colors z-10"
+                          title="Remove photo"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
 
                       <input
                         ref={fileInputRef}
@@ -1294,6 +1330,52 @@ export function Settings() {
                         <span className="text-semantic-down-cvd text-sm">▼ Sell</span>
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                {/* News Ticker Speed */}
+                <div className="border-t border-terminal-border" />
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Newspaper className="w-4 h-4 text-terminal-amber" />
+                    <span className="text-white text-sm font-medium">News Ticker Speed</span>
+                  </div>
+
+                  <p className="text-gray-400 text-xs mb-4">
+                    Control the scrolling speed of the news ticker marquee (Bloomberg-style).
+                  </p>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      onClick={() => setTickerSpeed('slow')}
+                      className={`py-2.5 px-4 rounded text-sm transition-colors ${
+                        tickerSpeed === 'slow'
+                          ? 'bg-terminal-amber text-black font-semibold'
+                          : 'bg-terminal-bg border border-terminal-border text-white hover:border-terminal-amber/50'
+                      }`}
+                    >
+                      Slow
+                    </button>
+                    <button
+                      onClick={() => setTickerSpeed('normal')}
+                      className={`py-2.5 px-4 rounded text-sm transition-colors ${
+                        tickerSpeed === 'normal'
+                          ? 'bg-terminal-amber text-black font-semibold'
+                          : 'bg-terminal-bg border border-terminal-border text-white hover:border-terminal-amber/50'
+                      }`}
+                    >
+                      Normal
+                    </button>
+                    <button
+                      onClick={() => setTickerSpeed('fast')}
+                      className={`py-2.5 px-4 rounded text-sm transition-colors ${
+                        tickerSpeed === 'fast'
+                          ? 'bg-terminal-amber text-black font-semibold'
+                          : 'bg-terminal-bg border border-terminal-border text-white hover:border-terminal-amber/50'
+                      }`}
+                    >
+                      Fast
+                    </button>
                   </div>
                 </div>
 

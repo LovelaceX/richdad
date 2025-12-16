@@ -41,6 +41,9 @@ export interface UserSettings {
 
   // Performance
   performanceMode: boolean
+
+  // News Ticker
+  tickerSpeed: 'slow' | 'normal' | 'fast'
 }
 
 export interface NewsSource {
@@ -235,7 +238,10 @@ export const DEFAULT_SETTINGS: UserSettings = {
   hasCompletedOnboarding: undefined,
 
   // Performance
-  performanceMode: false
+  performanceMode: false,
+
+  // News Ticker
+  tickerSpeed: 'normal'
 }
 
 // Default news sources
