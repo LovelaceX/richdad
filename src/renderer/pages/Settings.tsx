@@ -47,6 +47,7 @@ import {
   type RecommendationFormat
 } from '../lib/db'
 import { exportDecisions } from '../lib/export'
+import { previewSound, SOUND_DISPLAY_NAMES } from '../lib/sounds'
 import type { ToneType } from '../types'
 
 type SettingsSection = 'risk' | 'ai-copilot' | 'data-sources' | 'sounds' | 'style' | 'traders' | 'alerts' | 'display'
@@ -274,74 +275,6 @@ export function Settings() {
 
   const handleRemovePhoto = async () => {
     await saveProfile({ avatarUrl: undefined })
-  }
-
-  // Sound playback using Web Audio API
-  const playSound = (soundType: string, volume: number) => {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-    const oscillator = audioContext.createOscillator()
-    const gainNode = audioContext.createGain()
-
-    oscillator.connect(gainNode)
-    gainNode.connect(audioContext.destination)
-
-    // Set volume
-    gainNode.gain.value = volume / 100
-
-    // Different sound characteristics based on type
-    switch (soundType) {
-      case 'default':
-        oscillator.frequency.value = 800
-        oscillator.type = 'sine'
-        break
-      case 'chime':
-        oscillator.frequency.value = 1200
-        oscillator.type = 'sine'
-        break
-      case 'bell':
-        oscillator.frequency.value = 1000
-        oscillator.type = 'triangle'
-        break
-      case 'ping':
-        oscillator.frequency.value = 1500
-        oscillator.type = 'sine'
-        break
-      case 'cash-register':
-        oscillator.frequency.value = 600
-        oscillator.type = 'square'
-        break
-      case 'voice-buy':
-        oscillator.frequency.value = 900
-        oscillator.type = 'sawtooth'
-        break
-      case 'voice-sell':
-        oscillator.frequency.value = 700
-        oscillator.type = 'sawtooth'
-        break
-      case 'voice-hold':
-        oscillator.frequency.value = 800
-        oscillator.type = 'sawtooth'
-        break
-      case 'voice-alert':
-        oscillator.frequency.value = 1100
-        oscillator.type = 'sawtooth'
-        break
-      default:
-        oscillator.frequency.value = 800
-        oscillator.type = 'sine'
-    }
-
-    // Play sound
-    oscillator.start()
-
-    // Fade out effect
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3)
-
-    // Stop after 300ms
-    setTimeout(() => {
-      oscillator.stop()
-      audioContext.close()
-    }, 300)
   }
 
   const handleExport = async (format: 'txt' | 'csv') => {
@@ -1403,93 +1336,360 @@ export function Settings() {
 
           {/* Notifications */}
           {activeSection === 'sounds' && (
-            <div>
-              <h2 className="text-white text-lg font-medium mb-1">Notifications</h2>
-              <p className="text-gray-500 text-sm mb-6">Configure sound alerts</p>
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-white text-lg font-semibold mb-1">Notifications</h3>
+                <p className="text-gray-400 text-sm">Configure sound alerts for AI recommendations, news, and trades</p>
+              </div>
 
-              <div className="space-y-6">
-                <div className="flex items-center justify-between p-4 rounded-lg border border-terminal-border">
-                  <div>
-                    <span className="text-white">Sound Notifications</span>
-                    <p className="text-gray-500 text-xs mt-0.5">Play sounds for AI alerts</p>
+              {/* Master Toggle */}
+              <div className="flex items-center justify-between p-4 rounded-lg border border-terminal-border">
+                <div>
+                  <span className="text-white">Sound Notifications</span>
+                  <p className="text-gray-500 text-xs mt-0.5">Play sounds for AI alerts and events</p>
+                </div>
+                <button
+                  onClick={() => saveSettings({ soundEnabled: !settings.soundEnabled })}
+                  className={`w-12 h-6 rounded-full transition-colors ${
+                    settings.soundEnabled ? 'bg-terminal-amber' : 'bg-terminal-border'
+                  }`}
+                >
+                  <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                    settings.soundEnabled ? 'translate-x-6' : 'translate-x-0.5'
+                  }`} />
+                </button>
+              </div>
+
+              {/* Volume Control */}
+              <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-white text-sm">Volume</span>
+                  <span className="text-terminal-amber font-mono">{settings.soundVolume}%</span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={settings.soundVolume}
+                  onChange={(e) => saveSettings({ soundVolume: parseInt(e.target.value) })}
+                  className="w-full accent-terminal-amber"
+                  disabled={!settings.soundEnabled}
+                />
+              </div>
+
+              {/* Sound Selection */}
+              <div className="border-t border-terminal-border" />
+              <div className="space-y-4">
+                <h4 className="text-white text-sm font-medium">Sound Selection</h4>
+                <p className="text-gray-500 text-xs -mt-2">Choose which sound plays for each event type</p>
+
+                {/* BUY Recommendations */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <label className="text-white text-sm">BUY Recommendations</label>
+                      <p className="text-gray-500 text-xs mt-0.5">Sound when AI recommends buying</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={settings.sounds.buy}
+                        onChange={(e) => saveSettings({ sounds: { ...settings.sounds, buy: e.target.value } })}
+                        className="bg-terminal-bg border border-terminal-border text-white px-3 py-1.5 rounded text-sm"
+                        disabled={!settings.soundEnabled}
+                      >
+                        {Object.entries(SOUND_DISPLAY_NAMES).map(([key, name]) => (
+                          <option key={key} value={key}>{name}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => previewSound(settings.sounds.buy, settings.soundVolume)}
+                        className="p-2 bg-terminal-border hover:bg-terminal-amber/20 rounded text-xs text-white transition-colors flex items-center gap-1"
+                        disabled={!settings.soundEnabled}
+                      >
+                        <Play className="w-3 h-3" />
+                        Preview
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => saveSettings({ soundEnabled: !settings.soundEnabled })}
-                    className={`w-12 h-6 rounded-full transition-colors ${
-                      settings.soundEnabled ? 'bg-terminal-amber' : 'bg-terminal-border'
-                    }`}
-                  >
-                    <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                      settings.soundEnabled ? 'translate-x-6' : 'translate-x-0.5'
-                    }`} />
-                  </button>
                 </div>
 
-                {settings.soundEnabled && (
-                  <>
-                    <div>
-                      <label className="text-white text-sm mb-3 block">Volume</label>
-                      <div className="flex items-center gap-4">
-                        <Volume2 className="w-4 h-4 text-gray-500" />
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={settings.soundVolume}
-                          onChange={(e) => saveSettings({ soundVolume: Number(e.target.value) })}
-                          className="flex-1 h-2 bg-terminal-border rounded-lg appearance-none cursor-pointer accent-terminal-amber"
-                        />
-                        <span className="text-terminal-amber font-mono w-12 text-right">{settings.soundVolume}%</span>
-                      </div>
+                {/* SELL Recommendations */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <label className="text-white text-sm">SELL Recommendations</label>
+                      <p className="text-gray-500 text-xs mt-0.5">Sound when AI recommends selling</p>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={settings.sounds.sell}
+                        onChange={(e) => saveSettings({ sounds: { ...settings.sounds, sell: e.target.value } })}
+                        className="bg-terminal-bg border border-terminal-border text-white px-3 py-1.5 rounded text-sm"
+                        disabled={!settings.soundEnabled}
+                      >
+                        {Object.entries(SOUND_DISPLAY_NAMES).map(([key, name]) => (
+                          <option key={key} value={key}>{name}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => previewSound(settings.sounds.sell, settings.soundVolume)}
+                        className="p-2 bg-terminal-border hover:bg-terminal-amber/20 rounded text-xs text-white transition-colors flex items-center gap-1"
+                        disabled={!settings.soundEnabled}
+                      >
+                        <Play className="w-3 h-3" />
+                        Preview
+                      </button>
+                    </div>
+                  </div>
+                </div>
 
-                    <div className="space-y-3">
-                      <label className="text-white text-sm block">Sound per Action</label>
-                      {(['buy', 'sell', 'hold', 'alert'] as const).map(action => (
-                        <div key={action} className="flex items-center gap-3 p-3 rounded border border-terminal-border">
-                          <span className={`text-sm capitalize w-16 ${
-                            action === 'buy' ? 'text-terminal-up' :
-                            action === 'sell' ? 'text-terminal-down' :
-                            'text-gray-400'
-                          }`}>
-                            {action}
-                          </span>
-                          <select
-                            value={settings.sounds[action]}
-                            onChange={(e) => saveSettings({
-                              sounds: { ...settings.sounds, [action]: e.target.value }
-                            })}
-                            className="flex-1 bg-terminal-bg border border-terminal-border rounded px-3 py-1 text-sm text-white"
-                          >
-                            <option value="default">Default Beep</option>
-                            <option value="chime">Chime</option>
-                            <option value="bell">Bell</option>
-                            <option value="ping">Ping</option>
-                            <option value="cash-register">Cash Register</option>
-                            <option value="voice-buy">Voice: Buy</option>
-                            <option value="voice-sell">Voice: Sell</option>
-                            <option value="voice-hold">Voice: Hold</option>
-                            <option value="voice-alert">Voice: Alert</option>
-                            <option value="none">None</option>
-                          </select>
-                          <button
-                            onClick={() => {
-                              const soundFile = settings.sounds[action]
-                              if (soundFile && soundFile !== 'none') {
-                                playSound(soundFile, settings.soundVolume)
-                              }
-                            }}
-                            className="px-3 py-1 bg-terminal-panel border border-terminal-border rounded hover:bg-terminal-border/50 text-white text-sm flex items-center gap-1.5 flex-shrink-0"
-                            title="Preview sound"
-                          >
-                            <Play className="w-3 h-3" />
-                            Play
-                          </button>
-                        </div>
-                      ))}
+                {/* HOLD Recommendations */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <label className="text-white text-sm">HOLD Recommendations</label>
+                      <p className="text-gray-500 text-xs mt-0.5">Sound when AI recommends holding</p>
                     </div>
-                  </>
-                )}
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={settings.sounds.hold}
+                        onChange={(e) => saveSettings({ sounds: { ...settings.sounds, hold: e.target.value } })}
+                        className="bg-terminal-bg border border-terminal-border text-white px-3 py-1.5 rounded text-sm"
+                        disabled={!settings.soundEnabled}
+                      >
+                        {Object.entries(SOUND_DISPLAY_NAMES).map(([key, name]) => (
+                          <option key={key} value={key}>{name}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => previewSound(settings.sounds.hold, settings.soundVolume)}
+                        className="p-2 bg-terminal-border hover:bg-terminal-amber/20 rounded text-xs text-white transition-colors flex items-center gap-1"
+                        disabled={!settings.soundEnabled}
+                      >
+                        <Play className="w-3 h-3" />
+                        Preview
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* General Alerts */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <label className="text-white text-sm">General Alerts</label>
+                      <p className="text-gray-500 text-xs mt-0.5">Sound for general notifications</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={settings.sounds.alert}
+                        onChange={(e) => saveSettings({ sounds: { ...settings.sounds, alert: e.target.value } })}
+                        className="bg-terminal-bg border border-terminal-border text-white px-3 py-1.5 rounded text-sm"
+                        disabled={!settings.soundEnabled}
+                      >
+                        {Object.entries(SOUND_DISPLAY_NAMES).map(([key, name]) => (
+                          <option key={key} value={key}>{name}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => previewSound(settings.sounds.alert, settings.soundVolume)}
+                        className="p-2 bg-terminal-border hover:bg-terminal-amber/20 rounded text-xs text-white transition-colors flex items-center gap-1"
+                        disabled={!settings.soundEnabled}
+                      >
+                        <Play className="w-3 h-3" />
+                        Preview
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Analysis Updates */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <label className="text-white text-sm">Analysis Updates</label>
+                      <p className="text-gray-500 text-xs mt-0.5">Sound for market analysis alerts</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={settings.sounds.analysis}
+                        onChange={(e) => saveSettings({ sounds: { ...settings.sounds, analysis: e.target.value } })}
+                        className="bg-terminal-bg border border-terminal-border text-white px-3 py-1.5 rounded text-sm"
+                        disabled={!settings.soundEnabled}
+                      >
+                        {Object.entries(SOUND_DISPLAY_NAMES).map(([key, name]) => (
+                          <option key={key} value={key}>{name}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => previewSound(settings.sounds.analysis, settings.soundVolume)}
+                        className="p-2 bg-terminal-border hover:bg-terminal-amber/20 rounded text-xs text-white transition-colors flex items-center gap-1"
+                        disabled={!settings.soundEnabled}
+                      >
+                        <Play className="w-3 h-3" />
+                        Preview
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Trade Executed */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <label className="text-white text-sm">Trade Executed</label>
+                      <p className="text-gray-500 text-xs mt-0.5">Sound when a trade is completed</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={settings.sounds.tradeExecuted}
+                        onChange={(e) => saveSettings({ sounds: { ...settings.sounds, tradeExecuted: e.target.value } })}
+                        className="bg-terminal-bg border border-terminal-border text-white px-3 py-1.5 rounded text-sm"
+                        disabled={!settings.soundEnabled}
+                      >
+                        {Object.entries(SOUND_DISPLAY_NAMES).map(([key, name]) => (
+                          <option key={key} value={key}>{name}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => previewSound(settings.sounds.tradeExecuted, settings.soundVolume)}
+                        className="p-2 bg-terminal-border hover:bg-terminal-amber/20 rounded text-xs text-white transition-colors flex items-center gap-1"
+                        disabled={!settings.soundEnabled}
+                      >
+                        <Play className="w-3 h-3" />
+                        Preview
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Breaking News */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <label className="text-white text-sm">Breaking News</label>
+                      <p className="text-gray-500 text-xs mt-0.5">Sound for breaking news alerts</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={settings.sounds.breakingNews}
+                        onChange={(e) => saveSettings({ sounds: { ...settings.sounds, breakingNews: e.target.value } })}
+                        className="bg-terminal-bg border border-terminal-border text-white px-3 py-1.5 rounded text-sm"
+                        disabled={!settings.soundEnabled}
+                      >
+                        {Object.entries(SOUND_DISPLAY_NAMES).map(([key, name]) => (
+                          <option key={key} value={key}>{name}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => previewSound(settings.sounds.breakingNews, settings.soundVolume)}
+                        className="p-2 bg-terminal-border hover:bg-terminal-amber/20 rounded text-xs text-white transition-colors flex items-center gap-1"
+                        disabled={!settings.soundEnabled}
+                      >
+                        <Play className="w-3 h-3" />
+                        Preview
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Trigger Settings */}
+              <div className="border-t border-terminal-border" />
+              <div className="space-y-4">
+                <h4 className="text-white text-sm font-medium">Trigger Settings</h4>
+                <p className="text-gray-500 text-xs -mt-2">Control when sounds should play</p>
+
+                {/* Confidence Threshold */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-white text-sm">Minimum Confidence</span>
+                    <span className="text-terminal-amber font-mono">{settings.soundMinConfidence}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={settings.soundMinConfidence}
+                    onChange={(e) => saveSettings({ soundMinConfidence: parseInt(e.target.value) })}
+                    className="w-full accent-terminal-amber"
+                    disabled={!settings.soundEnabled}
+                  />
+                  <p className="text-gray-500 text-xs mt-2">
+                    Only play sounds when AI confidence is ≥ {settings.soundMinConfidence}%
+                  </p>
+                </div>
+
+                {/* Alert Type Filters */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4 space-y-3">
+                  <span className="text-white text-sm">Alert Type Filters</span>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.soundOnBuy}
+                      onChange={(e) => saveSettings({ soundOnBuy: e.target.checked })}
+                      className="accent-terminal-amber"
+                      disabled={!settings.soundEnabled}
+                    />
+                    <span className="text-white text-sm">Play sound on BUY alerts</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.soundOnSell}
+                      onChange={(e) => saveSettings({ soundOnSell: e.target.checked })}
+                      className="accent-terminal-amber"
+                      disabled={!settings.soundEnabled}
+                    />
+                    <span className="text-white text-sm">Play sound on SELL alerts</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.soundOnHold}
+                      onChange={(e) => saveSettings({ soundOnHold: e.target.checked })}
+                      className="accent-terminal-amber"
+                      disabled={!settings.soundEnabled}
+                    />
+                    <span className="text-white text-sm">Play sound on HOLD alerts</span>
+                  </label>
+
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={settings.soundOnAnalysis}
+                      onChange={(e) => saveSettings({ soundOnAnalysis: e.target.checked })}
+                      className="accent-terminal-amber"
+                      disabled={!settings.soundEnabled}
+                    />
+                    <span className="text-white text-sm">Play sound on analysis alerts</span>
+                  </label>
+                </div>
+
+                {/* Cooldown Period */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <label className="text-white text-sm block mb-2">Cooldown Period</label>
+                  <select
+                    value={settings.soundCooldown}
+                    onChange={(e) => saveSettings({ soundCooldown: parseInt(e.target.value) })}
+                    className="w-full bg-terminal-bg border border-terminal-border text-white px-3 py-2 rounded text-sm"
+                    disabled={!settings.soundEnabled}
+                  >
+                    <option value={0}>No cooldown (play all alerts)</option>
+                    <option value={60000}>1 minute</option>
+                    <option value={300000}>5 minutes</option>
+                    <option value={600000}>10 minutes</option>
+                    <option value={1800000}>30 minutes</option>
+                  </select>
+                  <p className="text-gray-500 text-xs mt-2">
+                    Prevent notification spam by limiting sound frequency
+                  </p>
+                </div>
               </div>
             </div>
           )}

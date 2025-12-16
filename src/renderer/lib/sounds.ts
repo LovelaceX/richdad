@@ -1,110 +1,100 @@
-import { getSettings } from './db'
+import { getSettings, updateSettings } from './db'
 
-// Sound presets using Web Audio API
-const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)()
-
-interface SoundPreset {
-  frequency: number
-  duration: number
-  type: OscillatorType
-  gain: number
+// MP3 Sound Files
+const SOUND_FILES: Record<string, string> = {
+  'bongo': '/Bongo.mp3',
+  'buy-now-male': '/Buy Now (Male).mp3',
+  'hold-fort-male': '/Hold the Fort (Male).mp3',
+  'kaching': '/Kaching.mp3',
+  'kim-possible': '/Kim Possible.mp3',
+  'messenger': '/Messenger.mp3',
+  'purchase-success': '/Purchase Success.mp3',
+  'sell-it-male': '/Sell It (Male).mp3',
+  'none': '',
 }
 
-const SOUND_PRESETS: Record<string, SoundPreset> = {
-  default: { frequency: 440, duration: 0.15, type: 'sine', gain: 0.3 },
-  chime: { frequency: 523, duration: 0.2, type: 'sine', gain: 0.25 },
-  bell: { frequency: 659, duration: 0.25, type: 'triangle', gain: 0.3 },
-  ping: { frequency: 880, duration: 0.1, type: 'sine', gain: 0.2 },
+// Friendly display names (for Settings UI)
+export const SOUND_DISPLAY_NAMES: Record<string, string> = {
+  'bongo': 'Bongo',
+  'buy-now-male': 'Buy Now (Male)',
+  'hold-fort-male': 'Hold the Fort (Male)',
+  'kaching': 'Kaching',
+  'kim-possible': 'Kim Possible',
+  'messenger': 'Messenger',
+  'purchase-success': 'Purchase Success',
+  'sell-it-male': 'Sell It (Male)',
+  'none': 'None (Silent)',
 }
 
-// Action-specific sound modifications
-const ACTION_MODIFIERS: Record<string, { freqMultiplier: number; secondFreq?: number }> = {
-  buy: { freqMultiplier: 1.25, secondFreq: 1.5 },    // Rising tone
-  sell: { freqMultiplier: 0.8, secondFreq: 0.6 },    // Falling tone
-  hold: { freqMultiplier: 1.0 },                      // Neutral
-  alert: { freqMultiplier: 1.1, secondFreq: 0.9 },   // Alternating
-}
+export type SoundAction = 'buy' | 'sell' | 'hold' | 'alert' | 'analysis' | 'tradeExecuted' | 'breakingNews'
 
-function playTone(preset: SoundPreset, modifier?: { freqMultiplier: number; secondFreq?: number }, volume = 100) {
-  const oscillator = audioContext.createOscillator()
-  const gainNode = audioContext.createGain()
-
-  oscillator.connect(gainNode)
-  gainNode.connect(audioContext.destination)
-
-  const freq = preset.frequency * (modifier?.freqMultiplier || 1)
-  oscillator.frequency.setValueAtTime(freq, audioContext.currentTime)
-  oscillator.type = preset.type
-
-  // Apply volume
-  const adjustedGain = preset.gain * (volume / 100)
-  gainNode.gain.setValueAtTime(adjustedGain, audioContext.currentTime)
-  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + preset.duration)
-
-  oscillator.start(audioContext.currentTime)
-  oscillator.stop(audioContext.currentTime + preset.duration)
-
-  // Play second tone if defined (for buy/sell/alert effects)
-  if (modifier?.secondFreq !== undefined) {
-    const secondFreqMultiplier = modifier.secondFreq
-    setTimeout(() => {
-      const osc2 = audioContext.createOscillator()
-      const gain2 = audioContext.createGain()
-
-      osc2.connect(gain2)
-      gain2.connect(audioContext.destination)
-
-      osc2.frequency.setValueAtTime(preset.frequency * secondFreqMultiplier, audioContext.currentTime)
-      osc2.type = preset.type
-
-      gain2.gain.setValueAtTime(adjustedGain * 0.8, audioContext.currentTime)
-      gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + preset.duration)
-
-      osc2.start(audioContext.currentTime)
-      osc2.stop(audioContext.currentTime + preset.duration)
-    }, preset.duration * 500) // Slight delay for second tone
-  }
-}
-
-export type SoundAction = 'buy' | 'sell' | 'hold' | 'alert'
-
-export async function playSound(action: SoundAction): Promise<void> {
+/**
+ * Play notification sound with trigger checks
+ */
+export async function playSound(action: SoundAction, confidence?: number): Promise<void> {
   try {
     const settings = await getSettings()
 
+    // Check if sounds enabled globally
     if (!settings.soundEnabled) return
 
-    const soundName = settings.sounds[action]
-    if (soundName === 'none') return
-
-    // Resume audio context if suspended (browser autoplay policy)
-    if (audioContext.state === 'suspended') {
-      await audioContext.resume()
+    // Check confidence threshold
+    if (confidence !== undefined && confidence < settings.soundMinConfidence) {
+      console.log(`Sound skipped: confidence ${confidence}% < threshold ${settings.soundMinConfidence}%`)
+      return
     }
 
-    const preset = SOUND_PRESETS[soundName] || SOUND_PRESETS.default
-    const modifier = ACTION_MODIFIERS[action]
+    // Check alert type filter
+    if (action === 'buy' && !settings.soundOnBuy) return
+    if (action === 'sell' && !settings.soundOnSell) return
+    if (action === 'hold' && !settings.soundOnHold) return
+    if (action === 'analysis' && !settings.soundOnAnalysis) return
 
-    playTone(preset, modifier, settings.soundVolume)
+    // Check cooldown period
+    const now = Date.now()
+    if (settings.soundCooldown > 0) {
+      const timeSinceLastSound = now - (settings.lastSoundPlayed || 0)
+      if (timeSinceLastSound < settings.soundCooldown) {
+        console.log(`Sound skipped: cooldown (${Math.round(timeSinceLastSound / 1000)}s / ${settings.soundCooldown / 1000}s)`)
+        return
+      }
+    }
+
+    // Get sound file path
+    const soundKey = settings.sounds[action]
+    const soundPath = SOUND_FILES[soundKey]
+
+    if (!soundPath) {
+      console.warn(`No sound file for action: ${action}`)
+      return
+    }
+
+    // Play the MP3 file
+    const audio = new Audio(soundPath)
+    audio.volume = settings.soundVolume / 100
+    await audio.play()
+
+    // Update last played timestamp
+    await updateSettings({ lastSoundPlayed: now })
+
+    console.log(`Played sound: ${soundKey} for action: ${action}`)
   } catch (err) {
     console.error('Failed to play sound:', err)
   }
 }
 
-// Test sound function for settings preview
-export async function testSound(soundName: string, action: SoundAction, volume: number): Promise<void> {
+/**
+ * Preview a sound (used in Settings)
+ */
+export async function previewSound(soundKey: string, volume: number): Promise<void> {
   try {
-    if (soundName === 'none') return
+    const soundPath = SOUND_FILES[soundKey]
+    if (!soundPath) return
 
-    if (audioContext.state === 'suspended') {
-      await audioContext.resume()
-    }
-
-    const preset = SOUND_PRESETS[soundName] || SOUND_PRESETS.default
-    const modifier = ACTION_MODIFIERS[action]
-
-    playTone(preset, modifier, volume)
+    const audio = new Audio(soundPath)
+    audio.volume = volume / 100
+    await audio.play()
   } catch (err) {
-    console.error('Failed to test sound:', err)
+    console.error('Failed to preview sound:', err)
   }
 }

@@ -27,9 +27,21 @@ export interface UserSettings {
     sell: string
     hold: string
     alert: string
+    analysis: string
+    tradeExecuted: string
+    breakingNews: string
   }
   screenReadingEnabled: boolean
   cvdMode: boolean
+
+  // Sound Triggers
+  soundMinConfidence: number       // 0-100, default 0 (all alerts)
+  soundOnBuy: boolean              // Enable BUY sounds
+  soundOnSell: boolean             // Enable SELL sounds
+  soundOnHold: boolean             // Enable HOLD sounds
+  soundOnAnalysis: boolean         // Enable analysis alerts
+  soundCooldown: number            // Milliseconds between sounds (0 = no cooldown)
+  lastSoundPlayed: number          // Timestamp of last sound
 
   // Data Sources
   alphaVantageApiKey?: string
@@ -221,13 +233,25 @@ export const DEFAULT_SETTINGS: UserSettings = {
   soundEnabled: true,
   soundVolume: 70,
   sounds: {
-    buy: 'chime-up',
-    sell: 'chime-down',
-    hold: 'subtle-ping',
-    alert: 'alert-tone'
+    buy: 'buy-now-male',
+    sell: 'sell-it-male',
+    hold: 'hold-fort-male',
+    alert: 'messenger',
+    analysis: 'bongo',
+    tradeExecuted: 'kaching',
+    breakingNews: 'kim-possible'
   },
   screenReadingEnabled: false,
   cvdMode: false,
+
+  // Sound Triggers
+  soundMinConfidence: 0,      // Play all alerts by default
+  soundOnBuy: true,
+  soundOnSell: true,
+  soundOnHold: true,
+  soundOnAnalysis: true,
+  soundCooldown: 0,           // No cooldown by default
+  lastSoundPlayed: 0,
 
   // Data Sources
   alphaVantageApiKey: undefined,

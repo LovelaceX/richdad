@@ -3,6 +3,7 @@ import type { AIRecommendation, AIMessage } from '../types'
 import { MOCK_RECOMMENDATION, MOCK_AI_MESSAGES } from '../lib/mockData'
 import { generateId } from '../lib/utils'
 import { sendChatMessage } from '../lib/ai'
+import { playSound } from '../lib/sounds'
 
 interface AIState {
   currentRecommendation: AIRecommendation | null
@@ -27,6 +28,10 @@ export const useAIStore = create<AIState>((set, get) => ({
   setRecommendation: (rec) => {
     set({ currentRecommendation: rec })
     if (rec) {
+      // Play notification sound based on action
+      const actionSound = rec.action.toLowerCase() as 'buy' | 'sell' | 'hold'
+      playSound(actionSound, rec.confidence).catch(console.error)
+
       set(state => {
         // Get alert-type messages (recommendation, analysis, alert)
         const alertMessages = state.messages.filter(m =>
