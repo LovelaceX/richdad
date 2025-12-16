@@ -1,6 +1,6 @@
 import { Minus, Plus } from 'lucide-react'
 import { CommandInput } from './CommandInput'
-import { WindowControls } from './WindowControls'
+// import { WindowControls } from './WindowControls' - Disabled: Using native OS window controls
 import { NavBar } from '../Navigation/NavBar'
 import { useSettingsStore } from '../../stores/settingsStore'
 
@@ -57,7 +57,7 @@ export function TopBar() {
       {/* Right: Zoom Controls + Window Controls */}
       <div className="flex justify-end items-center" style={{ width: '200px' }}>
         <ZoomControls />
-        <WindowControls />
+        {/* <WindowControls /> - Disabled: Using native OS window controls */}
       </div>
     </div>
   )
