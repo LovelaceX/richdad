@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { X } from 'lucide-react'
+import { WelcomeStep } from './WelcomeStep'
+import { TermsStep } from './TermsStep'
 import { WizardStep } from './WizardStep'
 import { updateSettings } from '../../lib/db'
 
@@ -9,10 +11,11 @@ interface OnboardingWizardProps {
   onClose: () => void
 }
 
-type WizardStepType = 'alpha-vantage' | 'finnhub'
+type WizardStepType = 'welcome' | 'terms' | 'alpha-vantage' | 'finnhub'
 
 export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
-  const [currentStep, setCurrentStep] = useState<WizardStepType>('alpha-vantage')
+  const [currentStep, setCurrentStep] = useState<WizardStepType>('welcome')
+  const [termsAccepted, setTermsAccepted] = useState(false)
   const [alphaVantageKey, setAlphaVantageKey] = useState('')
   const [finnhubKey, setFinnhubKey] = useState('')
 
@@ -23,7 +26,11 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
   }
 
   const handleContinue = async () => {
-    if (currentStep === 'alpha-vantage') {
+    if (currentStep === 'welcome') {
+      setCurrentStep('terms')
+    } else if (currentStep === 'terms') {
+      setCurrentStep('alpha-vantage')
+    } else if (currentStep === 'alpha-vantage') {
       // Save Alpha Vantage key (if provided)
       if (alphaVantageKey) {
         await updateSettings({ alphaVantageApiKey: alphaVantageKey })
@@ -39,24 +46,61 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
     }
   }
 
-  const stepConfig = {
-    'alpha-vantage': {
-      stepNumber: 1,
-      totalSteps: 2,
-      provider: 'alpha-vantage' as const,
-      value: alphaVantageKey,
-      onChange: setAlphaVantageKey,
-    },
-    'finnhub': {
-      stepNumber: 2,
-      totalSteps: 2,
-      provider: 'finnhub' as const,
-      value: finnhubKey,
-      onChange: setFinnhubKey,
-    },
+  const getStepNumber = () => {
+    const stepOrder = { welcome: 1, terms: 2, 'alpha-vantage': 3, finnhub: 4 }
+    return stepOrder[currentStep]
   }
 
-  const config = stepConfig[currentStep]
+  const canContinue = () => {
+    if (currentStep === 'terms') {
+      return termsAccepted
+    }
+    return true
+  }
+
+  const getButtonText = () => {
+    if (currentStep === 'finnhub') return 'Finish'
+    return 'Continue'
+  }
+
+  const renderStep = () => {
+    const totalSteps = 4
+    const stepNumber = getStepNumber()
+
+    switch (currentStep) {
+      case 'welcome':
+        return <WelcomeStep stepNumber={stepNumber} totalSteps={totalSteps} />
+      case 'terms':
+        return (
+          <TermsStep
+            stepNumber={stepNumber}
+            totalSteps={totalSteps}
+            accepted={termsAccepted}
+            onAcceptChange={setTermsAccepted}
+          />
+        )
+      case 'alpha-vantage':
+        return (
+          <WizardStep
+            stepNumber={stepNumber}
+            totalSteps={totalSteps}
+            provider="alpha-vantage"
+            apiKey={alphaVantageKey}
+            onApiKeyChange={setAlphaVantageKey}
+          />
+        )
+      case 'finnhub':
+        return (
+          <WizardStep
+            stepNumber={stepNumber}
+            totalSteps={totalSteps}
+            provider="finnhub"
+            apiKey={finnhubKey}
+            onApiKeyChange={setFinnhubKey}
+          />
+        )
+    }
+  }
 
   return (
     <AnimatePresence>
@@ -83,46 +127,54 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
               <div className="flex items-center justify-between p-6 border-b border-terminal-border">
                 <div>
                   <h2 className="text-white text-xl font-semibold">
-                    API Setup Wizard
+                    {currentStep === 'welcome' || currentStep === 'terms'
+                      ? 'Getting Started'
+                      : 'API Setup Wizard'}
                   </h2>
                   <p className="text-gray-400 text-sm mt-1">
-                    Configure free market data sources
+                    {currentStep === 'welcome' || currentStep === 'terms'
+                      ? 'Welcome to RichDad'
+                      : 'Configure free market data sources'}
                   </p>
                 </div>
-                <button
-                  onClick={handleSkip}
-                  className="p-2 hover:bg-terminal-border rounded transition-colors"
-                  title="Skip setup"
-                >
-                  <X size={20} className="text-gray-400" />
-                </button>
+                {currentStep !== 'terms' && (
+                  <button
+                    onClick={handleSkip}
+                    className="p-2 hover:bg-terminal-border rounded transition-colors"
+                    title="Skip setup"
+                  >
+                    <X size={20} className="text-gray-400" />
+                  </button>
+                )}
               </div>
 
               {/* Step Content */}
               <div className="p-6">
-                <WizardStep
-                  stepNumber={config.stepNumber}
-                  totalSteps={config.totalSteps}
-                  provider={config.provider}
-                  apiKey={config.value}
-                  onApiKeyChange={config.onChange}
-                />
+                {renderStep()}
               </div>
 
               {/* Footer */}
               <div className="flex items-center justify-between p-6 border-t border-terminal-border">
-                <button
-                  onClick={handleSkip}
-                  className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
-                >
-                  Skip Setup
-                </button>
+                {currentStep !== 'welcome' && currentStep !== 'terms' && (
+                  <button
+                    onClick={handleSkip}
+                    className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                  >
+                    Skip Setup
+                  </button>
+                )}
+                {(currentStep === 'welcome' || currentStep === 'terms') && <div />}
 
                 <button
                   onClick={handleContinue}
-                  className="px-6 py-2 bg-terminal-amber text-black rounded font-medium hover:bg-amber-500 transition-colors"
+                  disabled={!canContinue()}
+                  className={`px-6 py-2 rounded font-medium transition-colors ${
+                    canContinue()
+                      ? 'bg-terminal-amber text-black hover:bg-amber-500'
+                      : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  }`}
                 >
-                  {currentStep === 'finnhub' ? 'Finish' : 'Continue'}
+                  {getButtonText()}
                 </button>
               </div>
             </div>

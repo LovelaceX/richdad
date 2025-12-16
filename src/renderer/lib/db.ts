@@ -39,10 +39,6 @@ export interface UserSettings {
   // Onboarding
   hasCompletedOnboarding?: boolean
 
-  // Local AI
-  useLocalLLM: boolean
-  selectedLocalModel?: string
-
   // Performance
   performanceMode: boolean
 }
@@ -104,19 +100,6 @@ export interface AISettings {
   apiKey: string
   model?: string
   recommendationFormat?: RecommendationFormat
-}
-
-export interface LocalModel {
-  id?: number
-  modelId: string
-  name: string
-  type: 'llm' | 'sentiment'
-  sourceUrl: string
-  filePath?: string
-  sizeMB: number
-  checksum?: string
-  downloaded: boolean
-  downloadedAt?: number
 }
 
 export const AI_PROVIDERS = {
@@ -186,7 +169,6 @@ class DadAppDatabase extends Dexie {
   pnlEntries!: EntityTable<PnLEntry, 'id'>
   userProfile!: EntityTable<UserProfile, 'id'>
   aiSettings!: EntityTable<AISettings, 'id'>
-  localModels!: EntityTable<LocalModel, 'id'>
 
   constructor() {
     super('dadapp')
@@ -219,8 +201,7 @@ class DadAppDatabase extends Dexie {
       priceAlerts: '++id, symbol, triggered, createdAt',
       pnlEntries: '++id, date',
       userProfile: '++id',
-      aiSettings: '++id, provider',
-      localModels: '++id, modelId, downloaded'
+      aiSettings: '++id, provider'
     })
   }
 }
@@ -252,10 +233,6 @@ export const DEFAULT_SETTINGS: UserSettings = {
 
   // Onboarding
   hasCompletedOnboarding: undefined,
-
-  // Local AI
-  useLocalLLM: false,
-  selectedLocalModel: undefined,
 
   // Performance
   performanceMode: false
@@ -322,10 +299,10 @@ export const DEFAULT_NEWS_SOURCES: Omit<NewsSource, 'id'>[] = [
   { name: 'Benzinga', url: 'https://www.benzinga.com/feed', type: 'rss', enabled: true, category: 'Financial News' },
 
   // Bloomberg (via OpenRSS proxy)
-  { name: 'Bloomberg', url: 'https://openrss.org/www.bloomberg.com', type: 'rss', enabled: false, category: 'Financial News' },
+  { name: 'Bloomberg', url: 'https://openrss.org/www.bloomberg.com', type: 'rss', enabled: true, category: 'Financial News' },
 
   // Reuters (via OpenRSS proxy)
-  { name: 'Reuters', url: 'https://openrss.org/www.reuters.com', type: 'rss', enabled: false, category: 'Financial News' },
+  { name: 'Reuters', url: 'https://openrss.org/www.reuters.com', type: 'rss', enabled: true, category: 'Financial News' },
 ]
 
 // Initialize database with defaults

@@ -53,11 +53,6 @@ export function useDataHeartbeat() {
         // News with updated sentiment
         setNews(payload)
         break
-
-      case 'llm_status':
-        console.log('[LLM Status]', payload)
-        // Could update a global store if needed
-        break
     }
   }
 }

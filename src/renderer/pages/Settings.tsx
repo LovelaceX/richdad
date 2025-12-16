@@ -702,54 +702,6 @@ export function Settings() {
                     ))}
                   </div>
                 </div>
-
-                {/* Local AI Models */}
-                <div className="border-t border-terminal-border" />
-                <div>
-                  <div className="mb-4">
-                    <span className="text-white text-sm font-medium block mb-2">Local AI Models</span>
-                    <p className="text-gray-500 text-xs">
-                      Run AI models on your device for privacy and offline analysis
-                    </p>
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 rounded-lg border border-terminal-border mb-4">
-                    <div>
-                      <span className="text-white">Enable Local Models</span>
-                      <p className="text-gray-500 text-xs mt-0.5">Use on-device AI instead of cloud APIs</p>
-                    </div>
-                    <button
-                      onClick={() => saveSettings({ useLocalLLM: !settings.useLocalLLM })}
-                      className={`w-12 h-6 rounded-full transition-colors ${
-                        settings.useLocalLLM ? 'bg-terminal-amber' : 'bg-terminal-border'
-                      }`}
-                    >
-                      <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                        settings.useLocalLLM ? 'translate-x-6' : 'translate-x-0.5'
-                      }`} />
-                    </button>
-                  </div>
-
-                  {settings.useLocalLLM && (
-                    <div>
-                      <label className="text-gray-400 text-xs mb-2 block">Select Model</label>
-                      <select
-                        value={settings.selectedLocalModel || ''}
-                        onChange={(e) => saveSettings({ selectedLocalModel: e.target.value })}
-                        className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white"
-                      >
-                        <option value="">Choose a model...</option>
-                        <option value="llama-3.2-1b">Llama 3.2 1B (Fast, ~1GB)</option>
-                        <option value="llama-3.2-3b">Llama 3.2 3B (Balanced, ~2GB)</option>
-                        <option value="phi-3-mini">Phi-3 Mini (Efficient, ~2GB)</option>
-                        <option value="gemma-2b">Gemma 2B (Quality, ~2GB)</option>
-                      </select>
-                      <p className="text-gray-500 text-xs mt-2">
-                        Local models will be downloaded and run on your device when needed
-                      </p>
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
           )}

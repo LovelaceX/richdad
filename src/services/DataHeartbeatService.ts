@@ -1,12 +1,10 @@
 import { fetchLivePrices, getCacheStatus } from './marketData'
 import { fetchNews } from './newsService'
 import { analyzeSentiment, initializeSentimentAnalysis } from './sentimentService'
-import { initializeLocalLLM, isLocalLLMReady } from './localLLMService'
-import { getSettings } from '../renderer/lib/db'
 import type { Quote, NewsItem } from '../renderer/types'
 
 export type DataUpdateCallback = (data: {
-  type: 'market' | 'news' | 'sentiment' | 'llm_status'
+  type: 'market' | 'news' | 'sentiment'
   payload: any
 }) => void
 
@@ -38,20 +36,6 @@ class DataHeartbeatService {
 
     // Initialize sentiment analysis worker
     initializeSentimentAnalysis()
-
-    // Initialize Local LLM if enabled
-    try {
-      const settings = await getSettings()
-      if (settings.useLocalLLM) {
-        await initializeLocalLLM()
-        this.notifyCallbacks({
-          type: 'llm_status',
-          payload: { ready: isLocalLLMReady() }
-        })
-      }
-    } catch (error) {
-      console.error('[Heartbeat] Local LLM init failed:', error)
-    }
 
     // Start periodic updates
     this.startMarketUpdates()
@@ -197,12 +181,10 @@ class DataHeartbeatService {
    */
   getStatus(): {
     running: boolean
-    llmReady: boolean
     lastUpdate: { market: number; news: number; sentiment: number }
   } {
     return {
       running: this.isRunning,
-      llmReady: isLocalLLMReady(),
       lastUpdate: {
         market: 0, // TODO: Track last update times
         news: 0,

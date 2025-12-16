@@ -43,7 +43,7 @@ export function ChartPanel() {
       </div>
 
       {/* Chart area */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative min-h-0">
         <TradingChart />
 
         {/* Proactive Alert Overlay */}

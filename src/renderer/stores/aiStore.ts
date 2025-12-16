@@ -28,24 +28,30 @@ export const useAIStore = create<AIState>((set, get) => ({
     set({ currentRecommendation: rec })
     if (rec) {
       set(state => {
-        // Get current recommendation messages
-        const recommendations = state.messages.filter(m => m.type === 'recommendation')
-        const otherMessages = state.messages.filter(m => m.type !== 'recommendation')
+        // Get alert-type messages (recommendation, analysis, alert)
+        const alertMessages = state.messages.filter(m =>
+          m.type === 'recommendation' || m.type === 'analysis' || m.type === 'alert'
+        )
+        const otherMessages = state.messages.filter(m =>
+          m.type !== 'recommendation' && m.type !== 'analysis' && m.type !== 'alert'
+        )
 
-        // Keep only the 2 most recent recommendations (so with new one = 3 total)
-        const keptRecommendations = recommendations.slice(0, 2)
+        // Keep only the 2 most recent alerts (so with new one = 3 total)
+        const keptAlerts = alertMessages.slice(-2)
+
+        const newRecommendationMessage = {
+          id: generateId(),
+          type: 'recommendation' as const,
+          content: `Generated ${rec.action} signal for ${rec.ticker}. Confidence: ${rec.confidence}%.`,
+          timestamp: Date.now(),
+          ticker: rec.ticker,
+        }
 
         return {
           messages: [
-            {
-              id: generateId(),
-              type: 'recommendation',
-              content: `Generated ${rec.action} signal for ${rec.ticker}. Confidence: ${rec.confidence}%.`,
-              timestamp: Date.now(),
-              ticker: rec.ticker,
-            },
-            ...keptRecommendations,
             ...otherMessages,
+            ...keptAlerts,
+            newRecommendationMessage,
           ],
         }
       })
@@ -57,16 +63,40 @@ export const useAIStore = create<AIState>((set, get) => ({
   },
 
   addMessage: (message) => {
-    set(state => ({
-      messages: [
-        {
-          ...message,
-          id: generateId(),
-          timestamp: Date.now(),
-        },
-        ...state.messages,
-      ],
-    }))
+    set(state => {
+      const newMessage = {
+        ...message,
+        id: generateId(),
+        timestamp: Date.now(),
+      }
+
+      // If new message is an alert type, enforce 3-alert maximum
+      if (newMessage.type === 'recommendation' || newMessage.type === 'analysis' || newMessage.type === 'alert') {
+        // Get alert-type messages
+        const alertMessages = state.messages.filter(m =>
+          m.type === 'recommendation' || m.type === 'analysis' || m.type === 'alert'
+        )
+        const otherMessages = state.messages.filter(m =>
+          m.type !== 'recommendation' && m.type !== 'analysis' && m.type !== 'alert'
+        )
+
+        // Keep only 2 most recent alerts (so with new one = 3 total)
+        const keptAlerts = alertMessages.slice(-2)
+
+        return {
+          messages: [
+            ...otherMessages,
+            ...keptAlerts,
+            newMessage,
+          ],
+        }
+      }
+
+      // For chat/info messages, just append (newest at bottom)
+      return {
+        messages: [...state.messages, newMessage],
+      }
+    })
   },
 
   removeAlert: (alertId) => {

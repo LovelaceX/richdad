@@ -18,7 +18,7 @@ export function Dashboard() {
       <div className="flex-1 overflow-hidden">
         <PanelGroup direction="vertical">
           {/* Top: 3-column layout */}
-          <Panel defaultSize={95} minSize={50}>
+          <Panel defaultSize={95} minSize={50} maxSize={97}>
             <PanelGroup direction="horizontal">
               {/* Left: Market Watch */}
               <Panel
@@ -58,7 +58,11 @@ export function Dashboard() {
             defaultSize={panelSizes.bottomPanel}
             minSize={3}
             maxSize={15}
-            onResize={(size) => setPanelSize('bottom', size)}
+            onResize={(size) => {
+              setPanelSize('bottom', size)
+              // Force chart refresh on resize
+              window.dispatchEvent(new Event('resize'))
+            }}
           >
             <NewsTicker />
           </Panel>
