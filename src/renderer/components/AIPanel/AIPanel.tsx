@@ -1,0 +1,56 @@
+import { useEffect, useRef } from 'react'
+import { Bot, Loader2 } from 'lucide-react'
+import { ActivityLog } from './ActivityLog'
+import { ChatInput } from './ChatInput'
+import { useAIStore } from '../../stores/aiStore'
+import { useMarketStore } from '../../stores/marketStore'
+
+export function AIPanel() {
+  const isAnalyzing = useAIStore(state => state.isAnalyzing)
+  const messages = useAIStore(state => state.messages)
+  const selectedTicker = useMarketStore(state => state.selectedTicker)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  return (
+    <div className="panel h-full flex flex-col">
+      {/* Header - fixed height */}
+      <div className="panel-header flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <Bot size={14} />
+          <span>AI Co-Pilot</span>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {selectedTicker && (
+            <span className="text-terminal-amber text-[10px] font-mono">
+              Analyzing: {selectedTicker}
+            </span>
+          )}
+
+          {isAnalyzing && (
+            <div className="flex items-center gap-1.5 text-terminal-amber">
+              <Loader2 size={12} className="animate-spin" />
+              <span className="text-[10px] font-normal normal-case">...</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Scrollable messages - takes remaining space */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        <ActivityLog />
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Chat Input - fixed at bottom */}
+      <div className="flex-shrink-0">
+        <ChatInput />
+      </div>
+    </div>
+  )
+}

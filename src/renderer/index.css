@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background-color: #0A0A0A;
+  font-family: 'JetBrains Mono', monospace;
+  color: #ffffff;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0A0A0A;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333333;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #444444;
+}
+
+/* Drag region for Electron */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* Panel styles */
+.panel {
+  @apply bg-terminal-panel border border-terminal-border;
+}
+
+.panel-header {
+  @apply px-3 py-2 border-b border-terminal-border text-terminal-amber text-xs font-semibold uppercase tracking-wider;
+}
+
+/* Ticker colors */
+.ticker-up {
+  @apply text-semantic-up;
+}
+
+.ticker-down {
+  @apply text-semantic-down;
+}
+
+/* CVD mode - apply to body with class */
+body.cvd-mode .ticker-up {
+  @apply text-semantic-up-cvd;
+}
+
+body.cvd-mode .ticker-down {
+  @apply text-semantic-down-cvd;
+}
+
+/* Bloomberg-style command input */
+.command-input {
+  @apply bg-terminal-panel border border-terminal-border text-white font-mono text-sm px-4 py-2 focus:outline-none focus:border-terminal-amber transition-colors;
+}
+
+/* Action badges */
+.badge-buy {
+  @apply bg-semantic-up text-black px-2 py-0.5 text-xs font-bold uppercase;
+}
+
+.badge-sell {
+  @apply bg-semantic-down text-white px-2 py-0.5 text-xs font-bold uppercase;
+}
+
+.badge-hold {
+  @apply bg-terminal-amber text-black px-2 py-0.5 text-xs font-bold uppercase;
+}
+
+body.cvd-mode .badge-buy {
+  @apply bg-semantic-up-cvd;
+}
+
+body.cvd-mode .badge-sell {
+  @apply bg-semantic-down-cvd;
+}
