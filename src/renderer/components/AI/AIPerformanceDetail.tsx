@@ -37,10 +37,11 @@ export function AIPerformanceDetail() {
   }
 
   const exportCSV = () => {
-    const headers = ['Date', 'Symbol', 'Action', 'Confidence', 'Entry', 'Exit', 'P/L %', 'Days Held', 'Outcome']
+    const headers = ['Date', 'Symbol', 'Executor', 'Action', 'Confidence', 'Entry', 'Exit', 'P/L %', 'Days Held', 'Outcome']
     const rows = trades.map(t => [
       new Date(t.timestamp).toISOString().split('T')[0],
       t.symbol,
+      t.source === 'manual' ? 'You' : 'AI Copilot',
       t.action,
       `${t.confidence}%`,
       `$${t.priceAtDecision?.toFixed(2) ?? 'N/A'}`,
@@ -131,6 +132,7 @@ export function AIPerformanceDetail() {
             <tr>
               <th className="text-left text-gray-400 px-4 py-3">Date</th>
               <th className="text-left text-gray-400 px-4 py-3">Symbol</th>
+              <th className="text-left text-gray-400 px-4 py-3">Executor</th>
               <th className="text-left text-gray-400 px-4 py-3">Action</th>
               <th className="text-right text-gray-400 px-4 py-3">Confidence</th>
               <th className="text-right text-gray-400 px-4 py-3">Entry</th>
@@ -147,6 +149,15 @@ export function AIPerformanceDetail() {
                   {new Date(trade.timestamp).toLocaleDateString()}
                 </td>
                 <td className="text-white px-4 py-3 font-mono">{trade.symbol}</td>
+                <td className="px-4 py-3">
+                  <span className={`inline-block px-2 py-0.5 rounded text-xs ${
+                    trade.source === 'manual'
+                      ? 'bg-blue-900/30 text-blue-400'
+                      : 'bg-purple-900/30 text-purple-400'
+                  }`}>
+                    {trade.source === 'manual' ? 'You' : 'AI Copilot'}
+                  </span>
+                </td>
                 <td className={`px-4 py-3 ${
                   trade.action === 'BUY' ? 'text-green-400' :
                   trade.action === 'SELL' ? 'text-red-400' : 'text-yellow-400'

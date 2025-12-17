@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-3.8.1-gold?style=for-the-badge" alt="Version 3.8.1"/>
+  <img src="https://img.shields.io/badge/version-3.9.0-gold?style=for-the-badge" alt="Version 3.9.0"/>
   <img src="https://img.shields.io/badge/tauri-2.x-blue?style=for-the-badge&logo=tauri" alt="Tauri 2.x"/>
   <img src="https://img.shields.io/badge/react-18-61DAFB?style=for-the-badge&logo=react" alt="React 18"/>
   <img src="https://img.shields.io/badge/typescript-strict-3178C6?style=for-the-badge&logo=typescript" alt="TypeScript"/>
@@ -377,7 +377,14 @@ richdad/
 
 ## Changelog
 
-### v3.8.1 (Current)
+### v3.9.0 (Current)
+- **Executor Tracking**: Performance History now shows "You" vs "AI Copilot" for each trade to compare human vs AI performance
+- **Massive.com (Polygon.io) API Key**: Added to Settings > API Keys with test connection button
+- **Market Data Provider Selector**: Choose between Massive.com, Alpha Vantage, or Finnhub as default provider
+- **Removed Duplicate AI Performance**: Performance History now only appears in Settings > My Profile (not AI Copilot)
+- **Enhanced CSV Export**: Executor column included in exported trade history
+
+### v3.8.1
 - **Notification Panel Fix**: Panel now opens to the right of the bell icon (was cut off on left)
 - **Solid Buy/Sell Buttons**: Trading buttons are now solid green/red instead of outline style
 - **EST Timezone Display**: Shows current New York time in chart toolbar

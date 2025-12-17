@@ -139,9 +139,15 @@ export function Settings() {
   // API Keys pending changes state
   const [pendingAlphaVantageKey, setPendingAlphaVantageKey] = useState<string>('')
   const [pendingFinnhubKey, setPendingFinnhubKey] = useState<string>('')
+  const [pendingPolygonKey, setPendingPolygonKey] = useState<string>('')
   const [hasApiKeyChanges, setHasApiKeyChanges] = useState(false)
   const [savingApiKeys, setSavingApiKeys] = useState(false)
   const [finnhubMessage, setFinnhubMessage] = useState('')
+
+  // Polygon connection test state
+  const [testingPolygon, setTestingPolygon] = useState(false)
+  const [polygonStatus, setPolygonStatus] = useState<'idle' | 'valid' | 'invalid'>('idle')
+  const [polygonMessage, setPolygonMessage] = useState('')
 
   // Onboarding wizard state
   const [showOnboardingWizard, setShowOnboardingWizard] = useState(false)
@@ -214,9 +220,10 @@ export function Settings() {
     if (settings) {
       setPendingAlphaVantageKey(settings.alphaVantageApiKey || '')
       setPendingFinnhubKey(settings.finnhubApiKey || '')
+      setPendingPolygonKey(settings.polygonApiKey || '')
       setHasApiKeyChanges(false)
     }
-  }, [settings?.alphaVantageApiKey, settings?.finnhubApiKey])
+  }, [settings?.alphaVantageApiKey, settings?.finnhubApiKey, settings?.polygonApiKey])
 
   const saveSettings = async (updates: Partial<UserSettings>) => {
     if (!settings) return
@@ -252,7 +259,8 @@ export function Settings() {
     setSavingApiKeys(true)
     await saveSettings({
       alphaVantageApiKey: pendingAlphaVantageKey,
-      finnhubApiKey: pendingFinnhubKey
+      finnhubApiKey: pendingFinnhubKey,
+      polygonApiKey: pendingPolygonKey
     })
     setHasApiKeyChanges(false)
     setSavingApiKeys(false)
@@ -261,11 +269,14 @@ export function Settings() {
     setConnectionMessage('')
     setFinnhubStatus('idle')
     setFinnhubMessage('')
+    setPolygonStatus('idle')
+    setPolygonMessage('')
   }
 
   const handleDiscardApiKeys = () => {
     setPendingAlphaVantageKey(settings?.alphaVantageApiKey || '')
     setPendingFinnhubKey(settings?.finnhubApiKey || '')
+    setPendingPolygonKey(settings?.polygonApiKey || '')
     setHasApiKeyChanges(false)
   }
 
@@ -385,6 +396,40 @@ export function Settings() {
       console.error('[Settings] Finnhub connection test error:', error)
     } finally {
       setTestingFinnhub(false)
+    }
+  }
+
+  const handleTestPolygonConnection = async () => {
+    if (!settings?.polygonApiKey) {
+      setPolygonStatus('invalid')
+      setPolygonMessage('No API key entered')
+      return
+    }
+
+    setTestingPolygon(true)
+    setPolygonStatus('idle')
+    setPolygonMessage('')
+
+    try {
+      // Test with a simple quote request
+      const response = await fetch(
+        `https://api.polygon.io/v2/aggs/ticker/SPY/prev?adjusted=true&apiKey=${settings.polygonApiKey}`
+      )
+      const data = await response.json()
+
+      if (response.ok && data.status === 'OK') {
+        setPolygonStatus('valid')
+        setPolygonMessage('Connection successful - API key verified')
+      } else {
+        setPolygonStatus('invalid')
+        setPolygonMessage(data.message || 'Invalid API key')
+      }
+    } catch (error) {
+      setPolygonStatus('invalid')
+      setPolygonMessage('Connection test failed')
+      console.error('[Settings] Polygon connection test error:', error)
+    } finally {
+      setTestingPolygon(false)
     }
   }
 
@@ -691,11 +736,6 @@ export function Settings() {
                   </div>
                 </div>
 
-                {/* AI Performance Tracking */}
-                <div className="border-t border-terminal-border pt-6">
-                  <h3 className="text-white text-sm font-medium mb-4">AI Performance History</h3>
-                  <AIPerformanceDetail />
-                </div>
               </div>
             </div>
           )}
@@ -890,6 +930,127 @@ export function Settings() {
                       {finnhubMessage}
                     </div>
                   )}
+                </div>
+
+                <div className="border-t border-terminal-border" />
+
+                {/* Massive.com (Polygon.io) */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <BarChart3 className="w-4 h-4 text-terminal-amber" />
+                    <span className="text-white text-sm font-medium">Massive.com (Polygon.io)</span>
+                    <span className="text-xs text-terminal-amber bg-terminal-amber/10 px-2 py-0.5 rounded">Recommended</span>
+                  </div>
+
+                  <p className="text-gray-400 text-xs mb-4">
+                    Unlimited API calls with 15-minute delayed data. Get your key at{' '}
+                    <a href="https://massive.com/dashboard/signup" target="_blank" rel="noopener noreferrer" className="text-terminal-amber hover:underline">
+                      massive.com
+                    </a>
+                  </p>
+
+                  {/* API Key Input */}
+                  <div className="mb-4">
+                    <label className="text-gray-400 text-xs mb-1 block">API Key</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        value={pendingPolygonKey}
+                        onChange={(e) => {
+                          setPendingPolygonKey(e.target.value)
+                          setHasApiKeyChanges(true)
+                          setPolygonStatus('idle')
+                          setPolygonMessage('')
+                        }}
+                        placeholder="e.g., abc123xyz456"
+                        className="flex-1 bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white placeholder:text-gray-600 font-mono focus:outline-none focus:border-terminal-amber/50"
+                      />
+                      <button
+                        onClick={handleTestPolygonConnection}
+                        disabled={!settings?.polygonApiKey || testingPolygon}
+                        className="px-4 py-2 bg-terminal-panel border border-terminal-border rounded text-sm text-white hover:bg-terminal-border/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {testingPolygon ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Testing...
+                          </>
+                        ) : (
+                          <>
+                            <Wifi className="w-4 h-4" />
+                            Test
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-gray-600 text-xs mt-2">
+                      Free tier: Unlimited calls • 15-minute delayed data • Best for charts & historical data
+                    </p>
+                  </div>
+
+                  {/* Signup Link */}
+                  <a
+                    href="https://massive.com/dashboard/signup"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-terminal-amber hover:underline text-xs"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    Get free Massive.com API key
+                  </a>
+
+                  {/* Status Indicators */}
+                  {!settings?.polygonApiKey && (
+                    <div className="mt-4 flex items-center gap-2 text-gray-500 text-xs">
+                      <AlertCircle className="w-3 h-3" />
+                      No API key configured
+                    </div>
+                  )}
+
+                  {settings?.polygonApiKey && polygonStatus === 'idle' && (
+                    <div className="mt-4 flex items-center gap-2 text-terminal-amber text-xs">
+                      <Check className="w-3 h-3" />
+                      API key saved (click "Test" to verify)
+                    </div>
+                  )}
+
+                  {polygonStatus === 'valid' && (
+                    <div className="mt-4 flex items-center gap-2 text-terminal-up text-xs">
+                      <Check className="w-3 h-3" />
+                      {polygonMessage}
+                    </div>
+                  )}
+
+                  {polygonStatus === 'invalid' && (
+                    <div className="mt-4 flex items-center gap-2 text-terminal-down text-xs">
+                      <AlertCircle className="w-3 h-3" />
+                      {polygonMessage}
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-terminal-border" />
+
+                {/* Default Market Data Provider */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <TrendingUp className="w-4 h-4 text-terminal-amber" />
+                    <span className="text-white text-sm font-medium">Default Market Data Provider</span>
+                  </div>
+
+                  <p className="text-gray-400 text-xs mb-4">
+                    Choose which provider to use for market data. Others will be used as fallbacks.
+                  </p>
+
+                  <select
+                    value={settings?.marketDataProvider || 'polygon'}
+                    onChange={(e) => saveSettings({ marketDataProvider: e.target.value as 'polygon' | 'alphavantage' | 'finnhub' })}
+                    className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-terminal-amber/50"
+                  >
+                    <option value="polygon">Massive.com (Recommended - Unlimited, 15-min delay)</option>
+                    <option value="alphavantage">Alpha Vantage (25 calls/day, real-time)</option>
+                    <option value="finnhub">Finnhub (60 calls/min)</option>
+                  </select>
                 </div>
 
                 {/* Save/Discard Buttons for API Keys */}

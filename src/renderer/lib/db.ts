@@ -57,7 +57,7 @@ export interface UserSettings {
   lastSoundPlayed: number          // Timestamp of last sound
 
   // Data Sources
-  marketDataProvider: 'alphavantage' | 'polygon'
+  marketDataProvider: 'alphavantage' | 'polygon' | 'finnhub'
   alphaVantageApiKey?: string
   polygonApiKey?: string
   useAlphaVantageForNews?: boolean
