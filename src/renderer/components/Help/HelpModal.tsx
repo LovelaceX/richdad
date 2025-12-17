@@ -112,7 +112,7 @@ export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
             <div className="flex items-center gap-3">
               <BookOpen size={22} className="text-terminal-amber" />
               <h2 className="text-white text-lg font-semibold">Reference Guide</h2>
-              <span className="text-gray-500 text-sm">v2.4.4</span>
+              <span className="text-gray-500 text-sm">v3.10.0</span>
             </div>
             <button
               onClick={onClose}
@@ -275,7 +275,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               <Step>Navigate to <span className="text-white font-medium">AI Copilot</span> section</Step>
               <Step>Select your AI provider from the dropdown</Step>
               <Step>Paste your AI API key</Step>
-              <Step>Click <span className="text-terminal-amber">Save</span></Step>
+              <Step>Settings auto-save when changed</Step>
             </div>
           </div>
 
@@ -850,7 +850,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
             <h3 className="text-white font-semibold mb-3">Settings not saving</h3>
             <div className="space-y-1 text-gray-300">
-              <Step>Make sure to click Save after making changes</Step>
+              <Step>Settings auto-save when you make changes</Step>
               <Step>Check browser console for errors (View → Developer → Console)</Step>
               <Step>Try Settings → Danger Zone → Reset All Data (last resort)</Step>
             </div>
@@ -1130,8 +1130,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           </div>
 
           <div className="bg-terminal-bg border border-terminal-amber/30 rounded-lg p-6 text-center">
-            <h3 className="text-terminal-amber text-3xl font-bold mb-2">RichDad v3.6.0</h3>
-            <p className="text-gray-400 italic">"Bloomberg gives you data. RichDad gives you decisions."</p>
+            <h3 className="text-terminal-amber text-3xl font-bold">RichDad v3.10.0</h3>
           </div>
 
           {/* Why RichDad - Bloomberg Comparison */}
@@ -1202,7 +1201,9 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
 
           <div>
             <h3 className="text-white font-semibold mb-3">Developer</h3>
-            <p className="text-gray-300"><span className="text-terminal-amber font-medium">LovelaceX</span></p>
+            <p className="text-gray-300">
+              <a href="https://github.com/LovelaceX" target="_blank" rel="noopener noreferrer" className="text-terminal-amber font-medium hover:underline">LovelaceX</a>
+            </p>
             <p className="text-gray-400 text-sm">Building tools for traders at the intersection of AI and finance.</p>
           </div>
 
@@ -1210,12 +1211,9 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             <h3 className="text-white font-semibold mb-3">Contact</h3>
             <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4 flex items-center gap-3">
               <Mail size={20} className="text-terminal-amber" />
-              <div>
-                <p className="text-gray-400 text-sm">Support Email</p>
-                <a href="mailto:support@lovelacex.com" className="text-terminal-amber hover:underline">
-                  support@lovelacex.com
-                </a>
-              </div>
+              <a href="mailto:support@lovelacex.com" className="text-terminal-amber hover:underline">
+                support@lovelacex.com
+              </a>
             </div>
           </div>
 

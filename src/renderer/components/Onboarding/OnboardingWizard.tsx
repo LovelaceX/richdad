@@ -262,17 +262,17 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
               <div className="flex items-center justify-between p-6 border-b border-terminal-border">
                 <div>
                   <h2 className="text-white text-xl font-semibold">
-                    {currentStep === 'welcome' || currentStep === 'terms'
-                      ? 'Getting Started'
-                      : 'API Setup Wizard'}
+                    {currentStep === 'provider-choice' || currentStep === 'api-key' || currentStep === 'ai-provider'
+                      ? 'API Setup Wizard'
+                      : ''}
                   </h2>
-                  <p className="text-gray-400 text-sm mt-1">
-                    {currentStep === 'welcome' || currentStep === 'terms'
-                      ? 'Welcome to RichDad'
-                      : 'Configure free market data sources'}
-                  </p>
+                  {(currentStep === 'provider-choice' || currentStep === 'api-key' || currentStep === 'ai-provider') && (
+                    <p className="text-gray-400 text-sm mt-1">
+                      Configure free market data sources
+                    </p>
+                  )}
                 </div>
-                {currentStep !== 'terms' && (
+                {currentStep !== 'terms' && currentStep !== 'welcome' && (
                   <button
                     onClick={handleSkip}
                     className="p-2 hover:bg-terminal-border rounded transition-colors"
@@ -290,15 +290,22 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
 
               {/* Footer */}
               <div className="flex items-center justify-between p-6 border-t border-terminal-border">
-                {currentStep !== 'welcome' && currentStep !== 'terms' && (
+                {currentStep !== 'welcome' ? (
                   <button
-                    onClick={handleSkip}
+                    onClick={() => {
+                      const stepOrder: WizardStepType[] = ['welcome', 'terms', 'provider-choice', 'api-key', 'ai-provider']
+                      const currentIndex = stepOrder.indexOf(currentStep)
+                      if (currentIndex > 0) {
+                        setCurrentStep(stepOrder[currentIndex - 1])
+                      }
+                    }}
                     className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
                   >
-                    Skip Setup
+                    ← Back
                   </button>
+                ) : (
+                  <div />
                 )}
-                {(currentStep === 'welcome' || currentStep === 'terms') && <div />}
 
                 <button
                   onClick={handleContinue}

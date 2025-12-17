@@ -1,7 +1,7 @@
 // App Theme Definitions
-// Each theme defines colors for the entire application
+// Bloomberg is the only theme (simplified in v3.10.0)
 
-export type ThemeId = 'bloomberg' | 'midnight' | 'forest' | 'slate'
+export type ThemeId = 'bloomberg'
 
 export interface Theme {
   id: ThemeId
@@ -31,48 +31,6 @@ export const THEMES: Record<ThemeId, Theme> = {
       accentHover: '#FFD000',
       up: '#4af6c3',
       down: '#ff433d',
-    },
-  },
-  midnight: {
-    id: 'midnight',
-    name: 'Midnight',
-    description: 'Deep navy blue with cyan accents',
-    colors: {
-      bg: '#0D1B2A',
-      panel: '#1B263B',
-      border: '#415A77',
-      accent: '#00D9FF',
-      accentHover: '#00EEFF',
-      up: '#4af6c3',
-      down: '#ff433d',
-    },
-  },
-  forest: {
-    id: 'forest',
-    name: 'Forest',
-    description: 'Dark green trading theme',
-    colors: {
-      bg: '#0A1612',
-      panel: '#0F2318',
-      border: '#1E3A2A',
-      accent: '#4AF6C3',
-      accentHover: '#6AFFD6',
-      up: '#4AF6C3',
-      down: '#FF6B6B',
-    },
-  },
-  slate: {
-    id: 'slate',
-    name: 'Slate',
-    description: 'Clean gray professional theme',
-    colors: {
-      bg: '#1A1A2E',
-      panel: '#16213E',
-      border: '#2C3E50',
-      accent: '#E94560',
-      accentHover: '#FF5A75',
-      up: '#00D9A0',
-      down: '#FF6B6B',
     },
   },
 }

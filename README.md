@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-3.9.0-gold?style=for-the-badge" alt="Version 3.9.0"/>
+  <img src="https://img.shields.io/badge/version-3.10.0-gold?style=for-the-badge" alt="Version 3.10.0"/>
   <img src="https://img.shields.io/badge/tauri-2.x-blue?style=for-the-badge&logo=tauri" alt="Tauri 2.x"/>
   <img src="https://img.shields.io/badge/react-18-61DAFB?style=for-the-badge&logo=react" alt="React 18"/>
   <img src="https://img.shields.io/badge/typescript-strict-3178C6?style=for-the-badge&logo=typescript" alt="TypeScript"/>
@@ -47,7 +47,6 @@
 | **Zero Cost** | Democratizes tools that were $24K/year. Retail traders get institutional-style analysis. |
 | **Outcome Accountability** | We track if recommendations actually worked. Bloomberg just gives you data. |
 
-<p align="center"><em>"Bloomberg gives you data. RichDad gives you decisions."</em></p>
 
 ---
 
@@ -73,14 +72,6 @@
 - **Multiple Timeframes**: 1M, 5M, 15M, 30M, 1H, Daily
 - **Live Price Updates**: Volume, change %, bid/ask spreads
 - **Resizable Panels**: Customize your workspace layout
-
-### 4 Professional Themes
-| Theme | Description |
-|-------|-------------|
-| **Bloomberg** | Classic terminal dark with amber accents |
-| **Midnight** | Deep navy blue with cyan highlights |
-| **Forest** | Dark green trading aesthetic |
-| **Slate** | Clean gray professional look |
 
 ### Risk Management
 - **Price Alerts**: Custom triggers with sound notifications
@@ -377,7 +368,14 @@ richdad/
 
 ## Changelog
 
-### v3.9.0 (Current)
+### v3.10.0 (Current)
+- **Streamlined Onboarding**: Back button replaces Skip, cleaner icons (no boxes), improved layout
+- **Reference Guide Refresh**: Updated to v3.10.0, cleaner About section, linked developer GitHub
+- **Single Theme**: Bloomberg theme is now the default (removed theme selector for simplicity)
+- **Windows Support**: Data storage location instructions now show both macOS and Windows paths
+- **Corrected API Limits**: Massive.com free tier accurately shown as 5 calls/min, 2 years historical, EOD data
+
+### v3.9.0
 - **Executor Tracking**: Performance History now shows "You" vs "AI Copilot" for each trade to compare human vs AI performance
 - **Massive.com (Polygon.io) API Key**: Added to Settings > API Keys with test connection button
 - **Market Data Provider Selector**: Choose between Massive.com, Alpha Vantage, or Finnhub as default provider

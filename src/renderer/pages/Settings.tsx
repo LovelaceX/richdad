@@ -25,7 +25,7 @@ import {
   Newspaper
 } from 'lucide-react'
 import { useSettingsStore } from '../stores/settingsStore'
-import { THEMES, type ThemeId } from '../lib/themes'
+// Theme is now fixed to Bloomberg - no selector needed
 import { useProTraderStore } from '../stores/proTraderStore'
 import { useAlertStore } from '../stores/alertStore'
 import { OnboardingWizard } from '../components/Onboarding/OnboardingWizard'
@@ -111,8 +111,6 @@ export function Settings() {
   const setZoomLevel = useSettingsStore(state => state.setZoomLevel)
   const tickerSpeed = useSettingsStore(state => state.tickerSpeed)
   const setTickerSpeed = useSettingsStore(state => state.setTickerSpeed)
-  const theme = useSettingsStore(state => state.theme)
-  const setTheme = useSettingsStore(state => state.setTheme)
 
   // Pro Traders state
   const { traders, loadTraders, addTrader, removeTrader, toggleTrader } = useProTraderStore()
@@ -943,7 +941,7 @@ export function Settings() {
                   </div>
 
                   <p className="text-gray-400 text-xs mb-4">
-                    Unlimited API calls with 15-minute delayed data. Get your key at{' '}
+                    5 API calls/min, 2 years historical, EOD data. Get your key at{' '}
                     <a href="https://massive.com/dashboard/signup" target="_blank" rel="noopener noreferrer" className="text-terminal-amber hover:underline">
                       massive.com
                     </a>
@@ -984,7 +982,7 @@ export function Settings() {
                       </button>
                     </div>
                     <p className="text-gray-600 text-xs mt-2">
-                      Free tier: Unlimited calls • 15-minute delayed data • Best for charts & historical data
+                      Free tier: 5 calls/min • 2 years historical • EOD data • Best for charts
                     </p>
                   </div>
 
@@ -1047,7 +1045,7 @@ export function Settings() {
                     onChange={(e) => saveSettings({ marketDataProvider: e.target.value as 'polygon' | 'alphavantage' | 'finnhub' })}
                     className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-terminal-amber/50"
                   >
-                    <option value="polygon">Massive.com (Recommended - Unlimited, 15-min delay)</option>
+                    <option value="polygon">Massive.com (Recommended - 5/min, EOD data)</option>
                     <option value="alphavantage">Alpha Vantage (25 calls/day, real-time)</option>
                     <option value="finnhub">Finnhub (60 calls/min)</option>
                   </select>
@@ -1314,66 +1312,6 @@ export function Settings() {
               <p className="text-gray-500 text-sm mb-6">Visual accessibility and interface scaling</p>
 
               <div className="space-y-6">
-                {/* App Theme */}
-                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Monitor className="w-4 h-4 text-terminal-amber" />
-                    <span className="text-white text-sm font-medium">App Theme</span>
-                  </div>
-
-                  <p className="text-gray-400 text-xs mb-4">
-                    Choose a color theme for the entire application.
-                  </p>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    {(Object.keys(THEMES) as ThemeId[]).map(themeId => {
-                      const t = THEMES[themeId]
-                      const isSelected = theme === themeId
-                      return (
-                        <button
-                          key={themeId}
-                          onClick={() => setTheme(themeId)}
-                          className={`relative p-3 rounded-lg border-2 transition-all ${
-                            isSelected
-                              ? 'border-terminal-amber'
-                              : 'border-terminal-border hover:border-terminal-amber/50'
-                          }`}
-                          style={{ backgroundColor: t.colors.bg }}
-                        >
-                          {/* Theme Preview */}
-                          <div className="flex gap-1 mb-2">
-                            <div
-                              className="w-3 h-3 rounded"
-                              style={{ backgroundColor: t.colors.panel }}
-                            />
-                            <div
-                              className="w-3 h-3 rounded"
-                              style={{ backgroundColor: t.colors.accent }}
-                            />
-                            <div
-                              className="w-3 h-3 rounded"
-                              style={{ backgroundColor: t.colors.up }}
-                            />
-                            <div
-                              className="w-3 h-3 rounded"
-                              style={{ backgroundColor: t.colors.down }}
-                            />
-                          </div>
-                          <p className="text-white text-sm font-medium text-left">{t.name}</p>
-                          <p className="text-gray-500 text-xs text-left">{t.description}</p>
-                          {isSelected && (
-                            <div className="absolute top-2 right-2">
-                              <Check className="w-4 h-4 text-terminal-amber" />
-                            </div>
-                          )}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                <div className="border-t border-terminal-border" />
-
                 {/* Interface Zoom */}
                 <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-3">
@@ -2262,15 +2200,25 @@ export function Settings() {
                 <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4 mt-4">
                   <h4 className="text-white text-sm font-medium mb-2">📁 Data Storage Location</h4>
                   <p className="text-gray-400 text-xs mb-2">
-                    On macOS, RichDad stores data in:
+                    RichDad stores data locally:
                   </p>
-                  <code className="block text-terminal-amber text-xs bg-terminal-panel px-2 py-1 rounded mb-3 font-mono">
-                    ~/Library/Application Support/richdad/
-                  </code>
+                  <div className="space-y-2 mb-3">
+                    <div>
+                      <span className="text-gray-500 text-xs">macOS:</span>
+                      <code className="block text-terminal-amber text-xs bg-terminal-panel px-2 py-1 rounded font-mono mt-1">
+                        ~/Library/Application Support/com.richdad.app/
+                      </code>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 text-xs">Windows:</span>
+                      <code className="block text-terminal-amber text-xs bg-terminal-panel px-2 py-1 rounded font-mono mt-1">
+                        %APPDATA%\com.richdad.app\
+                      </code>
+                    </div>
+                  </div>
                   <p className="text-gray-500 text-xs">
-                    <strong>Note:</strong> Deleting the app from Applications does NOT remove this folder.
-                    To completely remove all data after uninstalling, delete this folder manually.
-                    Alternatively, use "Factory Reset" above before uninstalling.
+                    <strong>Note:</strong> Uninstalling the app does NOT remove this folder.
+                    To completely remove all data, delete this folder manually or use "Factory Reset" above.
                   </p>
                 </div>
               </div>

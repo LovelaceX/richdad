@@ -153,9 +153,10 @@ export function TermsStep({ stepNumber, totalSteps, accepted, onAcceptChange }: 
               checked={accepted}
               onChange={(e) => onAcceptChange(e.target.checked)}
               className="w-5 h-5 bg-terminal-bg border-2 border-terminal-border rounded cursor-pointer
-                       checked:bg-terminal-amber checked:border-terminal-amber
+                       accent-[#FFB000] checked:bg-[#FFB000] checked:border-[#FFB000]
                        focus:outline-none focus:ring-2 focus:ring-terminal-amber focus:ring-offset-2 focus:ring-offset-terminal-panel
-                       transition-colors"
+                       transition-colors appearance-none"
+              style={{ backgroundColor: accepted ? '#FFB000' : undefined }}
             />
             {accepted && (
               <CheckCircle2 className="absolute inset-0 w-5 h-5 text-black pointer-events-none" />
@@ -175,12 +176,10 @@ export function TermsStep({ stepNumber, totalSteps, accepted, onAcceptChange }: 
       </div>
 
       {/* Additional Info */}
-      <div className="bg-terminal-bg border border-terminal-border rounded p-3">
-        <p className="text-gray-400 text-xs">
-          <span className="text-terminal-amber">Note:</span> By accepting, you confirm that you understand
-          the risks of trading and that RichDad is for informational purposes only.
-        </p>
-      </div>
+      <p className="text-gray-500 text-xs mt-2">
+        <span className="text-terminal-amber">Note:</span> By accepting, you confirm that you understand
+        the risks of trading and that RichDad is for informational purposes only.
+      </p>
     </div>
   )
 }

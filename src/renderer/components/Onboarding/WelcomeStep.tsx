@@ -24,7 +24,7 @@ export function WelcomeStep({ stepNumber, totalSteps }: WelcomeStepProps) {
         <h2 className="text-white text-2xl font-semibold mb-2">
           Welcome to RichDad
         </h2>
-        <p className="text-gray-400 text-sm max-w-md mx-auto">
+        <p className="text-gray-400 text-sm">
           Your AI-powered trading co-pilot for smarter market decisions
         </p>
       </div>
@@ -32,9 +32,7 @@ export function WelcomeStep({ stepNumber, totalSteps }: WelcomeStepProps) {
       {/* Features */}
       <div className="grid grid-cols-1 gap-4 mt-8">
         <div className="flex items-start gap-3 p-4 bg-terminal-bg border border-terminal-border rounded-lg">
-          <div className="p-2 bg-terminal-panel border border-terminal-border rounded">
-            <Brain className="w-5 h-5 text-terminal-amber" />
-          </div>
+          <Brain className="w-6 h-6 text-terminal-amber flex-shrink-0 mt-0.5" />
           <div>
             <h4 className="text-white text-sm font-medium">AI Co-Pilot</h4>
             <p className="text-gray-400 text-xs mt-1">
@@ -44,9 +42,7 @@ export function WelcomeStep({ stepNumber, totalSteps }: WelcomeStepProps) {
         </div>
 
         <div className="flex items-start gap-3 p-4 bg-terminal-bg border border-terminal-border rounded-lg">
-          <div className="p-2 bg-terminal-panel border border-terminal-border rounded">
-            <TrendingUp className="w-5 h-5 text-terminal-amber" />
-          </div>
+          <TrendingUp className="w-6 h-6 text-terminal-amber flex-shrink-0 mt-0.5" />
           <div>
             <h4 className="text-white text-sm font-medium">Real-Time Intelligence</h4>
             <p className="text-gray-400 text-xs mt-1">
@@ -56,9 +52,7 @@ export function WelcomeStep({ stepNumber, totalSteps }: WelcomeStepProps) {
         </div>
 
         <div className="flex items-start gap-3 p-4 bg-terminal-bg border border-terminal-border rounded-lg">
-          <div className="p-2 bg-terminal-panel border border-terminal-border rounded">
-            <Shield className="w-5 h-5 text-terminal-amber" />
-          </div>
+          <Shield className="w-6 h-6 text-terminal-amber flex-shrink-0 mt-0.5" />
           <div>
             <h4 className="text-white text-sm font-medium">Privacy-First</h4>
             <p className="text-gray-400 text-xs mt-1">
