@@ -113,7 +113,7 @@ export function QuickTradeButtons() {
           flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all
           ${expandedAction === 'BUY'
             ? 'bg-semantic-up text-black'
-            : 'bg-semantic-up/20 text-semantic-up border border-semantic-up/30 hover:bg-semantic-up/30'
+            : 'bg-semantic-up text-white hover:bg-semantic-up/90'
           }
         `}
         title="Log a buy trade"
@@ -129,7 +129,7 @@ export function QuickTradeButtons() {
           flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all
           ${expandedAction === 'SELL'
             ? 'bg-semantic-down text-black'
-            : 'bg-semantic-down/20 text-semantic-down border border-semantic-down/30 hover:bg-semantic-down/30'
+            : 'bg-semantic-down text-white hover:bg-semantic-down/90'
           }
         `}
         title="Log a sell trade"

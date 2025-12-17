@@ -1,7 +1,7 @@
 // App Theme Definitions
 // Each theme defines colors for the entire application
 
-export type ThemeId = 'bloomberg' | 'midnight' | 'forest' | 'slate' | 'clearview'
+export type ThemeId = 'bloomberg' | 'midnight' | 'forest' | 'slate'
 
 export interface Theme {
   id: ThemeId
@@ -73,20 +73,6 @@ export const THEMES: Record<ThemeId, Theme> = {
       accentHover: '#FF5A75',
       up: '#00D9A0',
       down: '#FF6B6B',
-    },
-  },
-  clearview: {
-    id: 'clearview',
-    name: 'Clearview',
-    description: 'Clean light theme for daytime trading',
-    colors: {
-      bg: '#E8E8E8',
-      panel: '#F5F5F5',
-      border: '#C0C0C0',
-      accent: '#E67E00',
-      accentHover: '#CC6E00',
-      up: '#0D9B50',
-      down: '#C42020',
     },
   },
 }

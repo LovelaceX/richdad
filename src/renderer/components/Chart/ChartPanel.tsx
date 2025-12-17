@@ -145,6 +145,16 @@ export function ChartPanel() {
             )}
           </div>
 
+          {/* EST Timezone Display */}
+          <div className="text-gray-500 text-[10px] tabular-nums" title="New York (EST/EDT)">
+            {new Date().toLocaleTimeString('en-US', {
+              timeZone: 'America/New_York',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true
+            })} EST
+          </div>
+
           {/* Timeframe Selector */}
           <TimeframeSelector
             value={timeframe}

@@ -29,8 +29,8 @@ export const usePatternStore = create<PatternState>((set) => ({
   patterns: [],
   selectedPattern: null,
   tooltipPosition: null,
-  showPatterns: true,  // Pattern markers on by default
-  showNews: true,      // News markers on by default
+  showPatterns: false,  // Pattern markers off by default
+  showNews: false,      // News markers off by default
 
   // Set all detected patterns
   setPatterns: (patterns) => {

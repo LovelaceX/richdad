@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-3.8.0-gold?style=for-the-badge" alt="Version 3.8.0"/>
+  <img src="https://img.shields.io/badge/version-3.8.1-gold?style=for-the-badge" alt="Version 3.8.1"/>
   <img src="https://img.shields.io/badge/tauri-2.x-blue?style=for-the-badge&logo=tauri" alt="Tauri 2.x"/>
   <img src="https://img.shields.io/badge/react-18-61DAFB?style=for-the-badge&logo=react" alt="React 18"/>
   <img src="https://img.shields.io/badge/typescript-strict-3178C6?style=for-the-badge&logo=typescript" alt="TypeScript"/>
@@ -74,14 +74,13 @@
 - **Live Price Updates**: Volume, change %, bid/ask spreads
 - **Resizable Panels**: Customize your workspace layout
 
-### 5 Professional Themes
+### 4 Professional Themes
 | Theme | Description |
 |-------|-------------|
 | **Bloomberg** | Classic terminal dark with amber accents |
 | **Midnight** | Deep navy blue with cyan highlights |
 | **Forest** | Dark green trading aesthetic |
 | **Slate** | Clean gray professional look |
-| **Clearview** | Light theme for daytime trading (New in v3.0) |
 
 ### Risk Management
 - **Price Alerts**: Custom triggers with sound notifications
@@ -378,7 +377,14 @@ richdad/
 
 ## Changelog
 
-### v3.8.0 (Current)
+### v3.8.1 (Current)
+- **Notification Panel Fix**: Panel now opens to the right of the bell icon (was cut off on left)
+- **Solid Buy/Sell Buttons**: Trading buttons are now solid green/red instead of outline style
+- **EST Timezone Display**: Shows current New York time in chart toolbar
+- **P/N Markers Default Off**: Pattern and news markers now disabled by default to reduce clutter
+- **Removed Clearview Theme**: Consolidated to 4 dark themes for better consistency
+
+### v3.8.0
 - **Candlestick Pattern Recognition**: Auto-detect 18+ patterns (Bullish/Bearish Engulfing, Hammer, Doji, Morning/Evening Star, Harami, Piercing Line, Dark Cloud Cover, Inside Bar, Outside Up/Down, Breakaway)
 - **On-Chart P Markers**: Green markers for bullish patterns, red for bearish - positioned above/below candles
 - **News N Markers**: Amber circle markers showing when news headlines matched candle timestamps
@@ -430,7 +436,6 @@ richdad/
 - **Keyboard Shortcut**: Cmd+N for new window
 
 ### v3.0.0
-- **Clearview Theme**: New light mode for daytime trading
 - **Notification Center**: Bell icon with pending recommendations queue
 - **Bulk Actions**: Execute All / Skip All for efficient workflow
 - **Wider Recommendation Modal**: Improved readability for alerts
