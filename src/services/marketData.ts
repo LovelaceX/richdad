@@ -1,6 +1,7 @@
 import { getSettings } from '../renderer/lib/db'
 import { generateQuote } from '../renderer/lib/mockData'
 import type { Quote } from '../renderer/types'
+import type { Timeframe } from '../renderer/lib/mockData'
 import { canUseAlphaVantageForMarket, canUseAlphaVantageForCharts, recordMarketCall, recordChartCall, getBudgetStatus } from './apiBudgetTracker'
 import { fetchPolygonQuotes, fetchPolygonHistorical } from './polygonService'
 
@@ -209,7 +210,7 @@ export async function fetchHistoricalData(
     if (!polygonKey) {
       console.warn('[Market Data] No Polygon API key configured, falling back to mock data')
       const { generateCandleData } = await import('../renderer/lib/mockData')
-      return generateCandleData(symbol, 100)
+      return generateCandleData(symbol, interval as Timeframe)
     }
     try {
       const candles = await fetchPolygonHistorical(symbol, interval, polygonKey)
@@ -219,7 +220,7 @@ export async function fetchHistoricalData(
     }
     // Fallback to mock if Polygon fails
     const { generateCandleData } = await import('../renderer/lib/mockData')
-    return generateCandleData(symbol, 100)
+    return generateCandleData(symbol, interval as Timeframe)
   }
 
   // Alpha Vantage path below
@@ -249,7 +250,7 @@ export async function fetchHistoricalData(
 
     // No cache - fall back to mock
     const { generateCandleData } = await import('../renderer/lib/mockData')
-    return generateCandleData(symbol, 100)
+    return generateCandleData(symbol, interval as Timeframe)
   }
 
   const apiKey = settings.alphaVantageApiKey
@@ -257,7 +258,7 @@ export async function fetchHistoricalData(
   if (!apiKey) {
     console.warn('[Market Data] No API key configured, falling back to mock data')
     const { generateCandleData } = await import('../renderer/lib/mockData')
-    return generateCandleData(symbol, 100)
+    return generateCandleData(symbol, interval as Timeframe)
   }
 
   try {
@@ -332,6 +333,6 @@ export async function fetchHistoricalData(
 
     // Fallback to mock data
     const { generateCandleData } = await import('../renderer/lib/mockData')
-    return generateCandleData(symbol, 100)
+    return generateCandleData(symbol, interval as Timeframe)
   }
 }

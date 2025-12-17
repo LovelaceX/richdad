@@ -57,7 +57,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
 
   selectedTicker: 'SPY',
 
-  chartData: generateCandleData('SPY'),
+  chartData: generateCandleData('SPY', '5min'),  // Match default timeframe
 
   cacheStatus: null,
 
@@ -178,7 +178,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
 
       // Fallback to mock data
       const { generateCandleData } = await import('../lib/mockData')
-      set({ chartData: generateCandleData(symbol || get().selectedTicker, 90) })
+      set({ chartData: generateCandleData(symbol || get().selectedTicker, get().timeframe) })
     }
   },
 

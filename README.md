@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-3.10.0-gold?style=for-the-badge" alt="Version 3.10.0"/>
+  <img src="https://img.shields.io/badge/version-4.0.0-gold?style=for-the-badge" alt="Version 4.0.0"/>
   <img src="https://img.shields.io/badge/tauri-2.x-blue?style=for-the-badge&logo=tauri" alt="Tauri 2.x"/>
   <img src="https://img.shields.io/badge/react-18-61DAFB?style=for-the-badge&logo=react" alt="React 18"/>
   <img src="https://img.shields.io/badge/typescript-strict-3178C6?style=for-the-badge&logo=typescript" alt="TypeScript"/>
@@ -368,7 +368,11 @@ richdad/
 
 ## Changelog
 
-### v3.10.0 (Current)
+### v4.0.0 (Current)
+- **Investing.com-Style Intraday Charts**: Chart x-axis now shows proper intraday time labels (9:30, 10:00, 10:30...) when selecting 30M or other intraday intervals
+- **Timeframe-Aware Mock Data**: Mock data fallback now generates candles appropriate for selected timeframe instead of always daily
+
+### v3.10.0
 - **Streamlined Onboarding**: Back button replaces Skip, cleaner icons (no boxes), improved layout
 - **Reference Guide Refresh**: Updated to v3.10.0, cleaner About section, linked developer GitHub
 - **Single Theme**: Bloomberg theme is now the default (removed theme selector for simplicity)
@@ -463,14 +467,14 @@ richdad/
 
 ## Roadmap
 
-### v3.9.0 (Next)
+### v4.1.0 (Next)
 - [ ] Trade Tags/Categories (scalp, swing, earnings play)
 - [ ] Trader's Autopsy (session review dashboard)
 - [ ] Portfolio-aware AI (position sizing context)
 - [ ] News deduplication and clustering
 - [ ] Custom alert conditions builder
 
-### v4.0.0 (Future)
+### v5.0.0 (Future)
 - [ ] Broker integrations (Robinhood, TD Ameritrade)
 - [ ] Paper trading mode
 - [ ] Backtesting engine

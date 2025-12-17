@@ -1,5 +1,46 @@
 import type { Ticker, Quote, CandleData, NewsItem, AIRecommendation, AIMessage } from '../types'
 
+// Timeframe type for candle generation
+export type Timeframe = '1min' | '5min' | '15min' | '30min' | '45min' | '60min' | '120min' | '240min' | '300min' | 'daily' | 'weekly'
+
+// Get interval in milliseconds for each timeframe
+function getIntervalMs(timeframe: Timeframe): number {
+  const minute = 60 * 1000
+  const hour = 60 * minute
+  const day = 24 * hour
+
+  switch (timeframe) {
+    case '1min': return 1 * minute
+    case '5min': return 5 * minute
+    case '15min': return 15 * minute
+    case '30min': return 30 * minute
+    case '45min': return 45 * minute
+    case '60min': return 1 * hour
+    case '120min': return 2 * hour
+    case '240min': return 4 * hour
+    case '300min': return 5 * hour
+    case 'daily': return day
+    case 'weekly': return 7 * day
+  }
+}
+
+// Get number of candles to generate for each timeframe
+function getCandleCount(timeframe: Timeframe): number {
+  switch (timeframe) {
+    case '1min': return 390      // ~6.5 hours of trading (full day)
+    case '5min': return 78       // 78 candles per trading day
+    case '15min': return 26      // 26 candles per trading day
+    case '30min': return 13      // 13 candles per trading day
+    case '45min': return 9
+    case '60min': return 7 * 7   // ~7 days of hourly
+    case '120min': return 7 * 4
+    case '240min': return 20 * 2
+    case '300min': return 20
+    case 'daily': return 90
+    case 'weekly': return 52
+  }
+}
+
 export const TICKERS: Ticker[] = [
   { symbol: 'SPY', name: 'SPDR S&P 500 ETF', sector: 'Index' },
   { symbol: 'VIX', name: 'CBOE Volatility Index', sector: 'Index' },
@@ -58,15 +99,30 @@ export function generateQuote(symbol: string): Quote {
 }
 
 // Generate candle data for charts
-export function generateCandleData(symbol: string, days: number = 90): CandleData[] {
+export function generateCandleData(symbol: string, timeframe: Timeframe = 'daily'): CandleData[] {
   const data: CandleData[] = []
   let price = BASE_PRICES[symbol] || 100
-  const now = Date.now()
-  const dayMs = 24 * 60 * 60 * 1000
+  const intervalMs = getIntervalMs(timeframe)
+  const candleCount = getCandleCount(timeframe)
 
-  for (let i = days; i >= 0; i--) {
-    const time = Math.floor((now - i * dayMs) / 1000)
-    const volatility = 0.02
+  // For intraday: start from today's market open (9:30 AM EST)
+  // For daily/weekly: start from candleCount periods ago
+  const isIntraday = !['daily', 'weekly'].includes(timeframe)
+
+  let startTime: number
+  if (isIntraday) {
+    // Start from today's market open (9:30 AM local time for simplicity)
+    const now = new Date()
+    now.setHours(9, 30, 0, 0)
+    startTime = now.getTime()
+  } else {
+    // Start from candleCount periods ago
+    startTime = Date.now() - (candleCount * intervalMs)
+  }
+
+  for (let i = 0; i < candleCount; i++) {
+    const time = Math.floor((startTime + i * intervalMs) / 1000)
+    const volatility = isIntraday ? 0.005 : 0.02 // Lower volatility for intraday
 
     const open = price
     const change = (Math.random() - 0.48) * volatility * price
