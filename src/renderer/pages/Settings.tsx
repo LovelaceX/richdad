@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Settings as SettingsIcon,
   Shield,
@@ -16,15 +16,13 @@ import {
   ChevronDown,
   Play,
   User,
-  Edit,
   Loader2,
   AlertCircle,
   Wifi,
   Monitor,
   TrendingUp,
   ExternalLink,
-  Newspaper,
-  X
+  Newspaper
 } from 'lucide-react'
 import { useSettingsStore } from '../stores/settingsStore'
 import { THEMES, type ThemeId } from '../lib/themes'
@@ -35,13 +33,13 @@ import { AIPerformanceDetail } from '../components/AI/AIPerformanceDetail'
 import { APIBudgetMeter } from '../components/Settings/APIBudgetMeter'
 import { AIBudgetMeter } from '../components/Settings/AIBudgetMeter'
 import { MultiProviderManager } from '../components/Settings/MultiProviderManager'
+import { searchStocks, type StockInfo } from '../lib/stockSymbols'
 import {
   getSettings,
   updateSettings,
   getAISettings,
   updateAISettings,
   getProfile,
-  updateProfile,
   getTradeDecisions,
   clearAPICache,
   clearAIHistory,
@@ -107,7 +105,6 @@ export function Settings() {
   const [showFeedDropdown, setShowFeedDropdown] = useState(false)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [lastTrade, setLastTrade] = useState<TradeDecision | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const cvdMode = useSettingsStore(state => state.cvdMode)
   const toggleCvdMode = useSettingsStore(state => state.toggleCvdMode)
   const zoomLevel = useSettingsStore(state => state.zoomLevel)
@@ -127,6 +124,8 @@ export function Settings() {
   const [newAlertSymbol, setNewAlertSymbol] = useState('')
   const [newAlertCondition, setNewAlertCondition] = useState<'above' | 'below' | 'percent_up' | 'percent_down'>('above')
   const [newAlertValue, setNewAlertValue] = useState('')
+  const [alertSearchResults, setAlertSearchResults] = useState<StockInfo[]>([])
+  const [alertSelectedIndex, setAlertSelectedIndex] = useState(-1)
 
   // Alpha Vantage connection test state
   const [testingConnection, setTestingConnection] = useState(false)
@@ -153,6 +152,10 @@ export function Settings() {
   // Danger Zone state
   const [showResetConfirm, setShowResetConfirm] = useState<'cache' | 'ai' | 'pnl' | 'alerts' | 'factory' | null>(null)
   const [isResetting, setIsResetting] = useState(false)
+
+  // Daily Budget editing state
+  const [editingBudget, setEditingBudget] = useState('')
+  const [isEditingBudget, setIsEditingBudget] = useState(false)
 
   useEffect(() => {
     getSettings().then(setSettings)
@@ -194,6 +197,18 @@ export function Settings() {
     loadExportPreview()
   }, [exportStartDate, exportEndDate])
 
+  // Search stocks for Price Alerts autocomplete
+  useEffect(() => {
+    if (newAlertSymbol.length > 0) {
+      const results = searchStocks(newAlertSymbol)
+      setAlertSearchResults(results)
+      setAlertSelectedIndex(-1)
+    } else {
+      setAlertSearchResults([])
+      setAlertSelectedIndex(-1)
+    }
+  }, [newAlertSymbol])
+
   // Initialize pending API keys when settings load
   useEffect(() => {
     if (settings) {
@@ -213,7 +228,7 @@ export function Settings() {
 
     // Show saved feedback
     setShowSavedMessage(true)
-    setTimeout(() => setShowSavedMessage(false), 2000)
+    setTimeout(() => setShowSavedMessage(false), 3000)
   }
 
   const saveAISettings = async (updates: Partial<AISettings>) => {
@@ -229,20 +244,7 @@ export function Settings() {
 
     // Show saved feedback
     setShowSavedMessage(true)
-    setTimeout(() => setShowSavedMessage(false), 2000)
-  }
-
-  const saveProfile = async (updates: Partial<UserProfile>) => {
-    if (!profile) return
-    setSaving(true)
-    const newProfile = { ...profile, ...updates }
-    await updateProfile(newProfile)
-    setProfile(newProfile)
-    setSaving(false)
-
-    // Show saved feedback
-    setShowSavedMessage(true)
-    setTimeout(() => setShowSavedMessage(false), 2000)
+    setTimeout(() => setShowSavedMessage(false), 3000)
   }
 
   // API Keys save/discard handlers
@@ -265,34 +267,6 @@ export function Settings() {
     setPendingAlphaVantageKey(settings?.alphaVantageApiKey || '')
     setPendingFinnhubKey(settings?.finnhubApiKey || '')
     setHasApiKeyChanges(false)
-  }
-
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        alert('Please select an image file')
-        return
-      }
-
-      // Validate file size (5MB max)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('Image size must be less than 5MB')
-        return
-      }
-
-      const reader = new FileReader()
-      reader.onload = () => {
-        const base64 = reader.result as string
-        saveProfile({ avatarUrl: base64 })
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
-  const handleRemovePhoto = async () => {
-    await saveProfile({ avatarUrl: undefined })
   }
 
   const handleExport = async (format: 'txt' | 'csv') => {
@@ -334,19 +308,20 @@ export function Settings() {
     return value.toLocaleString('en-US')
   }
 
-  const parseCurrency = (value: string) => {
-    return parseInt(value.replace(/,/g, ''), 10) || 0
+  const handleBudgetFocus = () => {
+    setIsEditingBudget(true)
+    setEditingBudget(String(settings?.dailyBudget || 1000))
   }
 
   const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/[^0-9]/g, '')
-    const num = parseInt(raw, 10) || 0
-    e.target.value = formatCurrency(num)
+    setEditingBudget(raw)
   }
 
-  const handleBudgetBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const value = parseCurrency(e.target.value)
+  const handleBudgetBlur = () => {
+    const value = parseInt(editingBudget, 10) || 1000
     saveSettings({ dailyBudget: value })
+    setIsEditingBudget(false)
   }
 
   const handleTestConnection = async () => {
@@ -422,7 +397,7 @@ export function Settings() {
     { id: 'sounds' as const, label: 'Notifications', icon: Volume2 },
     { id: 'traders' as const, label: 'RSS Feeds', icon: Rss },
     { id: 'alerts' as const, label: 'Price Alerts', icon: Bell },
-    { id: 'danger' as const, label: 'Reset & Data', icon: Trash2 },
+    { id: 'danger' as const, label: 'Danger Zone', icon: Trash2 },
   ]
 
   if (!settings || !aiSettings) {
@@ -435,9 +410,9 @@ export function Settings() {
 
   return (
     <div className="flex-1 flex bg-terminal-bg overflow-hidden">
-      {/* Save Feedback Toast */}
+      {/* Save Feedback Toast - positioned below search bar */}
       {showSavedMessage && (
-        <div className="fixed top-4 right-4 z-50 bg-terminal-amber text-black px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="fixed top-20 right-4 z-50 bg-terminal-amber text-black px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-200">
           <Check className="w-4 h-4" />
           <span className="font-medium">Saved!</span>
         </div>
@@ -487,10 +462,11 @@ export function Settings() {
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
                     <input
                       type="text"
-                      value={formatCurrency(settings.dailyBudget || 1000)}
-                      onChange={(e) => handleBudgetChange(e)}
-                      onBlur={(e) => handleBudgetBlur(e)}
-                      placeholder="0"
+                      value={isEditingBudget ? editingBudget : formatCurrency(settings.dailyBudget || 1000)}
+                      onFocus={handleBudgetFocus}
+                      onChange={handleBudgetChange}
+                      onBlur={handleBudgetBlur}
+                      placeholder="1000"
                       className="w-full bg-terminal-bg border border-terminal-border rounded pl-7 pr-3 py-2 text-white font-mono"
                     />
                   </div>
@@ -997,77 +973,10 @@ export function Settings() {
               <h2 className="text-white text-lg font-medium mb-1">My Profile</h2>
               <p className="text-gray-500 text-sm mb-6">Manage your profile and export trading data</p>
 
-              {/* Profile Information - UNIFIED */}
+              {/* Performance History */}
               <div className="bg-terminal-panel border border-terminal-border rounded-lg p-6 mb-6">
-                <h3 className="text-white font-medium mb-4">Profile Information</h3>
-
-                <div className="flex items-start gap-6">
-                  {/* Left: Photo */}
-                  <div className="flex-shrink-0">
-                    <div className="relative group">
-                      <div
-                        className="cursor-pointer"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        {profile.avatarUrl ? (
-                          <img
-                            src={profile.avatarUrl}
-                            alt="Profile"
-                            className="w-24 h-24 rounded-full object-cover border-2 border-terminal-border"
-                          />
-                        ) : (
-                          <div className="w-24 h-24 rounded-full bg-terminal-amber/20 border-2 border-terminal-border flex items-center justify-center">
-                            <User className="w-12 h-12 text-terminal-amber" />
-                          </div>
-                        )}
-
-                        {/* Edit overlay on hover */}
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-full transition-opacity">
-                          <Edit className="w-6 h-6 text-white" />
-                        </div>
-                      </div>
-
-                      {/* Remove button (only shows when there's a photo) */}
-                      {profile.avatarUrl && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleRemovePhoto()
-                          }}
-                          className="absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 transition-colors z-10"
-                          title="Remove photo"
-                        >
-                          <X size={14} />
-                        </button>
-                      )}
-
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoChange}
-                        className="hidden"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Right: User Info */}
-                  <div className="flex-1 space-y-4">
-                    <div>
-                      <label className="text-gray-400 text-xs mb-1 block">Username</label>
-                      <input
-                        type="text"
-                        value={profile.username || ''}
-                        onChange={(e) => saveProfile({ username: e.target.value })}
-                        placeholder="Enter your username"
-                        className="w-full bg-terminal-bg border border-terminal-border rounded px-4 py-2.5 text-white text-sm focus:outline-none focus:border-terminal-amber"
-                      />
-                      <p className="text-gray-500 text-xs mt-1">
-                        Used for the trading community
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <h3 className="text-white font-medium mb-4">Performance History</h3>
+                <AIPerformanceDetail />
               </div>
 
               {/* Last Trade */}
@@ -1317,7 +1226,7 @@ export function Settings() {
 
                   {/* Zoom Level Buttons */}
                   <div className="flex gap-2 mb-4">
-                    {[90, 100, 110, 125].map(level => (
+                    {[90, 100, 110, 125, 150].map(level => (
                       <button
                         key={level}
                         onClick={() => setZoomLevel(level)}
@@ -1949,13 +1858,61 @@ export function Settings() {
                 <h3 className="text-white text-sm font-medium mb-4">Add Alert</h3>
 
                 <div className="space-y-3">
-                  <input
-                    type="text"
-                    placeholder="Symbol (e.g., AAPL)"
-                    value={newAlertSymbol}
-                    onChange={(e) => setNewAlertSymbol(e.target.value.toUpperCase())}
-                    className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white placeholder:text-gray-600 font-mono"
-                  />
+                  {/* Symbol input with autocomplete */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Symbol (e.g., AAPL)"
+                      value={newAlertSymbol}
+                      onChange={(e) => setNewAlertSymbol(e.target.value.toUpperCase())}
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowDown') {
+                          e.preventDefault()
+                          setAlertSelectedIndex(prev =>
+                            prev < alertSearchResults.length - 1 ? prev + 1 : prev
+                          )
+                        } else if (e.key === 'ArrowUp') {
+                          e.preventDefault()
+                          setAlertSelectedIndex(prev => prev > 0 ? prev - 1 : -1)
+                        } else if (e.key === 'Enter' && alertSelectedIndex >= 0) {
+                          e.preventDefault()
+                          setNewAlertSymbol(alertSearchResults[alertSelectedIndex].symbol)
+                          setAlertSearchResults([])
+                        } else if (e.key === 'Escape') {
+                          setAlertSearchResults([])
+                        }
+                      }}
+                      className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white placeholder:text-gray-600 font-mono"
+                    />
+
+                    {/* Autocomplete Dropdown */}
+                    {alertSearchResults.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-terminal-bg border border-terminal-border rounded max-h-48 overflow-y-auto">
+                        {alertSearchResults.map((stock, index) => (
+                          <button
+                            key={stock.symbol}
+                            onClick={() => {
+                              setNewAlertSymbol(stock.symbol)
+                              setAlertSearchResults([])
+                            }}
+                            className={`w-full px-3 py-2 text-left hover:bg-terminal-border/50 transition-colors ${
+                              index === alertSelectedIndex ? 'bg-terminal-amber/20' : ''
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-terminal-amber font-mono text-sm font-medium">
+                                {stock.symbol}
+                              </span>
+                              {stock.sector && (
+                                <span className="text-gray-600 text-xs">{stock.sector}</span>
+                              )}
+                            </div>
+                            <p className="text-gray-400 text-xs truncate">{stock.name}</p>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
 
                   <div className="flex gap-2">
                     {(['above', 'below', 'percent_up', 'percent_down'] as const).map(condition => (
@@ -2051,101 +2008,91 @@ export function Settings() {
             </div>
           )}
 
-          {/* Reset & Data (Danger Zone) */}
+          {/* Danger Zone */}
           {activeSection === 'danger' && (
             <div>
-              <h2 className="text-white text-lg font-medium mb-1">Reset & Data Management</h2>
+              <h2 className="text-red-400 text-lg font-medium mb-1">Danger Zone</h2>
               <p className="text-gray-500 text-sm mb-6">Clear cached data or reset the application</p>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {/* Clear API Budget Cache */}
-                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-white text-sm font-medium">Clear API Budget Cache</h3>
-                      <p className="text-gray-500 text-xs mt-1">
-                        Reset Alpha Vantage and AI call counters. Use this if your budget seems stuck.
-                      </p>
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <span className="text-white text-sm font-medium">Clear API Budget Cache</span>
+                      <span className="text-gray-500 text-xs ml-3">Reset API call counters</span>
                     </div>
                     <button
                       onClick={() => setShowResetConfirm('cache')}
-                      className="px-4 py-2 bg-terminal-border text-white rounded text-sm hover:bg-terminal-border/70 transition-colors"
+                      className="px-4 py-1.5 bg-terminal-border text-white rounded text-sm hover:bg-terminal-border/70 transition-colors whitespace-nowrap flex-shrink-0"
                     >
-                      Clear Cache
+                      Clear
                     </button>
                   </div>
                 </div>
 
                 {/* Clear AI History */}
-                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-white text-sm font-medium">Clear AI History</h3>
-                      <p className="text-gray-500 text-xs mt-1">
-                        Delete all trade decisions and AI recommendations. Your settings will be preserved.
-                      </p>
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <span className="text-white text-sm font-medium">Clear AI History</span>
+                      <span className="text-gray-500 text-xs ml-3">Delete trade decisions</span>
                     </div>
                     <button
                       onClick={() => setShowResetConfirm('ai')}
-                      className="px-4 py-2 bg-yellow-600/20 border border-yellow-600 text-yellow-500 rounded text-sm hover:bg-yellow-600/30 transition-colors"
+                      className="px-4 py-1.5 bg-yellow-600/20 border border-yellow-600 text-yellow-500 rounded text-sm hover:bg-yellow-600/30 transition-colors whitespace-nowrap flex-shrink-0"
                     >
-                      Clear History
+                      Clear
                     </button>
                   </div>
                 </div>
 
                 {/* Clear PnL History */}
-                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-white text-sm font-medium">Clear P&L History</h3>
-                      <p className="text-gray-500 text-xs mt-1">
-                        Delete all profit/loss tracking entries.
-                      </p>
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <span className="text-white text-sm font-medium">Clear P&L History</span>
+                      <span className="text-gray-500 text-xs ml-3">Delete profit/loss entries</span>
                     </div>
                     <button
                       onClick={() => setShowResetConfirm('pnl')}
-                      className="px-4 py-2 bg-yellow-600/20 border border-yellow-600 text-yellow-500 rounded text-sm hover:bg-yellow-600/30 transition-colors"
+                      className="px-4 py-1.5 bg-yellow-600/20 border border-yellow-600 text-yellow-500 rounded text-sm hover:bg-yellow-600/30 transition-colors whitespace-nowrap flex-shrink-0"
                     >
-                      Clear P&L
+                      Clear
                     </button>
                   </div>
                 </div>
 
                 {/* Clear Price Alerts */}
-                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-white text-sm font-medium">Clear All Price Alerts</h3>
-                      <p className="text-gray-500 text-xs mt-1">
-                        Delete all price alerts (both active and triggered).
-                      </p>
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <span className="text-white text-sm font-medium">Clear Price Alerts</span>
+                      <span className="text-gray-500 text-xs ml-3">Delete all alerts</span>
                     </div>
                     <button
                       onClick={() => setShowResetConfirm('alerts')}
-                      className="px-4 py-2 bg-yellow-600/20 border border-yellow-600 text-yellow-500 rounded text-sm hover:bg-yellow-600/30 transition-colors"
+                      className="px-4 py-1.5 bg-yellow-600/20 border border-yellow-600 text-yellow-500 rounded text-sm hover:bg-yellow-600/30 transition-colors whitespace-nowrap flex-shrink-0"
                     >
-                      Clear Alerts
+                      Clear
                     </button>
                   </div>
                 </div>
 
-                <div className="border-t border-terminal-border my-6" />
+                <div className="border-t border-terminal-border my-4" />
 
                 {/* Factory Reset - Danger */}
-                <div className="bg-red-900/10 border border-red-500/30 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-red-400 text-sm font-medium">Factory Reset</h3>
-                      <p className="text-gray-500 text-xs mt-1">
-                        Delete ALL data and settings. This cannot be undone. The app will restart fresh as if newly installed.
-                      </p>
+                <div className="bg-red-900/10 border border-red-500/30 rounded-lg p-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <span className="text-red-400 text-sm font-medium">Factory Reset</span>
+                      <span className="text-gray-500 text-xs ml-3">Delete ALL data - cannot be undone</span>
                     </div>
                     <button
                       onClick={() => setShowResetConfirm('factory')}
-                      className="px-4 py-2 bg-red-600/20 border border-red-600 text-red-500 rounded text-sm hover:bg-red-600/30 transition-colors"
+                      className="px-4 py-1.5 bg-red-600/20 border border-red-600 text-red-500 rounded text-sm hover:bg-red-600/30 transition-colors whitespace-nowrap flex-shrink-0"
                     >
-                      Factory Reset
+                      Reset
                     </button>
                   </div>
                 </div>

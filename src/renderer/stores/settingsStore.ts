@@ -74,14 +74,14 @@ export const useSettingsStore = create<SettingsState>()(
       },
 
       setZoomLevel: (level) => {
-        const validLevels = [90, 100, 110, 125]
+        const validLevels = [90, 100, 110, 125, 150]
         if (!validLevels.includes(level)) return
         set({ zoomLevel: level })
       },
 
       zoomIn: () => {
         set(state => {
-          const levels = [90, 100, 110, 125]
+          const levels = [90, 100, 110, 125, 150]
           const currentIndex = levels.indexOf(state.zoomLevel)
           const nextIndex = Math.min(currentIndex + 1, levels.length - 1)
           return { zoomLevel: levels[nextIndex] }
@@ -90,7 +90,7 @@ export const useSettingsStore = create<SettingsState>()(
 
       zoomOut: () => {
         set(state => {
-          const levels = [90, 100, 110, 125]
+          const levels = [90, 100, 110, 125, 150]
           const currentIndex = levels.indexOf(state.zoomLevel)
           const prevIndex = Math.max(currentIndex - 1, 0)
           return { zoomLevel: levels[prevIndex] }

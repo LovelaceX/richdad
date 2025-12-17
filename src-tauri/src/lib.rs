@@ -1,3 +1,5 @@
+use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
+
 // Window control commands
 #[tauri::command]
 fn minimize_window(window: tauri::Window) {
@@ -23,6 +25,22 @@ fn is_maximized(window: tauri::Window) -> bool {
     window.is_maximized().unwrap()
 }
 
+#[tauri::command]
+fn create_new_window(app: AppHandle) -> Result<(), String> {
+    let window_count = app.webview_windows().len();
+    let label = format!("richdad_{}", window_count);
+
+    WebviewWindowBuilder::new(&app, label, WebviewUrl::App("/".into()))
+        .title("RichDad")
+        .inner_size(1600.0, 1000.0)
+        .min_inner_size(1200.0, 800.0)
+        .resizable(true)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -31,7 +49,8 @@ pub fn run() {
             minimize_window,
             maximize_window,
             close_window,
-            is_maximized
+            is_maximized,
+            create_new_window
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

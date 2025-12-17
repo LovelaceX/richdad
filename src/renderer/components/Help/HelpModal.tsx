@@ -766,6 +766,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 { key: 'Cmd+1', action: 'Dashboard' },
                 { key: 'Cmd+2', action: 'News' },
                 { key: 'Cmd+3', action: 'Settings' },
+                { key: 'Cmd+N', action: 'New Window' },
                 { key: 'Cmd+?', action: 'Reference Guide (this)' },
               ].map(({ key, action }) => (
                 <div key={key} className="flex justify-between items-center bg-terminal-bg border border-terminal-border rounded p-3">

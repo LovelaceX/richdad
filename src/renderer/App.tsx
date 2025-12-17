@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { invoke } from '@tauri-apps/api/core'
 import { TopBar } from './components/TopBar'
 import { Dashboard, News, Settings } from './pages'
 import { useNavigationStore } from './stores/navigationStore'
@@ -52,7 +53,7 @@ export default function App() {
     applyTheme(theme)
   }, [theme])
 
-  // Global keyboard shortcuts for zoom
+  // Global keyboard shortcuts for zoom and new window
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey) {
@@ -65,6 +66,9 @@ export default function App() {
         } else if (e.key === '0') {
           e.preventDefault()
           resetZoom()
+        } else if (e.key === 'n' || e.key === 'N') {
+          e.preventDefault()
+          invoke('create_new_window').catch(console.error)
         }
       }
     }

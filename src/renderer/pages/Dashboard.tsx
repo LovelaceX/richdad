@@ -4,7 +4,6 @@ import { ChartPanel } from '../components/Chart'
 import { AIPanel } from '../components/AIPanel'
 import { NewsTicker } from '../components/NewsTicker'
 import { MarketOverview } from '../components/MarketOverview'
-import { AIPerformance } from '../components/AI/AIPerformance'
 import { useSettingsStore } from '../stores/settingsStore'
 
 export function Dashboard() {
@@ -40,26 +39,14 @@ export function Dashboard() {
 
               <PanelResizeHandle className="w-px bg-terminal-border hover:bg-terminal-amber transition-colors" />
 
-              {/* Right: AI Copilot + Performance */}
+              {/* Right: AI Copilot */}
               <Panel
                 defaultSize={panelSizes.rightPanel}
                 minSize={20}
                 maxSize={40}
                 onResize={(size) => setPanelSize('right', size)}
               >
-                <PanelGroup direction="vertical">
-                  {/* AI Copilot Chat */}
-                  <Panel defaultSize={60} minSize={40}>
-                    <AIPanel />
-                  </Panel>
-
-                  <PanelResizeHandle className="h-px bg-terminal-border hover:bg-terminal-amber transition-colors" />
-
-                  {/* AI Performance Stats */}
-                  <Panel defaultSize={40} minSize={30}>
-                    <AIPerformance />
-                  </Panel>
-                </PanelGroup>
+                <AIPanel />
               </Panel>
             </PanelGroup>
           </Panel>

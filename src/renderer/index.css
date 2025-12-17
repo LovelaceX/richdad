@@ -98,41 +98,41 @@ body.cvd-mode .badge-sell {
   @apply bg-semantic-down-cvd;
 }
 
-/* Light theme (Clearview) overrides */
+/* Light theme (Clearview) overrides - high contrast for readability */
 body.theme-clearview {
-  color: #1F2937;
+  color: #1A1A1A;
 }
 
 body.theme-clearview .text-white {
-  color: #1F2937;
+  color: #1A1A1A;
 }
 
 body.theme-clearview .text-gray-300 {
-  color: #4B5563;
+  color: #333333;
 }
 
 body.theme-clearview .text-gray-400 {
-  color: #6B7280;
+  color: #444444;
 }
 
 body.theme-clearview .text-gray-500 {
-  color: #9CA3AF;
+  color: #555555;
 }
 
 body.theme-clearview .text-gray-600 {
-  color: #6B7280;
+  color: #444444;
 }
 
 body.theme-clearview ::-webkit-scrollbar-track {
-  background: #F5F5F5;
+  background: #E8E8E8;
 }
 
 body.theme-clearview ::-webkit-scrollbar-thumb {
-  background: #CCCCCC;
+  background: #A0A0A0;
 }
 
 body.theme-clearview ::-webkit-scrollbar-thumb:hover {
-  background: #AAAAAA;
+  background: #888888;
 }
 
 body.theme-clearview .badge-buy {
@@ -141,4 +141,35 @@ body.theme-clearview .badge-buy {
 
 body.theme-clearview .badge-hold {
   color: #000000;
+}
+
+/* Clearview modal and alert overrides */
+body.theme-clearview .bg-black\/50,
+body.theme-clearview .bg-black\/70 {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+body.theme-clearview .text-red-400 {
+  color: #C42020;
+}
+
+body.theme-clearview .text-red-500 {
+  color: #B91C1C;
+}
+
+body.theme-clearview .text-yellow-500 {
+  color: #B45309;
+}
+
+body.theme-clearview .text-terminal-amber {
+  color: #E67E00;
+}
+
+/* Ensure inputs are readable in Clearview */
+body.theme-clearview input::placeholder {
+  color: #888888;
+}
+
+body.theme-clearview .placeholder\:text-gray-600::placeholder {
+  color: #888888;
 }
