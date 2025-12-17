@@ -5,6 +5,7 @@ import { CommandInput } from './CommandInput'
 import { NavBar } from '../Navigation/NavBar'
 import { HelpModal } from '../Help/HelpModal'
 import { APIBudgetAlert } from './APIBudgetAlert'
+import { AIBudgetAlert } from './AIBudgetAlert'
 import { useSettingsStore } from '../../stores/settingsStore'
 
 function ZoomControls() {
@@ -92,6 +93,9 @@ export function TopBar() {
 
       {/* API Budget Alert */}
       <APIBudgetAlert />
+
+      {/* AI Budget Alert */}
+      <AIBudgetAlert />
 
       {/* Help Modal */}
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />

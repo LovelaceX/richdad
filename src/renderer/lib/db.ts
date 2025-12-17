@@ -126,6 +126,7 @@ export interface AISettings {
   recommendationFormat?: RecommendationFormat
   recommendationInterval?: 5 | 10 | 15  // minutes, default: 15
   confidenceThreshold?: number  // 0-100, default: 70
+  aiDailyCallLimit?: number  // 5-50, default: 15 (free tier protection)
 }
 
 export const AI_PROVIDERS = {
@@ -184,7 +185,8 @@ export const DEFAULT_AI_SETTINGS: AISettings = {
   apiKey: '',
   model: 'gpt-4.0-turbo',
   recommendationInterval: 15,
-  confidenceThreshold: 70
+  confidenceThreshold: 70,
+  aiDailyCallLimit: 15  // Conservative default for free tier protection
 }
 
 // Database class

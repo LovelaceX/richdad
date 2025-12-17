@@ -8,6 +8,7 @@ import { fetchHistoricalData, fetchLivePrices } from './marketData'
 import { calculateIndicators } from './technicalIndicators'
 import type { AIRecommendation, Quote } from '../renderer/types'
 import { generateId } from '../renderer/lib/utils'
+import { canMakeAICall, recordAICall, getAIBudgetStatus } from './aiBudgetTracker'
 
 interface RecommendationResponse {
   action: 'BUY' | 'SELL' | 'HOLD'
@@ -31,6 +32,13 @@ export async function generateRecommendation(
     const aiSettings = await getAISettings()
     if (!aiSettings.apiKey) {
       console.warn('[AI Engine] No AI API key configured, skipping analysis')
+      return null
+    }
+
+    // 1b. Check AI budget before making call
+    if (!canMakeAICall()) {
+      const status = getAIBudgetStatus()
+      console.warn(`[AI Engine] Daily AI budget exhausted (${status.used}/${status.limit} calls). Skipping analysis for ${symbol}`)
       return null
     }
 
@@ -64,6 +72,9 @@ export async function generateRecommendation(
 
     // 7. Send to AI for analysis
     const aiResponse = await sendAnalysisToAI(prompt, aiSettings.provider, aiSettings.apiKey, aiSettings.model)
+
+    // Record the AI call (budget tracking)
+    recordAICall()
 
     if (!aiResponse) {
       console.warn('[AI Engine] No response from AI')

@@ -10,11 +10,11 @@ export function NewsTicker() {
   const tickerSpeed = useSettingsStore(state => state.tickerSpeed)
   const [isPaused, setIsPaused] = useState(false)
 
-  // Map speed to animation duration
+  // Map speed to animation duration (slower = more readable)
   const speedToDuration = {
-    slow: '120s',
-    normal: '60s',
-    fast: '30s'
+    slow: '300s',     // 5 minutes - very readable
+    normal: '180s',   // 3 minutes - comfortable pace
+    fast: '90s'       // 1.5 minutes - still readable
   }
 
   const animationDuration = speedToDuration[tickerSpeed]

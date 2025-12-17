@@ -32,6 +32,7 @@ import { useAlertStore } from '../stores/alertStore'
 import { OnboardingWizard } from '../components/Onboarding/OnboardingWizard'
 import { AIPerformanceDetail } from '../components/AI/AIPerformanceDetail'
 import { APIBudgetMeter } from '../components/Settings/APIBudgetMeter'
+import { AIBudgetMeter } from '../components/Settings/AIBudgetMeter'
 import {
   getSettings,
   updateSettings,
@@ -691,6 +692,15 @@ export function Settings() {
                   {(aiSettings.confidenceThreshold ?? 70) < 50 && (
                     <p className="text-yellow-500 text-xs mt-1">⚠️ Low threshold may show unreliable signals</p>
                   )}
+                </div>
+
+                {/* AI Budget (Free Tier Protection) */}
+                <div>
+                  <h3 className="text-white text-sm font-medium mb-3">AI Budget (Free Tier Protection)</h3>
+                  <p className="text-gray-400 text-xs mb-4">
+                    Limit daily AI API calls to protect free tier usage. Adjust based on your API plan.
+                  </p>
+                  <AIBudgetMeter showControls={true} />
                 </div>
 
                 <div className="border-t border-terminal-border" />

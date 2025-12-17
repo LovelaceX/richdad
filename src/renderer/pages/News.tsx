@@ -105,15 +105,7 @@ export function News() {
               filteredNews.map((item: NewsItem) => (
                 <div
                   key={item.id}
-                  onClick={() => handleNewsClick(item)}
-                  className={`
-                    bg-terminal-panel border border-terminal-border rounded-lg p-4
-                    transition-all duration-200 group
-                    ${item.url
-                      ? 'cursor-pointer hover:scale-[1.01] hover:border-terminal-amber/50 hover:shadow-lg'
-                      : 'cursor-default'
-                    }
-                  `}
+                  className="bg-terminal-panel border border-terminal-border rounded-lg p-4"
                 >
                   <div className="flex items-start gap-3">
                     {/* Sentiment Indicator */}
@@ -124,8 +116,8 @@ export function News() {
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       {/* Headline */}
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <h3 className="text-white text-sm font-medium leading-relaxed flex-1">
+                      <div className="mb-2">
+                        <h3 className="text-white text-sm font-medium leading-relaxed">
                           {item.headline}
                           {item.ticker && (
                             <span className="inline-block ml-2 text-terminal-amber text-xs font-mono bg-terminal-amber/10 px-1.5 py-0.5 rounded">
@@ -133,19 +125,24 @@ export function News() {
                             </span>
                           )}
                         </h3>
-                        {item.url && (
-                          <div className="flex items-center gap-1 text-gray-500 group-hover:text-terminal-amber transition-colors flex-shrink-0">
-                            <span className="text-xs font-medium">View</span>
-                            <ChevronRight className="w-4 h-4" />
-                          </div>
-                        )}
                       </div>
 
-                      {/* Metadata */}
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="text-gray-400">{item.source}</span>
-                        <span className="text-gray-600">•</span>
-                        <span className="text-gray-500">{formatTime(item.timestamp)}</span>
+                      {/* Metadata + Source Link */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="text-gray-400">{item.source}</span>
+                          <span className="text-gray-600">•</span>
+                          <span className="text-gray-500">{formatTime(item.timestamp)}</span>
+                        </div>
+                        {item.url && (
+                          <button
+                            onClick={() => handleNewsClick(item)}
+                            className="flex items-center gap-1 text-gray-500 hover:text-terminal-amber transition-colors"
+                          >
+                            <span className="text-xs font-medium">Read More</span>
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

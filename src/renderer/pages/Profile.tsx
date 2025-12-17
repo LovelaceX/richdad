@@ -72,10 +72,47 @@ export function Profile() {
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      // Compress image before saving to avoid IndexedDB size issues
+      const img = new Image()
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+
+      img.onload = () => {
+        // Resize to max 200x200 for profile picture
+        const maxSize = 200
+        let width = img.width
+        let height = img.height
+
+        if (width > height) {
+          if (width > maxSize) {
+            height = (height * maxSize) / width
+            width = maxSize
+          }
+        } else {
+          if (height > maxSize) {
+            width = (width * maxSize) / height
+            height = maxSize
+          }
+        }
+
+        canvas.width = width
+        canvas.height = height
+        ctx?.drawImage(img, 0, 0, width, height)
+
+        // Convert to compressed JPEG
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8)
+        console.log('[Profile] Saving avatar, size:', Math.round(compressedBase64.length / 1024), 'KB')
+        updateProfile({ avatarUrl: compressedBase64 })
+      }
+
+      img.onerror = () => {
+        console.error('[Profile] Failed to load image')
+      }
+
+      // Read file as data URL to load into image
       const reader = new FileReader()
       reader.onload = () => {
-        const base64 = reader.result as string
-        updateProfile({ avatarUrl: base64 })
+        img.src = reader.result as string
       }
       reader.readAsDataURL(file)
     }

@@ -17,6 +17,8 @@ interface MarketState {
   refreshAllQuotes: () => void
   setTimeframe: (timeframe: 'daily' | '1min' | '5min' | '15min' | '30min' | '60min') => void
   loadChartData: (symbol?: string, interval?: 'daily' | '1min' | '5min' | '15min' | '30min' | '60min') => Promise<void>
+  addToWatchlist: (symbol: string, name?: string) => void
+  removeFromWatchlist: (symbol: string) => void
 }
 
 export const useMarketStore = create<MarketState>((set, get) => ({
@@ -107,5 +109,33 @@ export const useMarketStore = create<MarketState>((set, get) => ({
       const { generateCandleData } = await import('../lib/mockData')
       set({ chartData: generateCandleData(symbol || get().selectedTicker, 90) })
     }
+  },
+
+  addToWatchlist: (symbol: string, name?: string) => {
+    const { watchlist } = get()
+    // Check if already in watchlist
+    if (watchlist.some(item => item.symbol.toUpperCase() === symbol.toUpperCase())) {
+      console.log(`[Market Store] ${symbol} already in watchlist`)
+      return
+    }
+
+    const newItem: WatchlistItem = {
+      symbol: symbol.toUpperCase(),
+      name: name || symbol.toUpperCase(),
+      sector: 'Custom',
+      quote: generateQuote(symbol.toUpperCase())
+    }
+
+    set(state => ({
+      watchlist: [...state.watchlist, newItem]
+    }))
+    console.log(`[Market Store] Added ${symbol} to watchlist`)
+  },
+
+  removeFromWatchlist: (symbol: string) => {
+    set(state => ({
+      watchlist: state.watchlist.filter(item => item.symbol !== symbol)
+    }))
+    console.log(`[Market Store] Removed ${symbol} from watchlist`)
   },
 }))
