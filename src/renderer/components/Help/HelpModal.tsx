@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, BookOpen, Zap, BarChart3, Keyboard, HelpCircle, Shield, FileText, Mail,
-  Search, Gauge, AlertTriangle, Database, TrendingUp, Bell, Eye
+  Search, Gauge, AlertTriangle, Database, TrendingUp, Bell, Eye, Check
 } from 'lucide-react'
 
 interface HelpModalProps {
@@ -301,26 +301,26 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
 
           <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
             <h3 className="text-white font-semibold mb-4">Layout Overview</h3>
-            <div className="space-y-4 text-gray-300">
+            <div className="space-y-3 text-gray-300 text-sm">
               <div className="flex gap-4">
-                <span className="text-terminal-amber w-24">Top Bar</span>
-                <span>Market indices, search bar, profile, settings</span>
+                <span className="text-terminal-amber w-24 flex-shrink-0">Top Bar</span>
+                <span>Market indices, search, profile, settings</span>
               </div>
               <div className="flex gap-4">
-                <span className="text-terminal-amber w-24">Left Panel</span>
-                <span>Market Watch (your watchlist with live prices)</span>
+                <span className="text-terminal-amber w-24 flex-shrink-0">Left Panel</span>
+                <span>Watchlist with live prices</span>
               </div>
               <div className="flex gap-4">
-                <span className="text-terminal-amber w-24">Center</span>
-                <span>Main chart with timeframe controls</span>
+                <span className="text-terminal-amber w-24 flex-shrink-0">Center</span>
+                <span>Chart with timeframe controls</span>
               </div>
               <div className="flex gap-4">
-                <span className="text-terminal-amber w-24">Right Panel</span>
-                <span>AI Copilot chat and recommendations</span>
+                <span className="text-terminal-amber w-24 flex-shrink-0">Right Panel</span>
+                <span>AI Copilot and recommendations</span>
               </div>
               <div className="flex gap-4">
-                <span className="text-terminal-amber w-24">Bottom</span>
-                <span>News ticker with scrolling headlines</span>
+                <span className="text-terminal-amber w-24 flex-shrink-0">Bottom</span>
+                <span>News ticker with headlines</span>
               </div>
             </div>
           </div>
@@ -975,28 +975,28 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             </h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex items-start gap-3">
-                <span className="text-terminal-up text-lg">✓</span>
+                <Check size={18} className="text-terminal-up flex-shrink-0" />
                 <div>
                   <p className="text-white font-medium">No Ads, No Trackers</p>
                   <p className="text-gray-400 text-sm">Ever. Period.</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <span className="text-terminal-up text-lg">✓</span>
+                <Check size={18} className="text-terminal-up flex-shrink-0" />
                 <div>
                   <p className="text-white font-medium">Your Trades Are Yours</p>
                   <p className="text-gray-400 text-sm">Local storage only</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <span className="text-terminal-up text-lg">✓</span>
+                <Check size={18} className="text-terminal-up flex-shrink-0" />
                 <div>
                   <p className="text-white font-medium">No Crowdsourcing</p>
                   <p className="text-gray-400 text-sm">We don't harvest your strategy</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <span className="text-terminal-up text-lg">✓</span>
+                <Check size={18} className="text-terminal-up flex-shrink-0" />
                 <div>
                   <p className="text-white font-medium">Desktop = Your IP</p>
                   <p className="text-gray-400 text-sm">No cloud servers collecting data</p>

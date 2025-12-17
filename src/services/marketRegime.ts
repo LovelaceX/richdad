@@ -204,22 +204,6 @@ export function formatRegimeForPrompt(regime: MarketRegime): string {
 }
 
 /**
- * Get emoji indicator for regime
- */
-export function getRegimeEmoji(regime: MarketRegimeType): string {
-  switch (regime) {
-    case 'LOW_VOL_BULLISH': return '🟢'
-    case 'LOW_VOL_BEARISH': return '🟡'
-    case 'ELEVATED_VOL_BULLISH': return '🟡'
-    case 'ELEVATED_VOL_BEARISH': return '🟠'
-    case 'HIGH_VOL_BULLISH': return '🟠'
-    case 'HIGH_VOL_BEARISH': return '🔴'
-    case 'CHOPPY': return '⚠️'
-    default: return '⚪'
-  }
-}
-
-/**
  * Get short label for UI display
  */
 export function getRegimeLabel(regime: MarketRegimeType): string {

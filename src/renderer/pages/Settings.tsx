@@ -532,7 +532,7 @@ export function Settings() {
                   </div>
                   <p className="text-gray-600 text-xs mt-2">
                     Maximum loss: ${formatCurrency(Math.round((settings.dailyBudget || 1000) * settings.dailyLossLimit / 100))}
-                    {settings.dailyLossLimit > 10 && <span className="text-orange-500 ml-2">⚠️ Most traders use 2-5%</span>}
+                    {settings.dailyLossLimit > 10 && <span className="text-orange-500 ml-2 inline-flex items-center gap-1"><AlertCircle size={12} /> Most traders use 2-5%</span>}
                   </p>
                 </div>
 
@@ -688,7 +688,7 @@ export function Settings() {
                     Only show AI recommendations with confidence ≥ {aiSettings.confidenceThreshold ?? 70}%
                   </p>
                   {(aiSettings.confidenceThreshold ?? 70) < 50 && (
-                    <p className="text-yellow-500 text-xs mt-1">⚠️ Low threshold may show unreliable signals</p>
+                    <p className="text-yellow-500 text-xs mt-1 flex items-center gap-1"><AlertCircle size={12} /> Low threshold may show unreliable signals</p>
                   )}
                 </div>
 
@@ -2234,7 +2234,7 @@ export function Settings() {
                   {showResetConfirm === 'ai' && 'Clear AI History?'}
                   {showResetConfirm === 'pnl' && 'Clear P&L History?'}
                   {showResetConfirm === 'alerts' && 'Clear All Price Alerts?'}
-                  {showResetConfirm === 'factory' && '⚠️ Factory Reset?'}
+                  {showResetConfirm === 'factory' && <span className="inline-flex items-center gap-2"><AlertCircle size={18} /> Factory Reset?</span>}
                 </h3>
                 <p className="text-gray-400 text-sm mb-6">
                   {showResetConfirm === 'cache' && 'This will reset your API call counters. Your API keys and settings will be preserved.'}
