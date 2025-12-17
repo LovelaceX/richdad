@@ -9,14 +9,16 @@ export default {
     extend: {
       colors: {
         terminal: {
-          bg: '#0A0A0A',
-          panel: '#000000',
-          border: '#333333',
-          amber: '#FFB000',
+          bg: 'var(--color-terminal-bg, #0A0A0A)',
+          panel: 'var(--color-terminal-panel, #000000)',
+          border: 'var(--color-terminal-border, #333333)',
+          amber: 'var(--color-terminal-accent, #FFB000)',
+          up: 'var(--color-terminal-up, #4af6c3)',
+          down: 'var(--color-terminal-down, #ff433d)',
         },
         semantic: {
-          up: '#4af6c3',
-          down: '#ff433d',
+          up: 'var(--color-terminal-up, #4af6c3)',
+          down: 'var(--color-terminal-down, #ff433d)',
           'up-cvd': '#0068ff',
           'down-cvd': '#fb8b1e',
         }

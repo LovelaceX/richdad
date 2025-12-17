@@ -1,31 +1,95 @@
-import { useState } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, BookOpen, Zap, BarChart3, Keyboard, HelpCircle, Shield, FileText, Mail } from 'lucide-react'
+import {
+  X, BookOpen, Zap, BarChart3, Keyboard, HelpCircle, Shield, FileText, Mail,
+  Search, Gauge, AlertTriangle, Database, TrendingUp, Bell, Eye
+} from 'lucide-react'
 
 interface HelpModalProps {
   isOpen: boolean
   onClose: () => void
+  initialSection?: string
 }
 
-type Section = 'getting-started' | 'how-it-works' | 'ai-copilot' | 'chart-guide' | 'shortcuts' | 'faq' | 'terms' | 'privacy' | 'security' | 'about'
+type Section =
+  | 'get-started'
+  | 'dashboard'
+  | 'watchlist'
+  | 'news'
+  | 'price-alerts'
+  | 'chart-guide'
+  | 'ai-copilot'
+  | 'api-limits'
+  | 'shortcuts'
+  | 'troubleshooting'
+  | 'faq'
+  | 'terms'
+  | 'privacy'
+  | 'security'
+  | 'about'
 
-export function HelpModal({ isOpen, onClose }: HelpModalProps) {
-  const [activeSection, setActiveSection] = useState<Section>('getting-started')
+const sectionContent: Record<Section, { title: string; keywords: string[] }> = {
+  'get-started': { title: 'Get Started', keywords: ['setup', 'api key', 'configure', 'begin', 'first', 'install'] },
+  'dashboard': { title: 'Dashboard', keywords: ['home', 'main', 'overview', 'layout', 'panels'] },
+  'watchlist': { title: 'Watchlist', keywords: ['market watch', 'stocks', 'symbols', 'add', 'remove', 'track'] },
+  'news': { title: 'Market News', keywords: ['headlines', 'feed', 'sentiment', 'filter', 'rss'] },
+  'price-alerts': { title: 'Price Alerts', keywords: ['notification', 'alert', 'trigger', 'above', 'below'] },
+  'chart-guide': { title: 'Chart Controls', keywords: ['candlestick', 'timeframe', 'zoom', 'pan', 'daily', 'intraday'] },
+  'ai-copilot': { title: 'AI Copilot', keywords: ['openai', 'claude', 'gemini', 'grok', 'recommendation', 'chat', 'provider'] },
+  'api-limits': { title: 'API Limits & Usage', keywords: ['rate limit', 'quota', 'calls', 'daily', 'budget', 'alpha vantage'] },
+  'shortcuts': { title: 'Keyboard Shortcuts', keywords: ['hotkey', 'cmd', 'ctrl', 'key'] },
+  'troubleshooting': { title: 'Troubleshooting', keywords: ['error', 'fix', 'problem', 'not working', 'issue', 'help'] },
+  'faq': { title: 'FAQ', keywords: ['question', 'answer', 'common', 'frequently'] },
+  'terms': { title: 'Terms of Service', keywords: ['legal', 'tos', 'agreement'] },
+  'privacy': { title: 'Privacy Policy', keywords: ['data', 'collection', 'storage'] },
+  'security': { title: 'Security', keywords: ['safe', 'key', 'protection'] },
+  'about': { title: 'About RichDad', keywords: ['version', 'developer', 'contact', 'lovelacex'] },
+}
 
-  if (!isOpen) return null
+export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
+  const [activeSection, setActiveSection] = useState<Section>((initialSection as Section) || 'get-started')
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // Update section when initialSection changes
+  useEffect(() => {
+    if (initialSection && isOpen) {
+      setActiveSection(initialSection as Section)
+    }
+  }, [initialSection, isOpen])
 
   const sections: { id: Section; label: string; icon: any }[] = [
-    { id: 'getting-started', label: 'Getting Started', icon: BookOpen },
-    { id: 'how-it-works', label: 'How It Works', icon: Zap },
-    { id: 'ai-copilot', label: 'AI Copilot', icon: HelpCircle },
-    { id: 'chart-guide', label: 'Chart Guide', icon: BarChart3 },
+    { id: 'get-started', label: 'Get Started', icon: BookOpen },
+    { id: 'dashboard', label: 'Dashboard', icon: Eye },
+    { id: 'watchlist', label: 'Watchlist', icon: TrendingUp },
+    { id: 'news', label: 'Market News', icon: FileText },
+    { id: 'price-alerts', label: 'Price Alerts', icon: Bell },
+    { id: 'chart-guide', label: 'Chart Controls', icon: BarChart3 },
+    { id: 'ai-copilot', label: 'AI Copilot', icon: Zap },
+    { id: 'api-limits', label: 'API Limits & Usage', icon: Gauge },
     { id: 'shortcuts', label: 'Keyboard Shortcuts', icon: Keyboard },
+    { id: 'troubleshooting', label: 'Troubleshooting', icon: AlertTriangle },
     { id: 'faq', label: 'FAQ', icon: HelpCircle },
     { id: 'terms', label: 'Terms of Service', icon: FileText },
     { id: 'privacy', label: 'Privacy Policy', icon: Shield },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'about', label: 'About', icon: Mail },
   ]
+
+  // Filter sections based on search
+  const filteredSections = useMemo(() => {
+    if (!searchQuery.trim()) return sections
+    const query = searchQuery.toLowerCase()
+    return sections.filter(section => {
+      const content = sectionContent[section.id]
+      return (
+        content.title.toLowerCase().includes(query) ||
+        content.keywords.some(k => k.includes(query)) ||
+        section.label.toLowerCase().includes(query)
+      )
+    })
+  }, [searchQuery, sections])
+
+  if (!isOpen) return null
 
   return (
     <AnimatePresence>
@@ -41,13 +105,14 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           onClick={(e) => e.stopPropagation()}
-          className="bg-terminal-panel border border-terminal-border rounded-lg shadow-2xl w-full max-w-5xl h-[80vh] flex flex-col"
+          className="bg-terminal-panel border border-terminal-border rounded-lg shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-terminal-border">
-            <div className="flex items-center gap-2">
-              <HelpCircle size={20} className="text-terminal-amber" />
-              <h2 className="text-white text-lg font-semibold">Help & Documentation</h2>
+            <div className="flex items-center gap-3">
+              <BookOpen size={22} className="text-terminal-amber" />
+              <h2 className="text-white text-lg font-semibold">Reference Guide</h2>
+              <span className="text-gray-500 text-sm">v2.4.4</span>
             </div>
             <button
               onClick={onClose}
@@ -57,17 +122,42 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
             </button>
           </div>
 
+          {/* Search Bar */}
+          <div className="px-6 py-3 border-b border-terminal-border">
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search documentation..."
+                className="w-full bg-terminal-bg border border-terminal-border rounded-lg pl-10 pr-4 py-2.5 text-white placeholder-gray-500 text-sm focus:border-terminal-amber focus:outline-none"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Content */}
           <div className="flex-1 flex overflow-hidden">
             {/* Sidebar */}
             <div className="w-64 border-r border-terminal-border bg-terminal-bg p-4 overflow-y-auto">
               <div className="space-y-1">
-                {sections.map(section => {
+                {filteredSections.map(section => {
                   const Icon = section.icon
                   return (
                     <button
                       key={section.id}
-                      onClick={() => setActiveSection(section.id)}
+                      onClick={() => {
+                        setActiveSection(section.id)
+                        setSearchQuery('')
+                      }}
                       className={`
                         w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-left transition-colors
                         ${activeSection === section.id
@@ -81,12 +171,15 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
                     </button>
                   )
                 })}
+                {filteredSections.length === 0 && (
+                  <p className="text-gray-500 text-sm px-4 py-2">No results found</p>
+                )}
               </div>
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-6">
-              <HelpContent section={activeSection} />
+            <div className="flex-1 overflow-y-auto p-8">
+              <HelpContent section={activeSection} onNavigate={setActiveSection} />
             </div>
           </div>
         </motion.div>
@@ -95,242 +188,679 @@ export function HelpModal({ isOpen, onClose }: HelpModalProps) {
   )
 }
 
-function HelpContent({ section }: { section: Section }) {
+interface HelpContentProps {
+  section: Section
+  onNavigate: (section: Section) => void
+}
+
+function HelpContent({ section, onNavigate }: HelpContentProps) {
+  const QuickLink = ({ to, children }: { to: Section; children: React.ReactNode }) => (
+    <button
+      onClick={() => onNavigate(to)}
+      className="text-terminal-amber hover:underline text-left"
+    >
+      {children}
+    </button>
+  )
+
+  const SectionDivider = () => (
+    <div className="border-t border-terminal-border my-8" />
+  )
+
+  const Step = ({ children }: { children: React.ReactNode }) => (
+    <div className="flex items-start gap-3 py-2">
+      <span className="text-terminal-amber mt-0.5">→</span>
+      <span>{children}</span>
+    </div>
+  )
+
   switch (section) {
-    case 'getting-started':
+    case 'get-started':
       return (
-        <div className="prose prose-invert max-w-none">
-          <h2 className="text-terminal-amber">Getting Started with RichDad</h2>
-
-          <h3>1. Set Up API Keys</h3>
-          <p>RichDad requires API keys for market data and AI analysis.</p>
-
-          <div className="bg-terminal-bg border border-terminal-border rounded p-4 my-4">
-            <p className="font-semibold">Required:</p>
-            <ul>
-              <li>Alpha Vantage (Free): Get your key at <a href="https://www.alphavantage.co/support/#api-key" target="_blank" rel="noopener noreferrer" className="text-terminal-amber hover:underline">alphavantage.co</a></li>
-            </ul>
-
-            <p className="font-semibold mt-4">Recommended:</p>
-            <ul>
-              <li>AI Provider: OpenAI, Claude, Gemini, Grok, DeepSeek, or Llama</li>
-            </ul>
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Get Started</h2>
+            <p className="text-gray-400">Everything you need to know to start using RichDad</p>
           </div>
 
-          <h3>2. Configure Settings</h3>
-          <ol>
-            <li>Press <kbd className="bg-terminal-border px-2 py-1 rounded text-xs">Cmd+3</kbd> or click Settings</li>
-            <li>Navigate to "API Keys"</li>
-            <li>Paste your Alpha Vantage key</li>
-            <li>Navigate to "AI Copilot"</li>
-            <li>Select provider and paste AI API key</li>
-          </ol>
+          {/* Quick Links Index */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-6">
+            <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
+              <BookOpen size={18} className="text-terminal-amber" />
+              Quick Links
+            </h3>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-3">
+              <Step><QuickLink to="ai-copilot">Setting Up AI Providers</QuickLink></Step>
+              <Step><QuickLink to="dashboard">Understanding the Dashboard</QuickLink></Step>
+              <Step><QuickLink to="watchlist">Managing Your Watchlist</QuickLink></Step>
+              <Step><QuickLink to="news">Reading Market News</QuickLink></Step>
+              <Step><QuickLink to="price-alerts">Using Price Alerts</QuickLink></Step>
+              <Step><QuickLink to="chart-guide">Chart Controls & Timeframes</QuickLink></Step>
+              <Step><QuickLink to="shortcuts">Keyboard Shortcuts</QuickLink></Step>
+              <Step><QuickLink to="api-limits">API Limits & Usage</QuickLink></Step>
+              <Step><QuickLink to="troubleshooting">Troubleshooting</QuickLink></Step>
+            </div>
+          </div>
 
-          <h3>3. Start Trading</h3>
-          <ul>
-            <li>Dashboard (<kbd className="bg-terminal-border px-2 py-1 rounded text-xs">Cmd+1</kbd>): View live prices, chart, AI recommendations</li>
-            <li>News (<kbd className="bg-terminal-border px-2 py-1 rounded text-xs">Cmd+2</kbd>): Read latest market news</li>
-            <li>AI Copilot: Chat with AI or wait for automatic recommendations</li>
-          </ul>
+          <SectionDivider />
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Step 1: Get API Keys</h3>
+            <p className="text-gray-300 mb-4">RichDad requires API keys for market data and AI features.</p>
+
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5 space-y-4">
+              <div>
+                <p className="text-terminal-amber font-medium mb-2">Required: Alpha Vantage (Free)</p>
+                <Step>Visit <a href="https://www.alphavantage.co/support/#api-key" target="_blank" rel="noopener noreferrer" className="text-terminal-amber hover:underline">alphavantage.co</a></Step>
+                <Step>Sign up for a free account</Step>
+                <Step>Copy your API key</Step>
+              </div>
+
+              <div className="border-t border-terminal-border pt-4">
+                <p className="text-terminal-amber font-medium mb-2">Recommended: AI Provider</p>
+                <p className="text-gray-400 text-sm mb-2">Choose one of: OpenAI, Claude, Gemini, Grok, DeepSeek, or Llama (Groq)</p>
+                <Step>Create account with your chosen provider</Step>
+                <Step>Generate an API key</Step>
+                <Step>Note any free tier limits (see <QuickLink to="api-limits">API Limits</QuickLink>)</Step>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Step 2: Configure Settings</h3>
+            <div className="space-y-1">
+              <Step>Press <kbd className="bg-terminal-border px-2 py-1 rounded text-xs mx-1">Cmd+3</kbd> to open Settings</Step>
+              <Step>Navigate to <span className="text-white font-medium">API Keys</span> section</Step>
+              <Step>Paste your Alpha Vantage key</Step>
+              <Step>Navigate to <span className="text-white font-medium">AI Copilot</span> section</Step>
+              <Step>Select your AI provider from the dropdown</Step>
+              <Step>Paste your AI API key</Step>
+              <Step>Click <span className="text-terminal-amber">Save</span></Step>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Step 3: Start Using RichDad</h3>
+            <div className="space-y-1">
+              <Step><span className="text-white font-medium">Dashboard</span> (<kbd className="bg-terminal-border px-2 py-1 rounded text-xs mx-1">Cmd+1</kbd>): View live prices, charts, and AI recommendations</Step>
+              <Step><span className="text-white font-medium">News</span> (<kbd className="bg-terminal-border px-2 py-1 rounded text-xs mx-1">Cmd+2</kbd>): Read latest market headlines with sentiment</Step>
+              <Step><span className="text-white font-medium">AI Panel</span>: Chat with your AI copilot or wait for automatic analysis</Step>
+              <Step><span className="text-white font-medium">Watchlist</span>: Track your favorite stocks in real-time</Step>
+            </div>
+          </div>
         </div>
       )
 
-    case 'how-it-works':
+    case 'dashboard':
       return (
-        <div className="prose prose-invert max-w-none">
-          <h2 className="text-terminal-amber">How RichDad Works</h2>
-
-          <h3>System Architecture</h3>
-          <p>RichDad is a Bloomberg Terminal-style desktop application powered by AI and real-time market data.</p>
-
-          <div className="bg-terminal-bg border border-terminal-border rounded p-4 my-4">
-            <h4>Data Flow:</h4>
-            <ol>
-              <li><strong>Market Data:</strong> Fetches live prices from Alpha Vantage every minute (1-hour cache)</li>
-              <li><strong>News Feed:</strong> Aggregates headlines from RSS feeds every 5 minutes</li>
-              <li><strong>AI Analysis:</strong> Analyzes market data + technical indicators + news every 15 minutes</li>
-              <li><strong>Recommendations:</strong> Displays BUY/SELL/HOLD signals with confidence scores</li>
-            </ol>
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Dashboard</h2>
+            <p className="text-gray-400">Your trading command center</p>
           </div>
 
-          <h3>Technical Indicators</h3>
-          <ul>
-            <li><strong>RSI (14):</strong> Relative Strength Index - detects overbought/oversold conditions</li>
-            <li><strong>MACD:</strong> Moving Average Convergence Divergence - identifies trend changes</li>
-            <li><strong>MA (20/50/200):</strong> Moving Averages - defines support/resistance levels</li>
-          </ul>
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white font-semibold mb-4">Layout Overview</h3>
+            <div className="space-y-4 text-gray-300">
+              <div className="flex gap-4">
+                <span className="text-terminal-amber w-24">Top Bar</span>
+                <span>Market indices, search bar, profile, settings</span>
+              </div>
+              <div className="flex gap-4">
+                <span className="text-terminal-amber w-24">Left Panel</span>
+                <span>Market Watch (your watchlist with live prices)</span>
+              </div>
+              <div className="flex gap-4">
+                <span className="text-terminal-amber w-24">Center</span>
+                <span>Main chart with timeframe controls</span>
+              </div>
+              <div className="flex gap-4">
+                <span className="text-terminal-amber w-24">Right Panel</span>
+                <span>AI Copilot chat and recommendations</span>
+              </div>
+              <div className="flex gap-4">
+                <span className="text-terminal-amber w-24">Bottom</span>
+                <span>News ticker with scrolling headlines</span>
+              </div>
+            </div>
+          </div>
 
-          <h3>AI Recommendation System</h3>
-          <p>The AI analyzes:</p>
-          <ul>
-            <li>Current price vs. historical data</li>
-            <li>Technical indicator signals (RSI, MACD, MA)</li>
-            <li>Recent news sentiment</li>
-            <li>Volume patterns and trends</li>
-          </ul>
-          <p>It then generates structured recommendations with:</p>
-          <ul>
-            <li>Action: BUY / SELL / HOLD</li>
-            <li>Confidence: 0-100% (only shows if ≥70%)</li>
-            <li>Rationale: 2-3 sentence explanation</li>
-            <li>Price Target & Stop Loss</li>
-          </ul>
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Market Overview Bar</h3>
+            <p className="text-gray-300 mb-3">The top bar displays key market indices:</p>
+            <div className="space-y-1">
+              <Step><span className="text-white font-medium">S&P 500 (SPX)</span> - Broad market benchmark</Step>
+              <Step><span className="text-white font-medium">NASDAQ (NDX)</span> - Tech-heavy index</Step>
+              <Step><span className="text-white font-medium">Dow Jones (DJI)</span> - Blue-chip stocks</Step>
+              <Step><span className="text-white font-medium">VIX</span> - Market volatility ("fear gauge")</Step>
+              <Step><span className="text-white font-medium">AI Win Rate</span> - Your AI's performance record</Step>
+            </div>
+          </div>
         </div>
       )
 
-    case 'ai-copilot':
+    case 'watchlist':
       return (
-        <div className="prose prose-invert max-w-none">
-          <h2 className="text-terminal-amber">AI Copilot Guide</h2>
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Watchlist</h2>
+            <p className="text-gray-400">Track your favorite stocks in real-time</p>
+          </div>
 
-          <h3>Supported AI Providers</h3>
-          <div className="grid grid-cols-2 gap-4 my-4">
-            <div className="bg-terminal-bg border border-terminal-border rounded p-3">
-              <p className="font-semibold">OpenAI</p>
-              <p className="text-sm text-gray-400">GPT-4, GPT-3.5</p>
-            </div>
-            <div className="bg-terminal-bg border border-terminal-border rounded p-3">
-              <p className="font-semibold">Claude (Anthropic)</p>
-              <p className="text-sm text-gray-400">Opus 4.5, Sonnet 4.5</p>
-            </div>
-            <div className="bg-terminal-bg border border-terminal-border rounded p-3">
-              <p className="font-semibold">Gemini (Google)</p>
-              <p className="text-sm text-gray-400">2.0 Flash, 1.5 Pro</p>
-            </div>
-            <div className="bg-terminal-bg border border-terminal-border rounded p-3">
-              <p className="font-semibold">Grok (xAI)</p>
-              <p className="text-sm text-gray-400">Grok-2, Grok Beta</p>
-            </div>
-            <div className="bg-terminal-bg border border-terminal-border rounded p-3">
-              <p className="font-semibold">DeepSeek</p>
-              <p className="text-sm text-gray-400">Chat, Coder models</p>
-            </div>
-            <div className="bg-terminal-bg border border-terminal-border rounded p-3">
-              <p className="font-semibold">Llama (via Groq)</p>
-              <p className="text-sm text-gray-400">3.3 70B, 3.2 90B</p>
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Adding Stocks</h3>
+            <div className="space-y-1">
+              <Step>Click the <span className="text-terminal-amber font-medium">+</span> button in the Market Watch header</Step>
+              <Step>Type a stock symbol (e.g., AAPL) or company name</Step>
+              <Step>Select from autocomplete suggestions (S&P 500 + news tickers)</Step>
+              <Step>Press Enter or click <span className="text-terminal-amber">Add</span></Step>
             </div>
           </div>
 
-          <h3>Chat Features</h3>
-          <ul>
-            <li>Ask questions about stocks, trading strategies, market conditions</li>
-            <li>Get explanations of technical indicators</li>
-            <li>Request analysis of specific symbols</li>
-          </ul>
-
-          <h3>Automatic Recommendations</h3>
-          <p>When configured, the AI automatically analyzes SPY every 15 minutes during market hours (9:30 AM - 4:00 PM ET).</p>
-
-          <div className="bg-terminal-bg border border-terminal-border rounded p-4 my-4">
-            <p className="font-semibold">Recommendation Actions:</p>
-            <ul>
-              <li><kbd className="bg-terminal-border px-2 py-1 rounded text-xs">E</kbd> - Execute: Log as executed trade (tracked for performance)</li>
-              <li><kbd className="bg-terminal-border px-2 py-1 rounded text-xs">S</kbd> - Skip: Dismiss without executing</li>
-              <li><kbd className="bg-terminal-border px-2 py-1 rounded text-xs">Esc</kbd> - Close: Dismiss modal</li>
-            </ul>
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Removing Stocks</h3>
+            <div className="space-y-1">
+              <Step>Hover over any stock in your watchlist</Step>
+              <Step>Click the <span className="text-red-400">X</span> button that appears</Step>
+            </div>
           </div>
 
-          <h3>Performance Tracking</h3>
-          <p>Executed trades are tracked automatically. The system monitors:</p>
-          <ul>
-            <li>Price target hits (wins)</li>
-            <li>Stop loss triggers (losses)</li>
-            <li>Time to outcome (days held)</li>
-          </ul>
-          <p>View your AI's batting average in the Performance panel (right side of Dashboard).</p>
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Viewing Charts</h3>
+            <div className="space-y-1">
+              <Step>Click any symbol in your watchlist</Step>
+              <Step>The main chart updates to show that stock</Step>
+              <Step>Selected stock is highlighted in the watchlist</Step>
+            </div>
+          </div>
+
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white font-semibold mb-3">Data Display</h3>
+            <div className="space-y-2 text-gray-300 text-sm">
+              <div className="flex gap-4">
+                <span className="text-terminal-amber w-20">Symbol</span>
+                <span>Stock ticker</span>
+              </div>
+              <div className="flex gap-4">
+                <span className="text-terminal-amber w-20">Price</span>
+                <span>Current price (cached 1 hour)</span>
+              </div>
+              <div className="flex gap-4">
+                <span className="text-terminal-amber w-20">Change</span>
+                <span>Dollar change from previous close</span>
+              </div>
+              <div className="flex gap-4">
+                <span className="text-terminal-amber w-20">% Change</span>
+                <span>Percentage change (green/red)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+
+    case 'news':
+      return (
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Market News</h2>
+            <p className="text-gray-400">Stay informed with real-time market headlines</p>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">News Sources</h3>
+            <div className="space-y-1">
+              <Step><span className="text-white font-medium">RSS Feeds</span> - Free, unlimited (CNBC, MarketWatch, etc.)</Step>
+              <Step><span className="text-white font-medium">Alpha Vantage News</span> - Premium with sentiment (shares API quota)</Step>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Filtering News</h3>
+            <p className="text-gray-300 mb-3">Use the filter buttons next to the funnel icon:</p>
+            <div className="space-y-1">
+              <Step><span className="text-white font-medium">All</span> - Show all headlines</Step>
+              <Step><span className="text-white font-medium">Watchlist</span> - Only stocks in your watchlist</Step>
+              <Step><span className="text-terminal-up font-medium">Positive</span> - Bullish sentiment</Step>
+              <Step><span className="text-terminal-down font-medium">Negative</span> - Bearish sentiment</Step>
+              <Step><span className="text-gray-400 font-medium">Neutral</span> - Neutral sentiment</Step>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Sentiment Analysis</h3>
+            <p className="text-gray-300 mb-3">Headlines are analyzed for market sentiment:</p>
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5 space-y-3">
+              <div className="flex items-center gap-3">
+                <TrendingUp size={16} className="text-terminal-up" />
+                <span className="text-gray-300">Positive - Bullish news, earnings beats, upgrades</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-0.5 bg-gray-500"></div>
+                <span className="text-gray-300">Neutral - Informational, no clear direction</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <TrendingUp size={16} className="text-terminal-down rotate-180" />
+                <span className="text-gray-300">Negative - Bearish news, misses, downgrades</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+
+    case 'price-alerts':
+      return (
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Price Alerts</h2>
+            <p className="text-gray-400">Get notified when stocks hit your target prices</p>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Creating Alerts</h3>
+            <div className="space-y-1">
+              <Step>Go to <span className="text-white font-medium">Settings</span> → <span className="text-white font-medium">Price Alerts</span></Step>
+              <Step>Click <span className="text-terminal-amber">Add Alert</span></Step>
+              <Step>Enter the stock symbol (e.g., AAPL)</Step>
+              <Step>Choose condition: <span className="text-white">Above</span> or <span className="text-white">Below</span></Step>
+              <Step>Enter your target price</Step>
+              <Step>Click <span className="text-terminal-amber">Save</span></Step>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Alert Conditions</h3>
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5 space-y-3">
+              <div className="flex gap-4">
+                <span className="text-terminal-amber w-28">Above</span>
+                <span className="text-gray-300">Triggers when price rises above target</span>
+              </div>
+              <div className="flex gap-4">
+                <span className="text-terminal-amber w-28">Below</span>
+                <span className="text-gray-300">Triggers when price falls below target</span>
+              </div>
+              <div className="flex gap-4">
+                <span className="text-terminal-amber w-28">% Up</span>
+                <span className="text-gray-300">Triggers on percentage gain</span>
+              </div>
+              <div className="flex gap-4">
+                <span className="text-terminal-amber w-28">% Down</span>
+                <span className="text-gray-300">Triggers on percentage drop</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">How Alerts Work</h3>
+            <div className="space-y-1">
+              <Step>Prices are checked every minute (with 1-hour cache)</Step>
+              <Step>When triggered, you'll see a notification</Step>
+              <Step>Alert is marked as "triggered" and won't fire again</Step>
+              <Step>Delete triggered alerts to clean up your list</Step>
+            </div>
+          </div>
         </div>
       )
 
     case 'chart-guide':
       return (
-        <div className="prose prose-invert max-w-none">
-          <h2 className="text-terminal-amber">Chart Guide</h2>
-
-          <h3>Chart Types</h3>
-          <p>RichDad displays candlestick charts powered by Lightweight Charts library.</p>
-
-          <h3>Timeframes</h3>
-          <ul>
-            <li><strong>5-Minute (SPY only):</strong> Intraday trading, ~8 hours of data</li>
-            <li><strong>Daily:</strong> Long-term analysis, 90 days of history</li>
-          </ul>
-
-          <div className="bg-terminal-bg border border-terminal-border rounded p-4 my-4">
-            <p className="font-semibold">Free Tier Limitations:</p>
-            <p>Alpha Vantage free tier allows 25 API calls/day. RichDad optimizes usage:</p>
-            <ul>
-              <li>Chart data cached for 24 hours</li>
-              <li>Quote data cached for 1 hour</li>
-              <li>SPY gets 5-minute intraday, other symbols use daily</li>
-            </ul>
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Chart Controls</h2>
+            <p className="text-gray-400">Master the trading chart</p>
           </div>
 
-          <h3>Chart Controls</h3>
-          <ul>
-            <li><strong>Zoom:</strong> Scroll wheel or pinch gesture</li>
-            <li><strong>Pan:</strong> Click and drag</li>
-            <li><strong>Timeframe:</strong> Use dropdown in chart header</li>
-          </ul>
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Timeframes</h3>
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5 space-y-3">
+              <p className="text-gray-400 text-sm mb-2">Available timeframes depend on your selected symbol:</p>
+              <div className="flex gap-4">
+                <span className="text-terminal-amber w-24">SPY Only</span>
+                <span className="text-gray-300">1M, 5M, 15M, 30M, 1H, Daily</span>
+              </div>
+              <div className="flex gap-4">
+                <span className="text-terminal-amber w-24">Other Stocks</span>
+                <span className="text-gray-300">5M, Daily (API conservation)</span>
+              </div>
+            </div>
+          </div>
 
-          <h3>Volume Display</h3>
-          <p>Volume bars appear at the bottom of the chart, color-coded to match price movement.</p>
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Data Availability</h3>
+            <div className="space-y-1">
+              <Step><span className="text-white font-medium">Intraday (1M-1H)</span> - Last ~8 hours of trading</Step>
+              <Step><span className="text-white font-medium">Daily</span> - Last 90 days of history</Step>
+              <Step>Data is cached for 24 hours to save API calls</Step>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Navigation</h3>
+            <div className="space-y-1">
+              <Step><span className="text-white font-medium">Zoom</span> - Scroll wheel or pinch gesture</Step>
+              <Step><span className="text-white font-medium">Pan</span> - Click and drag left/right</Step>
+              <Step><span className="text-white font-medium">Reset</span> - Double-click to reset view</Step>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Candlestick Colors</h3>
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-6 bg-terminal-up rounded-sm"></div>
+                <span className="text-gray-300">Green - Price closed higher (bullish)</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-6 bg-terminal-down rounded-sm"></div>
+                <span className="text-gray-300">Red - Price closed lower (bearish)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )
+
+    case 'ai-copilot':
+      return (
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">AI Copilot</h2>
+            <p className="text-gray-400">Your AI-powered trading assistant</p>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Supported Providers</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
+                <p className="text-white font-medium">OpenAI</p>
+                <p className="text-gray-400 text-sm">GPT-4o, GPT-4o Mini</p>
+              </div>
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
+                <p className="text-white font-medium">Claude (Anthropic)</p>
+                <p className="text-gray-400 text-sm">Claude 3.5 Sonnet, Haiku</p>
+              </div>
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
+                <p className="text-white font-medium">Gemini (Google)</p>
+                <p className="text-gray-400 text-sm">2.0 Flash, 1.5 Pro</p>
+              </div>
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
+                <p className="text-white font-medium">Grok (xAI)</p>
+                <p className="text-gray-400 text-sm">Grok-2, Grok Beta</p>
+              </div>
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
+                <p className="text-white font-medium">DeepSeek</p>
+                <p className="text-gray-400 text-sm">DeepSeek Chat, Coder</p>
+              </div>
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
+                <p className="text-white font-medium">Llama (via Groq)</p>
+                <p className="text-gray-400 text-sm">3.3 70B, 3.2 90B Vision</p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Fallback System</h3>
+            <p className="text-gray-300 mb-3">Configure multiple providers for reliability:</p>
+            <div className="space-y-1">
+              <Step><span className="text-white font-medium">Primary</span> - Your main AI provider</Step>
+              <Step><span className="text-white font-medium">Fallback</span> - Used if primary fails or rate-limits</Step>
+              <Step>Drag to reorder priority in Settings</Step>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Automatic Recommendations</h3>
+            <div className="space-y-1">
+              <Step>AI analyzes SPY every 15 minutes during market hours</Step>
+              <Step>Only shows recommendations above your confidence threshold</Step>
+              <Step>Includes: Action (BUY/SELL/HOLD), confidence %, rationale</Step>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Acting on Recommendations</h3>
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5 space-y-3">
+              <div className="flex items-center gap-3">
+                <kbd className="bg-terminal-border px-3 py-1 rounded">E</kbd>
+                <span className="text-gray-300">Execute - Log trade for performance tracking</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <kbd className="bg-terminal-border px-3 py-1 rounded">S</kbd>
+                <span className="text-gray-300">Skip - Dismiss without logging</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <kbd className="bg-terminal-border px-3 py-1 rounded">Esc</kbd>
+                <span className="text-gray-300">Close - Dismiss modal</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Performance Tracking</h3>
+            <div className="space-y-1">
+              <Step>Executed trades are tracked automatically</Step>
+              <Step>System monitors price targets and stop losses</Step>
+              <Step>View your AI's win rate in the Market Overview bar</Step>
+              <Step>Full history available in Settings → AI Performance</Step>
+            </div>
+          </div>
+        </div>
+      )
+
+    case 'api-limits':
+      return (
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">API Limits & Usage</h2>
+            <p className="text-gray-400">Understanding rate limits and quotas</p>
+          </div>
+
+          {/* Alpha Vantage */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Database size={20} className="text-terminal-amber" />
+              <h3 className="text-white text-lg font-semibold">Alpha Vantage (Market Data)</h3>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between py-2 border-b border-terminal-border">
+                <span className="text-gray-400">Free Tier Limit</span>
+                <span className="text-white font-mono">25 calls/day</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-terminal-border">
+                <span className="text-gray-400">Reset Time</span>
+                <span className="text-white font-mono">Midnight EST</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-terminal-border">
+                <span className="text-gray-400">Used For</span>
+                <span className="text-white">Stock prices, chart data, news</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-gray-400">Cache Duration</span>
+                <span className="text-white">Quotes: 1hr, Charts: 24hr</span>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-terminal-border">
+              <p className="text-gray-400 text-sm">
+                <span className="text-terminal-amber">Tip:</span> RichDad optimizes API usage with caching.
+                SPY gets priority for intraday data; other symbols use daily data.
+              </p>
+            </div>
+          </div>
+
+          {/* AI Providers */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Zap size={20} className="text-terminal-amber" />
+              <h3 className="text-white text-lg font-semibold">AI Providers</h3>
+            </div>
+            <div className="space-y-4">
+              <div className="border-b border-terminal-border pb-3">
+                <p className="text-white font-medium">OpenAI</p>
+                <p className="text-gray-400 text-sm">Pay-per-token model. ~$0.01 per recommendation. No hard rate limit.</p>
+              </div>
+              <div className="border-b border-terminal-border pb-3">
+                <p className="text-white font-medium">Claude (Anthropic)</p>
+                <p className="text-gray-400 text-sm">Pay-per-token. Free tier has usage caps. Check console.anthropic.com for limits.</p>
+              </div>
+              <div className="border-b border-terminal-border pb-3">
+                <p className="text-white font-medium">Gemini (Google)</p>
+                <p className="text-gray-400 text-sm">Free tier: 60 requests/minute. Very generous for trading use.</p>
+              </div>
+              <div className="border-b border-terminal-border pb-3">
+                <p className="text-white font-medium">Grok (xAI)</p>
+                <p className="text-gray-400 text-sm">Free tier available. Rate limits vary. Check x.ai for current limits.</p>
+              </div>
+              <div className="border-b border-terminal-border pb-3">
+                <p className="text-white font-medium">DeepSeek</p>
+                <p className="text-gray-400 text-sm">Very affordable. Some rate limiting. Good free tier.</p>
+              </div>
+              <div>
+                <p className="text-white font-medium">Llama (via Groq)</p>
+                <p className="text-gray-400 text-sm">Free tier: 30 requests/minute. Fast inference. Great for testing.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* News Sources */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <FileText size={20} className="text-terminal-amber" />
+              <h3 className="text-white text-lg font-semibold">News Sources</h3>
+            </div>
+            <div className="space-y-3">
+              <div className="flex justify-between py-2 border-b border-terminal-border">
+                <span className="text-gray-400">RSS Feeds</span>
+                <span className="text-terminal-up font-medium">Unlimited</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-gray-400">Alpha Vantage News</span>
+                <span className="text-white">Shares 25 call/day quota</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Usage Tips */}
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Optimization Tips</h3>
+            <div className="space-y-1">
+              <Step>Use 15-minute AI interval (not 5 min) to conserve calls</Step>
+              <Step>Let charts cache - avoid excessive timeframe switching</Step>
+              <Step>Focus watchlist on key stocks to reduce quote fetches</Step>
+              <Step>Set up a fallback AI provider for reliability</Step>
+              <Step>Enable "Unlimited" mode if you have a paid API tier</Step>
+            </div>
+          </div>
         </div>
       )
 
     case 'shortcuts':
       return (
-        <div className="prose prose-invert max-w-none">
-          <h2 className="text-terminal-amber">Keyboard Shortcuts</h2>
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Keyboard Shortcuts</h2>
+            <p className="text-gray-400">Navigate faster with hotkeys</p>
+          </div>
 
-          <h3>Navigation</h3>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center bg-terminal-bg border border-terminal-border rounded p-3">
-              <span>Dashboard</span>
-              <kbd className="bg-terminal-border px-3 py-1 rounded">Cmd+1</kbd>
-            </div>
-            <div className="flex justify-between items-center bg-terminal-bg border border-terminal-border rounded p-3">
-              <span>News</span>
-              <kbd className="bg-terminal-border px-3 py-1 rounded">Cmd+2</kbd>
-            </div>
-            <div className="flex justify-between items-center bg-terminal-bg border border-terminal-border rounded p-3">
-              <span>Settings</span>
-              <kbd className="bg-terminal-border px-3 py-1 rounded">Cmd+3</kbd>
-            </div>
-            <div className="flex justify-between items-center bg-terminal-bg border border-terminal-border rounded p-3">
-              <span>Help (This Menu)</span>
-              <kbd className="bg-terminal-border px-3 py-1 rounded">Cmd+?</kbd>
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Navigation</h3>
+            <div className="space-y-2">
+              {[
+                { key: 'Cmd+1', action: 'Dashboard' },
+                { key: 'Cmd+2', action: 'News' },
+                { key: 'Cmd+3', action: 'Settings' },
+                { key: 'Cmd+?', action: 'Reference Guide (this)' },
+              ].map(({ key, action }) => (
+                <div key={key} className="flex justify-between items-center bg-terminal-bg border border-terminal-border rounded p-3">
+                  <span className="text-gray-300">{action}</span>
+                  <kbd className="bg-terminal-border px-3 py-1 rounded text-sm">{key}</kbd>
+                </div>
+              ))}
             </div>
           </div>
 
-          <h3>AI Recommendations</h3>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center bg-terminal-bg border border-terminal-border rounded p-3">
-              <span>Execute Trade</span>
-              <kbd className="bg-terminal-border px-3 py-1 rounded">E</kbd>
-            </div>
-            <div className="flex justify-between items-center bg-terminal-bg border border-terminal-border rounded p-3">
-              <span>Skip Recommendation</span>
-              <kbd className="bg-terminal-border px-3 py-1 rounded">S</kbd>
-            </div>
-            <div className="flex justify-between items-center bg-terminal-bg border border-terminal-border rounded p-3">
-              <span>Dismiss Modal</span>
-              <kbd className="bg-terminal-border px-3 py-1 rounded">Esc</kbd>
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">AI Recommendations</h3>
+            <div className="space-y-2">
+              {[
+                { key: 'E', action: 'Execute (log trade)' },
+                { key: 'S', action: 'Skip recommendation' },
+                { key: 'Esc', action: 'Close modal' },
+              ].map(({ key, action }) => (
+                <div key={key} className="flex justify-between items-center bg-terminal-bg border border-terminal-border rounded p-3">
+                  <span className="text-gray-300">{action}</span>
+                  <kbd className="bg-terminal-border px-3 py-1 rounded text-sm">{key}</kbd>
+                </div>
+              ))}
             </div>
           </div>
 
-          <h3>View Controls</h3>
-          <div className="space-y-2">
-            <div className="flex justify-between items-center bg-terminal-bg border border-terminal-border rounded p-3">
-              <span>Zoom In</span>
-              <kbd className="bg-terminal-border px-3 py-1 rounded">Cmd++</kbd>
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">View Controls</h3>
+            <div className="space-y-2">
+              {[
+                { key: 'Cmd++', action: 'Zoom in' },
+                { key: 'Cmd+-', action: 'Zoom out' },
+                { key: 'Cmd+0', action: 'Reset zoom' },
+              ].map(({ key, action }) => (
+                <div key={key} className="flex justify-between items-center bg-terminal-bg border border-terminal-border rounded p-3">
+                  <span className="text-gray-300">{action}</span>
+                  <kbd className="bg-terminal-border px-3 py-1 rounded text-sm">{key}</kbd>
+                </div>
+              ))}
             </div>
-            <div className="flex justify-between items-center bg-terminal-bg border border-terminal-border rounded p-3">
-              <span>Zoom Out</span>
-              <kbd className="bg-terminal-border px-3 py-1 rounded">Cmd+-</kbd>
+          </div>
+        </div>
+      )
+
+    case 'troubleshooting':
+      return (
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Troubleshooting</h2>
+            <p className="text-gray-400">Common issues and solutions</p>
+          </div>
+
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white font-semibold mb-3">"No market data" or prices not updating</h3>
+            <div className="space-y-1 text-gray-300">
+              <Step>Check your Alpha Vantage API key in Settings → API Keys</Step>
+              <Step>You may have hit the 25 calls/day limit - wait until midnight EST</Step>
+              <Step>Data is cached for 1 hour - this is normal, not an error</Step>
             </div>
-            <div className="flex justify-between items-center bg-terminal-bg border border-terminal-border rounded p-3">
-              <span>Reset Zoom</span>
-              <kbd className="bg-terminal-border px-3 py-1 rounded">Cmd+0</kbd>
+          </div>
+
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white font-semibold mb-3">"AI not responding" or recommendations missing</h3>
+            <div className="space-y-1 text-gray-300">
+              <Step>Verify your AI API key in Settings → AI Copilot</Step>
+              <Step>Check if you've hit your provider's rate limit</Step>
+              <Step>Try adding a fallback provider</Step>
+              <Step>AI only runs during market hours (9:30 AM - 4:00 PM ET)</Step>
+            </div>
+          </div>
+
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white font-semibold mb-3">Chart shows old data</h3>
+            <div className="space-y-1 text-gray-300">
+              <Step>Chart data is cached for 24 hours to conserve API calls</Step>
+              <Step>Intraday charts only show ~8 hours of history (API limitation)</Step>
+              <Step>Use Settings → Danger Zone → Clear API Cache to force refresh</Step>
+            </div>
+          </div>
+
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white font-semibold mb-3">Settings not saving</h3>
+            <div className="space-y-1 text-gray-300">
+              <Step>Make sure to click Save after making changes</Step>
+              <Step>Check browser console for errors (View → Developer → Console)</Step>
+              <Step>Try Settings → Danger Zone → Reset All Data (last resort)</Step>
+            </div>
+          </div>
+
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white font-semibold mb-3">App feels slow</h3>
+            <div className="space-y-1 text-gray-300">
+              <Step>Reduce watchlist to essential stocks</Step>
+              <Step>Use 15-minute AI interval instead of 5 minutes</Step>
+              <Step>Clear old data: Settings → Danger Zone → Clear AI History</Step>
             </div>
           </div>
         </div>
@@ -338,171 +868,234 @@ function HelpContent({ section }: { section: Section }) {
 
     case 'faq':
       return (
-        <div className="prose prose-invert max-w-none">
-          <h2 className="text-terminal-amber">Frequently Asked Questions</h2>
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Frequently Asked Questions</h2>
+            <p className="text-gray-400">Quick answers to common questions</p>
+          </div>
 
-          <h3>Q: Is RichDad free to use?</h3>
-          <p>Yes! RichDad itself is completely free. You'll need free API keys from Alpha Vantage (market data) and your choice of AI provider.</p>
-
-          <h3>Q: Do AI recommendations cost money?</h3>
-          <p>AI providers charge per API call. Costs vary by provider (OpenAI: ~$0.01 per recommendation, Claude/Gemini: similar). RichDad optimizes calls to minimize costs.</p>
-
-          <h3>Q: How accurate are the AI recommendations?</h3>
-          <p>AI trading assistants provide insights based on data analysis, but they cannot predict the future. View the AI Performance panel to see historical accuracy (batting average). Never invest money you cannot afford to lose.</p>
-
-          <h3>Q: Can I use RichDad for day trading?</h3>
-          <p>With Alpha Vantage free tier, chart data is cached for 24 hours. For serious day trading, you'd need a premium data provider with real-time updates. RichDad is better suited for swing trading and long-term analysis with the free tier.</p>
-
-          <h3>Q: Why does only SPY get 5-minute data?</h3>
-          <p>To stay within the 25 API calls/day limit, RichDad allocates the chart budget to SPY (most actively traded ETF). Other symbols use daily data to conserve API calls.</p>
-
-          <h3>Q: Where is my data stored?</h3>
-          <p>All data is stored locally on your computer using IndexedDB. API keys, trade history, and settings never leave your machine. There is no cloud sync or remote storage.</p>
-
-          <h3>Q: Can I export my trade history?</h3>
-          <p>Yes! Go to Settings → My Profile → Export Trade Decisions. You can export to CSV or TXT format.</p>
+          {[
+            {
+              q: 'Is RichDad free to use?',
+              a: 'Yes! RichDad itself is free. You need free API keys from Alpha Vantage and an AI provider.'
+            },
+            {
+              q: 'Do AI recommendations cost money?',
+              a: 'Depends on your provider. Most charge per API call (~$0.01 per recommendation). Some like Gemini and Groq have generous free tiers.'
+            },
+            {
+              q: 'How accurate are AI recommendations?',
+              a: 'AI provides data-driven insights but cannot predict the future. Check your AI\'s win rate in the Performance panel. Never invest money you can\'t afford to lose.'
+            },
+            {
+              q: 'Can I use RichDad for day trading?',
+              a: 'With the free Alpha Vantage tier (25 calls/day, cached data), it\'s better for swing trading. Premium data subscriptions would be needed for serious day trading.'
+            },
+            {
+              q: 'Why does only SPY get 5-minute data?',
+              a: 'To stay within API limits, RichDad prioritizes SPY (most traded ETF) for intraday data. Other symbols use daily data to conserve calls.'
+            },
+            {
+              q: 'Where is my data stored?',
+              a: 'All data is stored locally on your computer in IndexedDB. Nothing is sent to external servers except API calls to your chosen providers.'
+            },
+            {
+              q: 'Can I export my trade history?',
+              a: 'Yes! Go to Settings → My Profile → Export Trade Decisions. You can export to CSV or TXT.'
+            },
+            {
+              q: 'How do I reset everything?',
+              a: 'Settings → Danger Zone → Reset All Data. This clears all settings, history, and shows onboarding again.'
+            },
+          ].map(({ q, a }, i) => (
+            <div key={i} className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+              <h3 className="text-white font-semibold mb-2">{q}</h3>
+              <p className="text-gray-300">{a}</p>
+            </div>
+          ))}
         </div>
       )
 
     case 'terms':
       return (
-        <div className="prose prose-invert max-w-none">
-          <h2 className="text-terminal-amber">Terms of Service</h2>
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Terms of Service</h2>
+            <p className="text-gray-400">Last updated: {new Date().toLocaleDateString()}</p>
+          </div>
 
-          <p className="text-sm text-gray-400">Last updated: {new Date().toLocaleDateString()}</p>
+          <div className="space-y-6 text-gray-300">
+            <div>
+              <h3 className="text-white font-semibold mb-2">1. Acceptance of Terms</h3>
+              <p>By using RichDad, you agree to these Terms of Service.</p>
+            </div>
 
-          <h3>1. Acceptance of Terms</h3>
-          <p>By using RichDad, you agree to these Terms of Service.</p>
+            <div>
+              <h3 className="text-white font-semibold mb-2">2. No Financial Advice</h3>
+              <p>RichDad and its AI recommendations are for <span className="text-terminal-amber">informational purposes only</span>. This is NOT financial advice. You are solely responsible for your trading decisions.</p>
+            </div>
 
-          <h3>2. No Financial Advice</h3>
-          <p>RichDad and its AI recommendations are for informational purposes only. This is NOT financial advice. You are solely responsible for your trading decisions.</p>
+            <div>
+              <h3 className="text-white font-semibold mb-2">3. No Warranty</h3>
+              <p>RichDad is provided "as is" without warranty of any kind. We do not guarantee accuracy, uptime, or profitability.</p>
+            </div>
 
-          <h3>3. No Warranty</h3>
-          <p>RichDad is provided "as is" without warranty of any kind. We do not guarantee accuracy, uptime, or profitability.</p>
+            <div>
+              <h3 className="text-white font-semibold mb-2">4. Limitation of Liability</h3>
+              <p>The developer (LovelaceX) shall not be liable for any losses incurred from using RichDad.</p>
+            </div>
 
-          <h3>4. Limitation of Liability</h3>
-          <p>The developer (LovelaceX) shall not be liable for any losses incurred from using RichDad.</p>
+            <div>
+              <h3 className="text-white font-semibold mb-2">5. Third-Party Services</h3>
+              <p>RichDad relies on third-party APIs (Alpha Vantage, AI providers). We are not responsible for their availability or accuracy.</p>
+            </div>
 
-          <h3>5. Third-Party Services</h3>
-          <p>RichDad relies on third-party APIs (Alpha Vantage, AI providers). We are not responsible for their availability or accuracy.</p>
-
-          <h3>6. User Conduct</h3>
-          <p>Do not use RichDad for illegal activities or to violate API provider terms of service.</p>
+            <div>
+              <h3 className="text-white font-semibold mb-2">6. User Conduct</h3>
+              <p>Do not use RichDad for illegal activities or to violate API provider terms of service.</p>
+            </div>
+          </div>
         </div>
       )
 
     case 'privacy':
       return (
-        <div className="prose prose-invert max-w-none">
-          <h2 className="text-terminal-amber">Privacy Policy</h2>
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Privacy Policy</h2>
+            <p className="text-gray-400">Last updated: {new Date().toLocaleDateString()}</p>
+          </div>
 
-          <p className="text-sm text-gray-400">Last updated: {new Date().toLocaleDateString()}</p>
+          <div className="space-y-6 text-gray-300">
+            <div>
+              <h3 className="text-white font-semibold mb-2">Data Collection</h3>
+              <p>RichDad does <span className="text-terminal-up font-medium">NOT</span> collect, transmit, or store any personal data on external servers.</p>
+            </div>
 
-          <h3>Data Collection</h3>
-          <p>RichDad does NOT collect, transmit, or store any personal data on external servers.</p>
+            <div>
+              <h3 className="text-white font-semibold mb-2">Local Storage Only</h3>
+              <p className="mb-2">All data is stored locally on your computer:</p>
+              <div className="space-y-1">
+                <Step>API keys (IndexedDB)</Step>
+                <Step>Trade history (IndexedDB)</Step>
+                <Step>Settings and preferences (IndexedDB, localStorage)</Step>
+              </div>
+            </div>
 
-          <h3>Local Storage Only</h3>
-          <p>All data is stored locally on your computer:</p>
-          <ul>
-            <li>API keys (IndexedDB)</li>
-            <li>Trade history (IndexedDB)</li>
-            <li>Settings and preferences (IndexedDB, localStorage)</li>
-          </ul>
+            <div>
+              <h3 className="text-white font-semibold mb-2">Third-Party API Calls</h3>
+              <p className="mb-2">Your computer makes API calls to:</p>
+              <div className="space-y-1">
+                <Step>Alpha Vantage (market data) - subject to their privacy policy</Step>
+                <Step>Your chosen AI provider - subject to their privacy policy</Step>
+                <Step>RSS feeds (news sources) - publicly available data</Step>
+              </div>
+            </div>
 
-          <h3>Third-Party API Calls</h3>
-          <p>When you use RichDad, your computer makes API calls to:</p>
-          <ul>
-            <li>Alpha Vantage (market data) - subject to their privacy policy</li>
-            <li>Your chosen AI provider - subject to their privacy policy</li>
-            <li>RSS feeds (news sources) - publicly available data</li>
-          </ul>
-
-          <h3>No Analytics or Tracking</h3>
-          <p>RichDad does not use analytics, cookies, or tracking pixels.</p>
-
-          <h3>Your Responsibilities</h3>
-          <ul>
-            <li>Keep your API keys secure</li>
-            <li>Do not share API keys with others</li>
-            <li>Review privacy policies of third-party API providers</li>
-          </ul>
+            <div>
+              <h3 className="text-white font-semibold mb-2">No Analytics or Tracking</h3>
+              <p>RichDad does not use analytics, cookies, or tracking pixels.</p>
+            </div>
+          </div>
         </div>
       )
 
     case 'security':
       return (
-        <div className="prose prose-invert max-w-none">
-          <h2 className="text-terminal-amber">Security</h2>
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Security</h2>
+            <p className="text-gray-400">How RichDad protects your data</p>
+          </div>
 
-          <h3>API Key Storage</h3>
-          <p>API keys are stored locally in IndexedDB on your computer. They are never transmitted to RichDad servers (because there are no RichDad servers).</p>
+          <div className="space-y-6 text-gray-300">
+            <div>
+              <h3 className="text-white font-semibold mb-2">API Key Storage</h3>
+              <p>API keys are stored locally in IndexedDB on your computer. They are never transmitted to RichDad servers (there are no RichDad servers).</p>
+            </div>
 
-          <h3>Best Practices</h3>
-          <ul>
-            <li>Use read-only API keys when possible</li>
-            <li>Never share your API keys</li>
-            <li>Rotate keys periodically</li>
-            <li>Set spending limits on AI provider accounts</li>
-          </ul>
+            <div>
+              <h3 className="text-white font-semibold mb-2">Best Practices</h3>
+              <div className="space-y-1">
+                <Step>Use read-only API keys when possible</Step>
+                <Step>Never share your API keys</Step>
+                <Step>Rotate keys periodically</Step>
+                <Step>Set spending limits on AI provider accounts</Step>
+              </div>
+            </div>
 
-          <h3>Open Source</h3>
-          <p>RichDad is open-source software. You can review the code to verify security practices.</p>
-
-          <h3>Tauri Security</h3>
-          <p>RichDad is built with Tauri, a security-focused framework that:</p>
-          <ul>
-            <li>Runs with minimal system permissions</li>
-            <li>Sandboxes web content</li>
-            <li>Uses Content Security Policy (CSP)</li>
-          </ul>
+            <div>
+              <h3 className="text-white font-semibold mb-2">Tauri Security</h3>
+              <p className="mb-2">RichDad is built with Tauri, a security-focused framework that:</p>
+              <div className="space-y-1">
+                <Step>Runs with minimal system permissions</Step>
+                <Step>Sandboxes web content</Step>
+                <Step>Uses Content Security Policy (CSP)</Step>
+              </div>
+            </div>
+          </div>
         </div>
       )
 
     case 'about':
       return (
-        <div className="prose prose-invert max-w-none">
-          <h2 className="text-terminal-amber">About RichDad</h2>
-
-          <div className="bg-terminal-bg border border-terminal-border rounded p-6 my-6 text-center">
-            <h3 className="text-terminal-amber text-2xl mb-2">RichDad v2.3.0</h3>
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">About RichDad</h2>
             <p className="text-gray-400">AI-Powered Trading Terminal</p>
           </div>
 
-          <h3>Developer</h3>
-          <p><strong>LovelaceX</strong></p>
-          <p>Building tools for traders at the intersection of AI and finance.</p>
+          <div className="bg-terminal-bg border border-terminal-amber/30 rounded-lg p-6 text-center">
+            <h3 className="text-terminal-amber text-3xl font-bold mb-2">RichDad v2.4.4</h3>
+            <p className="text-gray-400">Bloomberg-style trading terminal with AI analysis</p>
+          </div>
 
-          <h3>Contact</h3>
-          <div className="bg-terminal-bg border border-terminal-border rounded p-4 flex items-center gap-3">
-            <Mail size={20} className="text-terminal-amber" />
-            <div>
-              <p className="font-semibold">Support Email</p>
-              <a href="mailto:support@lovelacex.com" className="text-terminal-amber hover:underline">
-                support@lovelacex.com
-              </a>
+          <div>
+            <h3 className="text-white font-semibold mb-3">Developer</h3>
+            <p className="text-gray-300"><span className="text-terminal-amber font-medium">LovelaceX</span></p>
+            <p className="text-gray-400 text-sm">Building tools for traders at the intersection of AI and finance.</p>
+          </div>
+
+          <div>
+            <h3 className="text-white font-semibold mb-3">Contact</h3>
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4 flex items-center gap-3">
+              <Mail size={20} className="text-terminal-amber" />
+              <div>
+                <p className="text-gray-400 text-sm">Support Email</p>
+                <a href="mailto:support@lovelacex.com" className="text-terminal-amber hover:underline">
+                  support@lovelacex.com
+                </a>
+              </div>
             </div>
           </div>
 
-          <h3>Technology Stack</h3>
-          <ul>
-            <li><strong>Framework:</strong> Tauri 2.x (Rust + React)</li>
-            <li><strong>Frontend:</strong> React 18 + TypeScript</li>
-            <li><strong>State:</strong> Zustand</li>
-            <li><strong>Database:</strong> IndexedDB (Dexie.js)</li>
-            <li><strong>Charts:</strong> Lightweight Charts</li>
-            <li><strong>AI:</strong> Multi-provider support</li>
-          </ul>
+          <div>
+            <h3 className="text-white font-semibold mb-3">Technology Stack</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: 'Framework', value: 'Tauri 2.x (Rust + React)' },
+                { label: 'Frontend', value: 'React 18 + TypeScript' },
+                { label: 'State', value: 'Zustand' },
+                { label: 'Database', value: 'IndexedDB (Dexie.js)' },
+                { label: 'Charts', value: 'Lightweight Charts' },
+                { label: 'AI', value: 'Multi-provider support' },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex gap-2">
+                  <span className="text-terminal-amber">{label}:</span>
+                  <span className="text-gray-300">{value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
 
-          <h3>License</h3>
-          <p>RichDad is proprietary software developed by LovelaceX.</p>
-
-          <h3>Acknowledgments</h3>
-          <p>Special thanks to:</p>
-          <ul>
-            <li>Alpha Vantage for market data API</li>
-            <li>TradingView for Lightweight Charts library</li>
-            <li>All open-source contributors</li>
-          </ul>
+          <div>
+            <h3 className="text-white font-semibold mb-3">Acknowledgments</h3>
+            <div className="space-y-1">
+              <Step>Alpha Vantage for market data API</Step>
+              <Step>TradingView for Lightweight Charts library</Step>
+              <Step>All open-source contributors</Step>
+            </div>
+          </div>
         </div>
       )
 

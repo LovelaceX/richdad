@@ -1,12 +1,14 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { type ThemeId, applyTheme, getSavedTheme } from '../lib/themes'
 
 interface SettingsState {
   cvdMode: boolean
   showVolume: boolean
   refreshInterval: number
   zoomLevel: number
-  tickerSpeed: 'slow' | 'normal' | 'fast'
+  tickerSpeed: number  // Duration in seconds (60-600)
+  theme: ThemeId
   panelSizes: {
     leftPanel: number    // percentage (default 20)
     rightPanel: number   // percentage (default 25)
@@ -18,7 +20,8 @@ interface SettingsState {
   toggleVolume: () => void
   setRefreshInterval: (interval: number) => void
   setZoomLevel: (level: number) => void
-  setTickerSpeed: (speed: 'slow' | 'normal' | 'fast') => void
+  setTickerSpeed: (speed: number) => void
+  setTheme: (theme: ThemeId) => void
   zoomIn: () => void
   zoomOut: () => void
   resetZoom: () => void
@@ -33,11 +36,17 @@ export const useSettingsStore = create<SettingsState>()(
       showVolume: true,
       refreshInterval: 5000,
       zoomLevel: 100,
-      tickerSpeed: 'normal',
+      tickerSpeed: 180,  // Default 3 minutes
+      theme: getSavedTheme(),
       panelSizes: {
         leftPanel: 20,
         rightPanel: 25,
         bottomPanel: 5,
+      },
+
+      setTheme: (theme: ThemeId) => {
+        applyTheme(theme)
+        set({ theme })
       },
 
       toggleCvdMode: () => {

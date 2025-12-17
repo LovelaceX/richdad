@@ -1,4 +1,4 @@
-import { getAISettings, AI_PROVIDERS } from './db'
+import { getEnabledProviders, AI_PROVIDERS, type AIProviderConfig, type AIProvider } from './db'
 import type { AIMessage } from '../types'
 
 const SYSTEM_PROMPT = `You are an AI trading co-pilot for richdad.app - a Bloomberg Terminal-style desktop application. You help traders make informed decisions by providing market analysis, explaining trading concepts, and offering insights based on current market conditions.
@@ -16,18 +16,18 @@ interface ChatMessage {
   content: string
 }
 
+/**
+ * Send a chat message with automatic fallback to secondary providers
+ */
 export async function sendChatMessage(
   userMessage: string,
   history: AIMessage[]
 ): Promise<string> {
-  const settings = await getAISettings()
+  const enabledProviders = await getEnabledProviders()
 
-  if (!settings.apiKey) {
-    throw new Error('No API key configured. Please add your API key in Settings.')
+  if (enabledProviders.length === 0) {
+    throw new Error('No AI providers configured. Please add your API key in Settings.')
   }
-
-  const provider = settings.provider
-  const model = settings.model || AI_PROVIDERS[provider].models[0]
 
   // Convert history to chat format
   const chatHistory: ChatMessage[] = history
@@ -37,22 +37,61 @@ export async function sendChatMessage(
       content: m.content
     }))
 
-  switch (provider) {
-    case 'openai':
-      return sendOpenAI(settings.apiKey, model, userMessage, chatHistory)
-    case 'claude':
-      return sendClaude(settings.apiKey, model, userMessage, chatHistory)
-    case 'gemini':
-      return sendGemini(settings.apiKey, model, userMessage, chatHistory)
-    case 'grok':
-      return sendGrok(settings.apiKey, model, userMessage, chatHistory)
-    case 'deepseek':
-      return sendDeepSeek(settings.apiKey, model, userMessage, chatHistory)
-    case 'llama':
-      return sendLlama(settings.apiKey, model, userMessage, chatHistory)
-    default:
-      throw new Error(`Unknown provider: ${provider}`)
+  // Try each provider in priority order
+  const errors: string[] = []
+
+  for (const providerConfig of enabledProviders) {
+    try {
+      console.log(`[AI] Trying ${providerConfig.provider} (priority ${providerConfig.priority})...`)
+      const response = await callProvider(providerConfig, userMessage, chatHistory)
+      console.log(`[AI] ${providerConfig.provider} succeeded`)
+      return response
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      console.warn(`[AI] ${providerConfig.provider} failed: ${errorMessage}`)
+      errors.push(`${AI_PROVIDERS[providerConfig.provider].name}: ${errorMessage}`)
+      // Continue to next provider
+    }
   }
+
+  // All providers failed
+  throw new Error(`All AI providers failed:\n${errors.join('\n')}`)
+}
+
+/**
+ * Call a specific provider
+ */
+async function callProvider(
+  config: AIProviderConfig,
+  message: string,
+  history: ChatMessage[]
+): Promise<string> {
+  const model = config.model || AI_PROVIDERS[config.provider].models[0]
+
+  switch (config.provider) {
+    case 'openai':
+      return sendOpenAI(config.apiKey, model, message, history)
+    case 'claude':
+      return sendClaude(config.apiKey, model, message, history)
+    case 'gemini':
+      return sendGemini(config.apiKey, model, message, history)
+    case 'grok':
+      return sendGrok(config.apiKey, model, message, history)
+    case 'deepseek':
+      return sendDeepSeek(config.apiKey, model, message, history)
+    case 'llama':
+      return sendLlama(config.apiKey, model, message, history)
+    default:
+      throw new Error(`Unknown provider: ${config.provider}`)
+  }
+}
+
+/**
+ * Get which provider is currently configured as primary
+ */
+export async function getPrimaryProvider(): Promise<AIProvider | null> {
+  const providers = await getEnabledProviders()
+  return providers.length > 0 ? providers[0].provider : null
 }
 
 async function sendOpenAI(

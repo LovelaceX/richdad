@@ -118,15 +118,28 @@ export type AIProvider = 'openai' | 'claude' | 'gemini' | 'grok' | 'deepseek' | 
 
 export type RecommendationFormat = 'standard' | 'concise' | 'detailed'
 
-export interface AISettings {
-  id?: number
+// Individual provider configuration for multi-provider support
+export interface AIProviderConfig {
   provider: AIProvider
   apiKey: string
   model?: string
+  enabled: boolean
+  priority: number  // 1 = primary, 2 = first fallback, etc.
+}
+
+export interface AISettings {
+  id?: number
+  // Legacy single-provider fields (kept for backward compatibility)
+  provider: AIProvider
+  apiKey: string
+  model?: string
+  // Multi-provider support
+  providers?: AIProviderConfig[]  // Array of configured providers with priority
+  // Other settings
   recommendationFormat?: RecommendationFormat
   recommendationInterval?: 5 | 10 | 15  // minutes, default: 15
   confidenceThreshold?: number  // 0-100, default: 70
-  aiDailyCallLimit?: number  // 5-50, default: 15 (free tier protection)
+  aiDailyCallLimit?: number  // 5-100, default: 15 (free tier protection)
 }
 
 export const AI_PROVIDERS = {
@@ -580,4 +593,93 @@ export async function updateAISettings(updates: Partial<AISettings>): Promise<vo
   } else {
     await db.aiSettings.add({ ...DEFAULT_AI_SETTINGS, ...updates })
   }
+}
+
+/**
+ * Get enabled AI providers sorted by priority (primary first)
+ * Falls back to legacy single-provider config if no multi-provider setup
+ */
+export async function getEnabledProviders(): Promise<AIProviderConfig[]> {
+  const settings = await getAISettings()
+
+  // If we have multi-provider config, use it
+  if (settings.providers && settings.providers.length > 0) {
+    return settings.providers
+      .filter(p => p.enabled && p.apiKey)
+      .sort((a, b) => a.priority - b.priority)
+  }
+
+  // Fall back to legacy single-provider config
+  if (settings.apiKey) {
+    return [{
+      provider: settings.provider,
+      apiKey: settings.apiKey,
+      model: settings.model,
+      enabled: true,
+      priority: 1
+    }]
+  }
+
+  return []
+}
+
+// ==========================================
+// DATA MANAGEMENT / RESET FUNCTIONS
+// ==========================================
+
+/**
+ * Clear API budget caches (localStorage)
+ * Resets Alpha Vantage and AI budget counters
+ */
+export function clearAPICache(): void {
+  localStorage.removeItem('richdad_api_budget')
+  localStorage.removeItem('richdad_ai_budget')
+  console.log('[DB] API cache cleared (budget counters reset)')
+}
+
+/**
+ * Clear AI history (chat messages, trade decisions)
+ * Keeps settings and profile intact
+ */
+export async function clearAIHistory(): Promise<void> {
+  await db.tradeDecisions.clear()
+  console.log('[DB] AI history cleared (trade decisions)')
+}
+
+/**
+ * Clear all PnL data
+ */
+export async function clearPnLHistory(): Promise<void> {
+  await db.pnlEntries.clear()
+  console.log('[DB] PnL history cleared')
+}
+
+/**
+ * Clear all price alerts
+ */
+export async function clearPriceAlerts(): Promise<void> {
+  await db.priceAlerts.clear()
+  console.log('[DB] Price alerts cleared')
+}
+
+/**
+ * Factory reset - deletes all data and reloads
+ * WARNING: This deletes everything!
+ */
+export async function factoryReset(): Promise<void> {
+  console.log('[DB] Starting factory reset...')
+
+  // Clear IndexedDB
+  await db.delete()
+
+  // Clear all localStorage
+  localStorage.clear()
+
+  // Clear sessionStorage
+  sessionStorage.clear()
+
+  console.log('[DB] Factory reset complete. Reloading...')
+
+  // Reload the app to start fresh
+  window.location.reload()
 }

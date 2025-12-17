@@ -19,6 +19,7 @@ export function TradingChart() {
         background: { type: ColorType.Solid, color: '#000000' },
         textColor: '#888888',
         fontFamily: 'JetBrains Mono',
+        attributionLogo: false,  // Hide TradingView logo
       },
       grid: {
         vertLines: { color: '#1a1a1a' },

@@ -6,9 +6,12 @@ import { useSettingsStore } from './stores/settingsStore'
 import { useDataHeartbeat } from './hooks/useDataHeartbeat'
 import { initializeDatabase, getSettings } from './lib/db'
 import { OnboardingWizard } from './components/Onboarding/OnboardingWizard'
+import { FloatingHelp } from './components/Help/FloatingHelp'
+import { applyTheme } from './lib/themes'
 
 export default function App() {
   const cvdMode = useSettingsStore(state => state.cvdMode)
+  const theme = useSettingsStore(state => state.theme)
   const currentPage = useNavigationStore(state => state.currentPage)
   const zoomLevel = useSettingsStore(state => state.zoomLevel)
   const zoomScale = zoomLevel / 100
@@ -43,6 +46,11 @@ export default function App() {
       document.body.classList.add('cvd-mode')
     }
   }, [cvdMode])
+
+  // Apply theme on mount and when changed
+  useEffect(() => {
+    applyTheme(theme)
+  }, [theme])
 
   // Global keyboard shortcuts for zoom
   useEffect(() => {
@@ -101,6 +109,9 @@ export default function App() {
         isOpen={showWizard}
         onClose={() => setShowWizard(false)}
       />
+
+      {/* Floating Help Button */}
+      <FloatingHelp />
     </>
   )
 }

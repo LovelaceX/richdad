@@ -10,21 +10,22 @@ export function NewsTicker() {
   const tickerSpeed = useSettingsStore(state => state.tickerSpeed)
   const [isPaused, setIsPaused] = useState(false)
 
-  // Map speed to animation duration (slower = more readable)
-  const speedToDuration = {
-    slow: '300s',     // 5 minutes - very readable
-    normal: '180s',   // 3 minutes - comfortable pace
-    fast: '90s'       // 1.5 minutes - still readable
-  }
-
-  const animationDuration = speedToDuration[tickerSpeed]
+  // Use tickerSpeed directly as seconds (60-600 range)
+  const animationDuration = `${tickerSpeed}s`
 
   // Show loading state if no headlines and still loading
   if (headlines.length === 0 && loading) {
     return (
-      <div className="panel h-full flex flex-col items-center justify-center">
-        <Loader2 className="w-6 h-6 text-terminal-amber animate-spin mb-2" />
-        <p className="text-sm text-gray-400">Fetching news...</p>
+      <div className="panel h-full flex items-center overflow-hidden">
+        <div className="flex items-center gap-2 px-3 flex-shrink-0">
+          <Newspaper size={14} className="text-terminal-amber" />
+          <span className="text-[11px] font-semibold tracking-wider text-white uppercase">News Feed</span>
+          <span className="text-terminal-border text-lg font-light">|</span>
+        </div>
+        <div className="flex items-center gap-2 text-gray-400">
+          <Loader2 size={14} className="animate-spin" />
+          <span className="text-xs">Fetching news...</span>
+        </div>
       </div>
     )
   }
@@ -32,10 +33,13 @@ export function NewsTicker() {
   // Show empty state if no headlines after loading
   if (headlines.length === 0) {
     return (
-      <div className="panel h-full flex flex-col items-center justify-center">
-        <Newspaper className="w-6 h-6 text-gray-500 mb-2" />
-        <p className="text-sm text-gray-400">No news available</p>
-        <p className="text-xs text-gray-500 mt-1">News updates every 5 minutes</p>
+      <div className="panel h-full flex items-center overflow-hidden">
+        <div className="flex items-center gap-2 px-3 flex-shrink-0">
+          <Newspaper size={14} className="text-terminal-amber" />
+          <span className="text-[11px] font-semibold tracking-wider text-white uppercase">News Feed</span>
+          <span className="text-terminal-border text-lg font-light">|</span>
+        </div>
+        <span className="text-xs text-gray-500">No news available</span>
       </div>
     )
   }
@@ -44,19 +48,24 @@ export function NewsTicker() {
   const duplicatedHeadlines = [...headlines, ...headlines]
 
   return (
-    <div className="panel h-full flex flex-col overflow-hidden">
-      <div className="panel-header flex items-center gap-2 flex-shrink-0">
-        <Newspaper size={14} />
-        <span>News Feed</span>
-        <div className="flex-1" />
-        <span className="text-[10px] text-gray-500 font-normal normal-case">
-          Live
-        </span>
+    <div className="panel h-full flex items-center overflow-hidden">
+      {/* Fixed label section */}
+      <div className="flex items-center gap-2 px-3 flex-shrink-0 z-10 bg-terminal-panel">
+        <Newspaper size={14} className="text-terminal-amber" />
+        <span className="text-[11px] font-semibold tracking-wider text-white uppercase">News Feed</span>
         <span className="w-1.5 h-1.5 bg-semantic-up rounded-full animate-pulse" />
+        <span className="text-terminal-border text-lg font-light">|</span>
       </div>
 
-      <div className="flex-1 overflow-hidden relative">
-        <div className="absolute inset-0 flex items-center">
+      {/* Scrolling headlines with left fade effect */}
+      <div
+        className="flex-1 overflow-hidden relative"
+        style={{
+          maskImage: 'linear-gradient(to right, transparent 0%, black 20px, black 100%)',
+          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 20px, black 100%)'
+        }}
+      >
+        <div className="flex items-center h-full">
           <div
             className={`flex gap-8 whitespace-nowrap ${isPaused ? '' : 'animate-ticker-scroll'}`}
             style={{ animationDuration: isPaused ? undefined : animationDuration }}

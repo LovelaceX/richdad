@@ -8,6 +8,7 @@ interface MarketState {
   chartData: CandleData[]
   cacheStatus: { age: number; isFresh: boolean } | null
   timeframe: 'daily' | '1min' | '5min' | '15min' | '30min' | '60min'  // Chart timeframe
+  selectedDate: string  // ISO date string (YYYY-MM-DD)
 
   // Actions
   setSelectedTicker: (symbol: string) => void
@@ -16,6 +17,7 @@ interface MarketState {
   setCacheStatus: (status: { age: number; isFresh: boolean }) => void
   refreshAllQuotes: () => void
   setTimeframe: (timeframe: 'daily' | '1min' | '5min' | '15min' | '30min' | '60min') => void
+  setSelectedDate: (date: string) => void
   loadChartData: (symbol?: string, interval?: 'daily' | '1min' | '5min' | '15min' | '30min' | '60min') => Promise<void>
   addToWatchlist: (symbol: string, name?: string) => void
   removeFromWatchlist: (symbol: string) => void
@@ -34,6 +36,19 @@ export const useMarketStore = create<MarketState>((set, get) => ({
   cacheStatus: null,
 
   timeframe: '5min',  // Default to 5min for SPY
+
+  selectedDate: new Date().toISOString().split('T')[0],  // Today's date
+
+  setSelectedDate: (date: string) => {
+    set({ selectedDate: date })
+    // Reload chart with new date (for daily timeframe)
+    const { selectedTicker, timeframe } = get()
+    if (timeframe === 'daily') {
+      get().loadChartData(selectedTicker, timeframe).catch(err => {
+        console.error('[Market Store] Chart load error:', err)
+      })
+    }
+  },
 
   setSelectedTicker: (symbol: string) => {
     // When changing ticker, set appropriate default timeframe

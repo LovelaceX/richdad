@@ -3,10 +3,11 @@ import { fetchNews } from './newsService'
 import { analyzeSentiment, initializeSentimentAnalysis } from './sentimentService'
 import { generateRecommendation, isMarketOpen } from './aiRecommendationEngine'
 import { outcomeTracker } from './outcomeTracker'
+import { db } from '../renderer/lib/db'
 import type { Quote, NewsItem } from '../renderer/types'
 
 export type DataUpdateCallback = (data: {
-  type: 'market' | 'news' | 'sentiment' | 'ai_recommendation'
+  type: 'market' | 'news' | 'sentiment' | 'ai_recommendation' | 'alert_triggered'
   payload: any
 }) => void
 
@@ -19,6 +20,7 @@ class DataHeartbeatService {
   private isRunning = false
   private cachedNews: NewsItem[] = []
   private newsSourceMetadata: { source: string; hasSentiment: boolean } | null = null
+  private lastPrices: Map<string, number> = new Map() // For percentage-based alerts
 
   // Intervals (configurable)
   private MARKET_UPDATE_INTERVAL = 60000 // 1 minute (but respects 1-hour cache)
@@ -127,11 +129,98 @@ class DataHeartbeatService {
         }
       })
 
+      // Check price alerts after market update
+      await this.checkPriceAlerts(quotes)
+
       return quotes
 
     } catch (error) {
       console.error('[Heartbeat] Market update failed:', error)
       return []
+    }
+  }
+
+  /**
+   * Check price alerts against current quotes
+   */
+  private async checkPriceAlerts(quotes: Quote[]): Promise<void> {
+    try {
+      // Get all active (non-triggered) alerts
+      const alerts = await db.priceAlerts.filter(a => !a.triggered).toArray()
+
+      if (alerts.length === 0) return
+
+      // Create price map from quotes
+      const priceMap = new Map<string, number>()
+      quotes.forEach(q => {
+        if (q.price) {
+          priceMap.set(q.symbol, q.price)
+        }
+      })
+
+      // Check each alert
+      for (const alert of alerts) {
+        const currentPrice = priceMap.get(alert.symbol)
+        if (!currentPrice) continue
+
+        let shouldTrigger = false
+
+        switch (alert.condition) {
+          case 'above':
+            shouldTrigger = currentPrice > alert.value
+            break
+          case 'below':
+            shouldTrigger = currentPrice < alert.value
+            break
+          case 'percent_up': {
+            const lastPrice = this.lastPrices.get(alert.symbol)
+            if (lastPrice) {
+              const percentChange = ((currentPrice - lastPrice) / lastPrice) * 100
+              shouldTrigger = percentChange >= alert.value
+            }
+            break
+          }
+          case 'percent_down': {
+            const lastPrice = this.lastPrices.get(alert.symbol)
+            if (lastPrice) {
+              const percentChange = ((lastPrice - currentPrice) / lastPrice) * 100
+              shouldTrigger = percentChange >= alert.value
+            }
+            break
+          }
+        }
+
+        if (shouldTrigger && alert.id) {
+          // Mark as triggered in database
+          await db.priceAlerts.update(alert.id, {
+            triggered: true,
+            triggeredAt: Date.now()
+          })
+
+          console.log(`[Heartbeat] Price alert triggered: ${alert.symbol} ${alert.condition} ${alert.value}`)
+
+          // Notify UI
+          this.notifyCallbacks({
+            type: 'alert_triggered',
+            payload: {
+              ...alert,
+              triggered: true,
+              triggeredAt: Date.now(),
+              currentPrice
+            }
+          })
+        }
+      }
+
+      // Update last prices for percentage calculations
+      quotes.forEach(q => {
+        if (q.price) {
+          this.lastPrices.set(q.symbol, q.price)
+        }
+      })
+
+    } catch (error) {
+      console.error('[Heartbeat] Price alert check failed:', error)
     }
   }
 

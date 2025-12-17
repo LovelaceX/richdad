@@ -97,3 +97,48 @@ body.cvd-mode .badge-buy {
 body.cvd-mode .badge-sell {
   @apply bg-semantic-down-cvd;
 }
+
+/* Light theme (Clearview) overrides */
+body.theme-clearview {
+  color: #1F2937;
+}
+
+body.theme-clearview .text-white {
+  color: #1F2937;
+}
+
+body.theme-clearview .text-gray-300 {
+  color: #4B5563;
+}
+
+body.theme-clearview .text-gray-400 {
+  color: #6B7280;
+}
+
+body.theme-clearview .text-gray-500 {
+  color: #9CA3AF;
+}
+
+body.theme-clearview .text-gray-600 {
+  color: #6B7280;
+}
+
+body.theme-clearview ::-webkit-scrollbar-track {
+  background: #F5F5F5;
+}
+
+body.theme-clearview ::-webkit-scrollbar-thumb {
+  background: #CCCCCC;
+}
+
+body.theme-clearview ::-webkit-scrollbar-thumb:hover {
+  background: #AAAAAA;
+}
+
+body.theme-clearview .badge-buy {
+  color: #ffffff;
+}
+
+body.theme-clearview .badge-hold {
+  color: #000000;
+}

@@ -1,6 +1,7 @@
 import { LayoutDashboard, Newspaper, Settings } from 'lucide-react'
 import { useNavigationStore } from '../../stores/navigationStore'
 import type { PageId } from '../../types'
+import { NotificationBell } from './NotificationBell'
 
 interface NavItemProps {
   id: PageId
@@ -65,6 +66,12 @@ export function NavBar() {
         label="Settings"
         shortcut="⌘3"
       />
+
+      {/* Divider */}
+      <div className="w-px h-4 bg-terminal-border mx-1" />
+
+      {/* Notification Bell */}
+      <NotificationBell />
     </div>
   )
 }

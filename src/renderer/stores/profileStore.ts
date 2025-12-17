@@ -33,9 +33,9 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
   updateProfile: async (updates) => {
     try {
       await dbUpdateProfile(updates)
-      set(state => ({
-        profile: { ...state.profile, ...updates }
-      }))
+      // Force re-fetch to ensure UI updates (especially for avatar)
+      const freshProfile = await getProfile()
+      set({ profile: freshProfile })
     } catch (err) {
       console.error('Failed to update profile:', err)
     }

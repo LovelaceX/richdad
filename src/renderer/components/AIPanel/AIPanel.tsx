@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Bot, Loader2 } from 'lucide-react'
+import { Bot, Loader2, Trash2 } from 'lucide-react'
 import { ActivityLog } from './ActivityLog'
 import { ChatInput } from './ChatInput'
 import { useAIStore } from '../../stores/aiStore'
@@ -8,6 +8,7 @@ import { useMarketStore } from '../../stores/marketStore'
 export function AIPanel() {
   const isAnalyzing = useAIStore(state => state.isAnalyzing)
   const messages = useAIStore(state => state.messages)
+  const clearMessages = useAIStore(state => state.clearMessages)
   const selectedTicker = useMarketStore(state => state.selectedTicker)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -15,6 +16,12 @@ export function AIPanel() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  const handleClear = () => {
+    if (messages.length > 0 && confirm('Clear all chat messages?')) {
+      clearMessages()
+    }
+  }
 
   return (
     <div className="panel h-full flex flex-col">
@@ -25,7 +32,7 @@ export function AIPanel() {
           <span>AI Co-Pilot</span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {selectedTicker && (
             <span className="text-terminal-amber text-[10px] font-mono">
               Analyzing: {selectedTicker}
@@ -37,6 +44,17 @@ export function AIPanel() {
               <Loader2 size={12} className="animate-spin" />
               <span className="text-[10px] font-normal normal-case">...</span>
             </div>
+          )}
+
+          {/* Clear All Button */}
+          {messages.length > 0 && (
+            <button
+              onClick={handleClear}
+              className="p-1 hover:bg-terminal-border rounded transition-colors"
+              title="Clear chat history"
+            >
+              <Trash2 size={12} className="text-gray-500 hover:text-red-400" />
+            </button>
           )}
         </div>
       </div>

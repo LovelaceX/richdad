@@ -27,12 +27,14 @@ import {
   X
 } from 'lucide-react'
 import { useSettingsStore } from '../stores/settingsStore'
+import { THEMES, type ThemeId } from '../lib/themes'
 import { useProTraderStore } from '../stores/proTraderStore'
 import { useAlertStore } from '../stores/alertStore'
 import { OnboardingWizard } from '../components/Onboarding/OnboardingWizard'
 import { AIPerformanceDetail } from '../components/AI/AIPerformanceDetail'
 import { APIBudgetMeter } from '../components/Settings/APIBudgetMeter'
 import { AIBudgetMeter } from '../components/Settings/AIBudgetMeter'
+import { MultiProviderManager } from '../components/Settings/MultiProviderManager'
 import {
   getSettings,
   updateSettings,
@@ -41,10 +43,14 @@ import {
   getProfile,
   updateProfile,
   getTradeDecisions,
-  AI_PROVIDERS,
+  clearAPICache,
+  clearAIHistory,
+  clearPnLHistory,
+  clearPriceAlerts,
+  factoryReset,
   type UserSettings,
   type AISettings,
-  type AIProvider,
+  type AIProviderConfig,
   type UserProfile,
   type TradeDecision,
   type RecommendationFormat
@@ -53,7 +59,7 @@ import { exportDecisions } from '../lib/export'
 import { previewSound, SOUND_DISPLAY_NAMES } from '../lib/sounds'
 import type { ToneType } from '../types'
 
-type SettingsSection = 'risk' | 'ai-copilot' | 'data-sources' | 'sounds' | 'style' | 'traders' | 'alerts' | 'display'
+type SettingsSection = 'risk' | 'ai-copilot' | 'data-sources' | 'sounds' | 'style' | 'traders' | 'alerts' | 'display' | 'danger'
 
 const TONE_DESCRIPTIONS: Record<ToneType, { label: string; example: string }> = {
   conservative: {
@@ -108,6 +114,8 @@ export function Settings() {
   const setZoomLevel = useSettingsStore(state => state.setZoomLevel)
   const tickerSpeed = useSettingsStore(state => state.tickerSpeed)
   const setTickerSpeed = useSettingsStore(state => state.setTickerSpeed)
+  const theme = useSettingsStore(state => state.theme)
+  const setTheme = useSettingsStore(state => state.setTheme)
 
   // Pro Traders state
   const { traders, loadTraders, addTrader, removeTrader, toggleTrader } = useProTraderStore()
@@ -141,6 +149,10 @@ export function Settings() {
 
   // Save feedback state
   const [showSavedMessage, setShowSavedMessage] = useState(false)
+
+  // Danger Zone state
+  const [showResetConfirm, setShowResetConfirm] = useState<'cache' | 'ai' | 'pnl' | 'alerts' | 'factory' | null>(null)
+  const [isResetting, setIsResetting] = useState(false)
 
   useEffect(() => {
     getSettings().then(setSettings)
@@ -410,6 +422,7 @@ export function Settings() {
     { id: 'sounds' as const, label: 'Notifications', icon: Volume2 },
     { id: 'traders' as const, label: 'RSS Feeds', icon: Rss },
     { id: 'alerts' as const, label: 'Price Alerts', icon: Bell },
+    { id: 'danger' as const, label: 'Reset & Data', icon: Trash2 },
   ]
 
   if (!settings || !aiSettings) {
@@ -544,89 +557,55 @@ export function Settings() {
           {activeSection === 'ai-copilot' && (
             <div>
               <h2 className="text-white text-lg font-medium mb-1">AI Copilot</h2>
-              <p className="text-gray-500 text-sm mb-6">Configure your AI provider, model, and communication style</p>
+              <p className="text-gray-500 text-sm mb-6">Configure your AI providers with automatic fallback</p>
 
               <div className="space-y-8">
-                {/* Provider Selection */}
-                <div>
-                  <h3 className="text-white text-sm font-medium mb-3">AI Provider</h3>
-                  <p className="text-gray-400 text-xs mb-4">
-                    Choose your AI provider. Bring Your Own Key (BYOK) - your API key stays on your device.
-                  </p>
-                  <select
-                    value={aiSettings.provider}
-                    onChange={(e) => saveAISettings({ provider: e.target.value as AIProvider, model: AI_PROVIDERS[e.target.value as AIProvider].models[0] })}
-                    className="w-full bg-terminal-bg border border-terminal-border rounded-lg px-4 py-3 text-white text-sm hover:border-terminal-amber/50 transition-colors focus:outline-none focus:border-terminal-amber cursor-pointer"
-                  >
-                    {(Object.keys(AI_PROVIDERS) as AIProvider[]).map(provider => (
-                      <option key={provider} value={provider}>
-                        {AI_PROVIDERS[provider].name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {/* Multi-Provider Manager */}
+                <MultiProviderManager
+                  providers={aiSettings.providers || (aiSettings.apiKey ? [{
+                    provider: aiSettings.provider,
+                    apiKey: aiSettings.apiKey,
+                    model: aiSettings.model,
+                    enabled: true,
+                    priority: 1
+                  }] : [])}
+                  onChange={(providers: AIProviderConfig[]) => {
+                    // Update both legacy and new format for compatibility
+                    const primary = providers.find(p => p.priority === 1 && p.enabled)
+                    saveAISettings({
+                      providers,
+                      // Keep legacy fields in sync with primary provider
+                      provider: primary?.provider || aiSettings.provider,
+                      apiKey: primary?.apiKey || '',
+                      model: primary?.model
+                    })
+                  }}
+                />
 
                 <div className="border-t border-terminal-border" />
 
-                {/* Model & API Key Configuration */}
+                {/* Recommendation Format */}
                 <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Cpu className="w-4 h-4 text-terminal-amber" />
-                    <span className="text-white text-sm font-medium">{AI_PROVIDERS[aiSettings.provider].name} Setup</span>
+                    <span className="text-white text-sm font-medium">AI Output Settings</span>
                   </div>
 
-                  <p className="text-gray-400 text-xs mb-4">
-                    {AI_PROVIDERS[aiSettings.provider].instructions}
-                  </p>
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-gray-400 text-xs mb-1 block">Model</label>
-                      <select
-                        value={aiSettings.model || AI_PROVIDERS[aiSettings.provider].models[0]}
-                        onChange={(e) => saveAISettings({ model: e.target.value })}
-                        className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white"
-                      >
-                        {AI_PROVIDERS[aiSettings.provider].models.map(model => (
-                          <option key={model} value={model}>{model}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="text-gray-400 text-xs mb-1 block">API Key</label>
-                      <input
-                        type="password"
-                        value={aiSettings.apiKey}
-                        onChange={(e) => saveAISettings({ apiKey: e.target.value })}
-                        placeholder={AI_PROVIDERS[aiSettings.provider].keyPlaceholder}
-                        className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white placeholder:text-gray-600 font-mono"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="text-gray-400 text-xs mb-1 block">Recommendation Format</label>
-                      <select
-                        value={aiSettings.recommendationFormat || 'standard'}
-                        onChange={(e) => saveAISettings({ recommendationFormat: e.target.value as RecommendationFormat })}
-                        className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white"
-                      >
-                        <option value="standard">Standard (With Sources)</option>
-                        <option value="concise">Concise (No Sources)</option>
-                        <option value="detailed">Detailed Analysis</option>
-                      </select>
-                      <p className="text-gray-600 text-xs mt-1">
-                        Control how AI recommendations are formatted and presented
-                      </p>
-                    </div>
+                  <div>
+                    <label className="text-gray-400 text-xs mb-1 block">Recommendation Format</label>
+                    <select
+                      value={aiSettings.recommendationFormat || 'standard'}
+                      onChange={(e) => saveAISettings({ recommendationFormat: e.target.value as RecommendationFormat })}
+                      className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white"
+                    >
+                      <option value="standard">Standard (With Sources)</option>
+                      <option value="concise">Concise (No Sources)</option>
+                      <option value="detailed">Detailed Analysis</option>
+                    </select>
+                    <p className="text-gray-600 text-xs mt-1">
+                      Control how AI recommendations are formatted and presented
+                    </p>
                   </div>
-
-                  {aiSettings.apiKey && (
-                    <div className="mt-4 flex items-center gap-2 text-terminal-up text-xs">
-                      <Check className="w-3 h-3" />
-                      API key configured
-                    </div>
-                  )}
                 </div>
 
                 <div className="border-t border-terminal-border" />
@@ -1265,6 +1244,66 @@ export function Settings() {
               <p className="text-gray-500 text-sm mb-6">Visual accessibility and interface scaling</p>
 
               <div className="space-y-6">
+                {/* App Theme */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Monitor className="w-4 h-4 text-terminal-amber" />
+                    <span className="text-white text-sm font-medium">App Theme</span>
+                  </div>
+
+                  <p className="text-gray-400 text-xs mb-4">
+                    Choose a color theme for the entire application.
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {(Object.keys(THEMES) as ThemeId[]).map(themeId => {
+                      const t = THEMES[themeId]
+                      const isSelected = theme === themeId
+                      return (
+                        <button
+                          key={themeId}
+                          onClick={() => setTheme(themeId)}
+                          className={`relative p-3 rounded-lg border-2 transition-all ${
+                            isSelected
+                              ? 'border-terminal-amber'
+                              : 'border-terminal-border hover:border-terminal-amber/50'
+                          }`}
+                          style={{ backgroundColor: t.colors.bg }}
+                        >
+                          {/* Theme Preview */}
+                          <div className="flex gap-1 mb-2">
+                            <div
+                              className="w-3 h-3 rounded"
+                              style={{ backgroundColor: t.colors.panel }}
+                            />
+                            <div
+                              className="w-3 h-3 rounded"
+                              style={{ backgroundColor: t.colors.accent }}
+                            />
+                            <div
+                              className="w-3 h-3 rounded"
+                              style={{ backgroundColor: t.colors.up }}
+                            />
+                            <div
+                              className="w-3 h-3 rounded"
+                              style={{ backgroundColor: t.colors.down }}
+                            />
+                          </div>
+                          <p className="text-white text-sm font-medium text-left">{t.name}</p>
+                          <p className="text-gray-500 text-xs text-left">{t.description}</p>
+                          {isSelected && (
+                            <div className="absolute top-2 right-2">
+                              <Check className="w-4 h-4 text-terminal-amber" />
+                            </div>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="border-t border-terminal-border" />
+
                 {/* Interface Zoom */}
                 <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-3">
@@ -1367,37 +1406,39 @@ export function Settings() {
                     Control the scrolling speed of the news ticker marquee (Bloomberg-style).
                   </p>
 
-                  <div className="grid grid-cols-3 gap-2">
-                    <button
-                      onClick={() => setTickerSpeed('slow')}
-                      className={`py-2.5 px-4 rounded text-sm transition-colors ${
-                        tickerSpeed === 'slow'
-                          ? 'bg-terminal-amber text-black font-semibold'
-                          : 'bg-terminal-bg border border-terminal-border text-white hover:border-terminal-amber/50'
-                      }`}
-                    >
-                      Slow
-                    </button>
-                    <button
-                      onClick={() => setTickerSpeed('normal')}
-                      className={`py-2.5 px-4 rounded text-sm transition-colors ${
-                        tickerSpeed === 'normal'
-                          ? 'bg-terminal-amber text-black font-semibold'
-                          : 'bg-terminal-bg border border-terminal-border text-white hover:border-terminal-amber/50'
-                      }`}
-                    >
-                      Normal
-                    </button>
-                    <button
-                      onClick={() => setTickerSpeed('fast')}
-                      className={`py-2.5 px-4 rounded text-sm transition-colors ${
-                        tickerSpeed === 'fast'
-                          ? 'bg-terminal-amber text-black font-semibold'
-                          : 'bg-terminal-bg border border-terminal-border text-white hover:border-terminal-amber/50'
-                      }`}
-                    >
-                      Fast
-                    </button>
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-xs text-gray-400">
+                      <span>Fast</span>
+                      <span className="text-terminal-amber font-mono">
+                        {tickerSpeed < 120 ? `${tickerSpeed}s` : `${Math.round(tickerSpeed / 60)}min`}
+                      </span>
+                      <span>Slow</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={60}
+                      max={600}
+                      step={30}
+                      value={tickerSpeed}
+                      onChange={(e) => setTickerSpeed(Number(e.target.value))}
+                      className="w-full h-2 bg-terminal-bg rounded-lg appearance-none cursor-pointer
+                        [&::-webkit-slider-thumb]:appearance-none
+                        [&::-webkit-slider-thumb]:w-4
+                        [&::-webkit-slider-thumb]:h-4
+                        [&::-webkit-slider-thumb]:rounded-full
+                        [&::-webkit-slider-thumb]:bg-terminal-amber
+                        [&::-webkit-slider-thumb]:cursor-pointer
+                        [&::-webkit-slider-thumb]:hover:bg-terminal-amber-hover
+                        [&::-moz-range-thumb]:w-4
+                        [&::-moz-range-thumb]:h-4
+                        [&::-moz-range-thumb]:rounded-full
+                        [&::-moz-range-thumb]:bg-terminal-amber
+                        [&::-moz-range-thumb]:border-0
+                        [&::-moz-range-thumb]:cursor-pointer"
+                    />
+                    <p className="text-gray-500 text-xs text-center">
+                      Hover over ticker to pause
+                    </p>
                   </div>
                 </div>
 
@@ -2007,6 +2048,180 @@ export function Settings() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Reset & Data (Danger Zone) */}
+          {activeSection === 'danger' && (
+            <div>
+              <h2 className="text-white text-lg font-medium mb-1">Reset & Data Management</h2>
+              <p className="text-gray-500 text-sm mb-6">Clear cached data or reset the application</p>
+
+              <div className="space-y-4">
+                {/* Clear API Budget Cache */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-white text-sm font-medium">Clear API Budget Cache</h3>
+                      <p className="text-gray-500 text-xs mt-1">
+                        Reset Alpha Vantage and AI call counters. Use this if your budget seems stuck.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowResetConfirm('cache')}
+                      className="px-4 py-2 bg-terminal-border text-white rounded text-sm hover:bg-terminal-border/70 transition-colors"
+                    >
+                      Clear Cache
+                    </button>
+                  </div>
+                </div>
+
+                {/* Clear AI History */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-white text-sm font-medium">Clear AI History</h3>
+                      <p className="text-gray-500 text-xs mt-1">
+                        Delete all trade decisions and AI recommendations. Your settings will be preserved.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowResetConfirm('ai')}
+                      className="px-4 py-2 bg-yellow-600/20 border border-yellow-600 text-yellow-500 rounded text-sm hover:bg-yellow-600/30 transition-colors"
+                    >
+                      Clear History
+                    </button>
+                  </div>
+                </div>
+
+                {/* Clear PnL History */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-white text-sm font-medium">Clear P&L History</h3>
+                      <p className="text-gray-500 text-xs mt-1">
+                        Delete all profit/loss tracking entries.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowResetConfirm('pnl')}
+                      className="px-4 py-2 bg-yellow-600/20 border border-yellow-600 text-yellow-500 rounded text-sm hover:bg-yellow-600/30 transition-colors"
+                    >
+                      Clear P&L
+                    </button>
+                  </div>
+                </div>
+
+                {/* Clear Price Alerts */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-white text-sm font-medium">Clear All Price Alerts</h3>
+                      <p className="text-gray-500 text-xs mt-1">
+                        Delete all price alerts (both active and triggered).
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowResetConfirm('alerts')}
+                      className="px-4 py-2 bg-yellow-600/20 border border-yellow-600 text-yellow-500 rounded text-sm hover:bg-yellow-600/30 transition-colors"
+                    >
+                      Clear Alerts
+                    </button>
+                  </div>
+                </div>
+
+                <div className="border-t border-terminal-border my-6" />
+
+                {/* Factory Reset - Danger */}
+                <div className="bg-red-900/10 border border-red-500/30 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-red-400 text-sm font-medium">Factory Reset</h3>
+                      <p className="text-gray-500 text-xs mt-1">
+                        Delete ALL data and settings. This cannot be undone. The app will restart fresh as if newly installed.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowResetConfirm('factory')}
+                      className="px-4 py-2 bg-red-600/20 border border-red-600 text-red-500 rounded text-sm hover:bg-red-600/30 transition-colors"
+                    >
+                      Factory Reset
+                    </button>
+                  </div>
+                </div>
+
+                {/* Info Note */}
+                <div className="text-xs text-gray-500 mt-4">
+                  <p>
+                    <strong>Note:</strong> On macOS, app data is stored in ~/Library/Application Support/com.richdad.app/.
+                    Deleting the app from Applications does not remove this data. Use "Factory Reset" for a clean slate.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Reset Confirmation Modal */}
+          {showResetConfirm && (
+            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+              <div className="bg-terminal-panel border border-terminal-border rounded-lg p-6 max-w-md w-full mx-4">
+                <h3 className={`text-lg font-medium mb-2 ${showResetConfirm === 'factory' ? 'text-red-400' : 'text-white'}`}>
+                  {showResetConfirm === 'cache' && 'Clear API Budget Cache?'}
+                  {showResetConfirm === 'ai' && 'Clear AI History?'}
+                  {showResetConfirm === 'pnl' && 'Clear P&L History?'}
+                  {showResetConfirm === 'alerts' && 'Clear All Price Alerts?'}
+                  {showResetConfirm === 'factory' && '⚠️ Factory Reset?'}
+                </h3>
+                <p className="text-gray-400 text-sm mb-6">
+                  {showResetConfirm === 'cache' && 'This will reset your API call counters. Your API keys and settings will be preserved.'}
+                  {showResetConfirm === 'ai' && 'This will delete all trade decisions and AI recommendations. This action cannot be undone.'}
+                  {showResetConfirm === 'pnl' && 'This will delete all P&L tracking entries. This action cannot be undone.'}
+                  {showResetConfirm === 'alerts' && 'This will delete all price alerts. This action cannot be undone.'}
+                  {showResetConfirm === 'factory' && 'This will delete ALL data including settings, profile, API keys, and history. The app will restart as if newly installed. This action CANNOT be undone.'}
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowResetConfirm(null)}
+                    disabled={isResetting}
+                    className="flex-1 px-4 py-2 bg-terminal-border text-white rounded text-sm hover:bg-terminal-border/70 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setIsResetting(true)
+                      try {
+                        if (showResetConfirm === 'cache') {
+                          clearAPICache()
+                        } else if (showResetConfirm === 'ai') {
+                          await clearAIHistory()
+                        } else if (showResetConfirm === 'pnl') {
+                          await clearPnLHistory()
+                        } else if (showResetConfirm === 'alerts') {
+                          await clearPriceAlerts()
+                          loadAlerts() // Refresh the alerts list
+                        } else if (showResetConfirm === 'factory') {
+                          await factoryReset() // This will reload the page
+                          return
+                        }
+                        setShowResetConfirm(null)
+                      } catch (error) {
+                        console.error('Reset failed:', error)
+                      } finally {
+                        setIsResetting(false)
+                      }
+                    }}
+                    disabled={isResetting}
+                    className={`flex-1 px-4 py-2 rounded text-sm transition-colors disabled:opacity-50 ${
+                      showResetConfirm === 'factory'
+                        ? 'bg-red-600 text-white hover:bg-red-700'
+                        : 'bg-terminal-amber text-black hover:bg-amber-500'
+                    }`}
+                  >
+                    {isResetting ? 'Processing...' : showResetConfirm === 'factory' ? 'Yes, Reset Everything' : 'Confirm'}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 

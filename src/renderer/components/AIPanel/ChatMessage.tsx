@@ -46,7 +46,6 @@ export function ChatMessage({ message }: ChatMessageProps) {
   const Icon = config.icon
 
   const isUserMessage = message.role === 'user'
-  const isRecommendation = message.type === 'recommendation'
   const isLongContent = message.content.length > COLLAPSED_LENGTH
   const displayContent = expanded || !isLongContent
     ? message.content
@@ -55,8 +54,12 @@ export function ChatMessage({ message }: ChatMessageProps) {
   // User message styling
   if (isUserMessage) {
     return (
-      <div className="flex justify-end">
-        <div className="max-w-[85%] p-2 rounded text-xs bg-terminal-amber/20 border-r-2 border-terminal-amber">
+      <div
+        className="flex justify-end group"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        <div className="relative max-w-[85%] p-2 rounded text-xs bg-terminal-amber/20 border-r-2 border-terminal-amber">
           <div className="flex items-start gap-2">
             <div className="flex-1 min-w-0">
               <p className="text-gray-200 leading-relaxed">{message.content}</p>
@@ -66,6 +69,16 @@ export function ChatMessage({ message }: ChatMessageProps) {
             </div>
             <User size={12} className="text-terminal-amber mt-0.5 flex-shrink-0" />
           </div>
+          {/* Delete button for user messages */}
+          {isHovered && (
+            <button
+              onClick={() => removeAlert(message.id)}
+              className="absolute top-1 left-1 p-1 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+              title="Delete message"
+            >
+              <X size={12} />
+            </button>
+          )}
         </div>
       </div>
     )
@@ -120,12 +133,12 @@ export function ChatMessage({ message }: ChatMessageProps) {
           </span>
         </div>
 
-        {/* X button for recommendations - shows on hover */}
-        {isRecommendation && isHovered && (
+        {/* Delete button - shows on hover for all AI messages */}
+        {isHovered && (
           <button
             onClick={() => removeAlert(message.id)}
-            className="absolute top-1 right-1 p-0.5 text-gray-500 hover:text-white hover:bg-terminal-border rounded transition-colors"
-            title="Dismiss alert"
+            className="absolute top-1 right-1 p-1 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+            title="Delete message"
           >
             <X size={12} />
           </button>

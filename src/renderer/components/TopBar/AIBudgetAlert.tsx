@@ -19,6 +19,9 @@ export function AIBudgetAlert() {
 
   if (!budget || dismissed) return null
 
+  // Don't show alerts for unlimited mode
+  if (budget.isUnlimited) return null
+
   if (budget.percentUsed < 80) return null // Only show at 80%+
 
   const isExhausted = budget.percentUsed >= 100

@@ -4,6 +4,7 @@ import { X, ExternalLink, Zap, Target, ShieldAlert } from 'lucide-react'
 import type { AIRecommendation } from '../../types'
 import { useAIStore } from '../../stores/aiStore'
 import { useMarketStore } from '../../stores/marketStore'
+import { useNotificationStore } from '../../stores/notificationStore'
 import { logTradeDecision } from '../../lib/db'
 import { playSound } from '../../lib/sounds'
 import { formatPrice } from '../../lib/utils'
@@ -14,9 +15,16 @@ interface ProactiveAlertProps {
 
 export function ProactiveAlert({ recommendation }: ProactiveAlertProps) {
   const dismissRecommendation = useAIStore(state => state.dismissRecommendation)
+  const addPending = useNotificationStore(state => state.addPending)
   const watchlist = useMarketStore(state => state.watchlist)
   const watchlistItem = watchlist.find(w => w.symbol === recommendation.ticker)
   const currentPrice = watchlistItem?.quote.price
+
+  // Dismiss without action - add to pending queue
+  const handleDismissWithoutAction = useCallback(() => {
+    addPending(recommendation)
+    dismissRecommendation()
+  }, [recommendation, addPending, dismissRecommendation])
 
   const handleDecision = useCallback(async (decision: 'execute' | 'skip') => {
     // Log decision to database (with price targets for outcome tracking)
@@ -56,13 +64,13 @@ export function ProactiveAlert({ recommendation }: ProactiveAlertProps) {
         handleDecision('skip')
       } else if (e.key === 'Escape') {
         e.preventDefault()
-        dismissRecommendation()
+        handleDismissWithoutAction()
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleDecision, dismissRecommendation])
+  }, [handleDecision, handleDismissWithoutAction])
 
   const actionColors = {
     BUY: 'bg-semantic-up text-black',
@@ -83,7 +91,7 @@ export function ProactiveAlert({ recommendation }: ProactiveAlertProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        onClick={dismissRecommendation}
+        onClick={handleDismissWithoutAction}
         className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 flex items-center justify-center"
       >
         {/* Centered Modal */}
@@ -95,7 +103,7 @@ export function ProactiveAlert({ recommendation }: ProactiveAlertProps) {
           className={`
             bg-terminal-panel
             border-2 ${actionBorderColors[recommendation.action]}
-            rounded-lg shadow-2xl w-full max-w-md mx-4
+            rounded-lg shadow-2xl w-full max-w-lg mx-4
           `}
         >
           {/* Header */}
@@ -108,7 +116,7 @@ export function ProactiveAlert({ recommendation }: ProactiveAlertProps) {
             </div>
 
             <button
-              onClick={dismissRecommendation}
+              onClick={handleDismissWithoutAction}
               className="p-1 hover:bg-terminal-border rounded transition-colors"
             >
               <X size={18} className="text-gray-400 hover:text-white" />
