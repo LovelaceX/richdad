@@ -133,13 +133,56 @@ export function getCacheStatus(): {
   }
 }
 
+// Map custom intervals to base intervals for API calls
+const INTERVAL_MAPPING: Record<string, { baseInterval: string; aggregateCount: number }> = {
+  '1min': { baseInterval: '1min', aggregateCount: 1 },
+  '5min': { baseInterval: '5min', aggregateCount: 1 },
+  '15min': { baseInterval: '15min', aggregateCount: 1 },
+  '30min': { baseInterval: '30min', aggregateCount: 1 },
+  '45min': { baseInterval: '15min', aggregateCount: 3 },  // 3 x 15min = 45min
+  '60min': { baseInterval: '60min', aggregateCount: 1 },
+  '120min': { baseInterval: '60min', aggregateCount: 2 }, // 2 x 60min = 2H
+  '240min': { baseInterval: '60min', aggregateCount: 4 }, // 4 x 60min = 4H
+  '300min': { baseInterval: '60min', aggregateCount: 5 }, // 5 x 60min = 5H
+  'daily': { baseInterval: 'daily', aggregateCount: 1 },
+  'weekly': { baseInterval: 'daily', aggregateCount: 5 }, // 5 trading days = 1 week
+}
+
+/**
+ * Aggregate candles into larger timeframes
+ */
+function aggregateCandles(candles: any[], count: number): any[] {
+  if (count <= 1) return candles
+
+  const aggregated: any[] = []
+
+  for (let i = 0; i < candles.length; i += count) {
+    const group = candles.slice(i, i + count)
+    if (group.length === 0) continue
+
+    aggregated.push({
+      time: group[0].time, // Use first candle's time
+      open: group[0].open,
+      high: Math.max(...group.map(c => c.high)),
+      low: Math.min(...group.map(c => c.low)),
+      close: group[group.length - 1].close,
+      volume: group.reduce((sum, c) => sum + c.volume, 0)
+    })
+  }
+
+  return aggregated
+}
+
 /**
  * Fetch historical OHLCV data for charts
  */
 export async function fetchHistoricalData(
   symbol: string,
-  interval: 'daily' | '1min' | '5min' | '15min' | '30min' | '60min' = 'daily'
+  interval: string = 'daily'
 ): Promise<any[]> {
+  // Get base interval and aggregation config
+  const mapping = INTERVAL_MAPPING[interval] || { baseInterval: interval, aggregateCount: 1 }
+  const { baseInterval, aggregateCount } = mapping
 
   // Check 24h cache first (cache key includes interval)
   const cacheKey = `${symbol}-${interval}`
@@ -176,17 +219,17 @@ export async function fetchHistoricalData(
   }
 
   try {
-    const functionName = interval === 'daily'
+    const functionName = baseInterval === 'daily'
       ? 'TIME_SERIES_DAILY'
       : 'TIME_SERIES_INTRADAY'
 
-    console.log(`[Market Data] Fetching historical data for ${symbol} (${interval})`)
+    console.log(`[Market Data] Fetching historical data for ${symbol} (${interval}, base: ${baseInterval})`)
 
     const params = new URLSearchParams({
       function: functionName,
       symbol,
       apikey: apiKey,
-      ...(interval !== 'daily' ? { interval } : {})
+      ...(baseInterval !== 'daily' ? { interval: baseInterval } : {})
     })
 
     const response = await fetch(`${ALPHA_VANTAGE_BASE_URL}?${params}`)
@@ -214,17 +257,21 @@ export async function fetchHistoricalData(
     // Slice based on interval type
     let filtered: any[]
 
-    if (interval !== 'daily') {
-      // For intraday intervals (1min, 5min, 15min, 30min, 60min):
-      // Show all available candles (compact = ~8 hours for most intervals)
-      // No slicing needed - already limited by API compact output
+    if (baseInterval !== 'daily') {
+      // For intraday intervals: Show all available candles
       filtered = candles
-      console.log(`[Market Data] Returning ${filtered.length} intraday candles (${interval} interval)`)
+      console.log(`[Market Data] Fetched ${filtered.length} base candles (${baseInterval} interval)`)
     } else {
-      // For daily: Slice to last 90 days (user preference from previous plan)
+      // For daily/weekly: Slice to last 90 days
       const ninetyDaysAgo = Date.now() / 1000 - (90 * 24 * 60 * 60)
       filtered = candles.filter(c => c.time >= ninetyDaysAgo)
       console.log(`[Market Data] Filtered to ${filtered.length} daily candles (last 90 days)`)
+    }
+
+    // Aggregate if needed (for 45min, 2H, 4H, 5H, weekly)
+    if (aggregateCount > 1) {
+      filtered = aggregateCandles(filtered, aggregateCount)
+      console.log(`[Market Data] Aggregated to ${filtered.length} candles (${aggregateCount}x aggregation for ${interval})`)
     }
 
     // Cache the result for 24 hours

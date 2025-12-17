@@ -1,4 +1,5 @@
-import { TrendingUp, Calendar } from 'lucide-react'
+import { useEffect } from 'react'
+import { TrendingUp, Calendar, Maximize2, Minimize2 } from 'lucide-react'
 import { TradingChart } from './TradingChart'
 import { ProactiveAlert } from './ProactiveAlert'
 import { TimeframeSelector } from './TimeframeSelector'
@@ -13,7 +14,20 @@ export function ChartPanel() {
   const setTimeframe = useMarketStore(state => state.setTimeframe)
   const selectedDate = useMarketStore(state => state.selectedDate)
   const setSelectedDate = useMarketStore(state => state.setSelectedDate)
+  const isChartExpanded = useMarketStore(state => state.isChartExpanded)
+  const toggleChartExpanded = useMarketStore(state => state.toggleChartExpanded)
   const currentRecommendation = useAIStore(state => state.currentRecommendation)
+
+  // Handle Escape key to close expanded chart
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isChartExpanded) {
+        toggleChartExpanded()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [isChartExpanded, toggleChartExpanded])
 
   const selectedItem = watchlist.find(item => item.symbol === selectedTicker)
   const quote = selectedItem?.quote
@@ -21,10 +35,15 @@ export function ChartPanel() {
   // Date picker constraints
   const today = new Date().toISOString().split('T')[0]
   const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  const isIntraday = timeframe !== 'daily'
+  const isIntraday = timeframe !== 'daily' && timeframe !== 'weekly'
+
+  // Full-screen wrapper classes
+  const wrapperClasses = isChartExpanded
+    ? 'fixed inset-0 z-50 bg-terminal-bg flex flex-col'
+    : 'panel h-full flex flex-col relative'
 
   return (
-    <div className="panel h-full flex flex-col relative">
+    <div className={wrapperClasses}>
       {/* Header with ticker info */}
       <div className="panel-header flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -87,6 +106,15 @@ export function ChartPanel() {
             onChange={(value) => setTimeframe(value as any)}
             symbol={selectedTicker}
           />
+
+          {/* Expand/Minimize Button */}
+          <button
+            onClick={toggleChartExpanded}
+            className="p-1.5 text-gray-400 hover:text-terminal-amber transition-colors rounded hover:bg-terminal-border/50"
+            title={isChartExpanded ? 'Exit full screen (Esc)' : 'Full screen'}
+          >
+            {isChartExpanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+          </button>
         </div>
       </div>
 
@@ -99,6 +127,32 @@ export function ChartPanel() {
           <ProactiveAlert recommendation={currentRecommendation} />
         )}
       </div>
+
+      {/* Quick Timeframe Buttons */}
+      {selectedTicker === 'SPY' && (
+        <div className="flex items-center justify-center gap-2 py-2 border-t border-terminal-border bg-terminal-panel/50">
+          {[
+            { label: '5M', value: '5min' },
+            { label: '15M', value: '15min' },
+            { label: '1H', value: '60min' },
+            { label: '1D', value: 'daily' },
+          ].map(({ label, value }) => (
+            <button
+              key={value}
+              onClick={() => setTimeframe(value as any)}
+              className={`
+                px-3 py-1 text-xs rounded transition-colors
+                ${timeframe === value
+                  ? 'bg-terminal-amber/20 text-terminal-amber border border-terminal-amber/50'
+                  : 'text-gray-400 hover:text-white hover:bg-terminal-border/50 border border-transparent'
+                }
+              `}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

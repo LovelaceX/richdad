@@ -18,8 +18,8 @@ export function WelcomeStep({ stepNumber, totalSteps }: WelcomeStepProps) {
 
       {/* Welcome Header */}
       <div className="text-center py-4">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-terminal-amber/10 border border-terminal-amber rounded-full mb-4 overflow-hidden">
-          <img src="/richdad-logo.png" alt="RichDad" className="w-12 h-12 object-contain" />
+        <div className="inline-flex items-center justify-center mb-4">
+          <img src="/richdad-logo.png" alt="RichDad" className="w-20 h-20 object-contain" />
         </div>
         <h2 className="text-white text-2xl font-semibold mb-2">
           Welcome to RichDad

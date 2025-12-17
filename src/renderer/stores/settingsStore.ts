@@ -14,6 +14,10 @@ interface SettingsState {
     rightPanel: number   // percentage (default 25)
     bottomPanel: number  // percentage (default 5)
   }
+  panelVisibility: {
+    leftPanelVisible: boolean   // Market Watch
+    rightPanelVisible: boolean  // AI Copilot
+  }
 
   // Actions
   toggleCvdMode: () => void
@@ -27,6 +31,8 @@ interface SettingsState {
   resetZoom: () => void
   setPanelSize: (panel: 'left' | 'right' | 'bottom', size: number) => void
   resetPanelSizes: () => void
+  toggleLeftPanel: () => void
+  toggleRightPanel: () => void
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -42,6 +48,10 @@ export const useSettingsStore = create<SettingsState>()(
         leftPanel: 20,
         rightPanel: 25,
         bottomPanel: 5,
+      },
+      panelVisibility: {
+        leftPanelVisible: true,
+        rightPanelVisible: true,
       },
 
       setTheme: (theme: ThemeId) => {
@@ -118,6 +128,24 @@ export const useSettingsStore = create<SettingsState>()(
             bottomPanel: 5,
           }
         })
+      },
+
+      toggleLeftPanel: () => {
+        set(state => ({
+          panelVisibility: {
+            ...state.panelVisibility,
+            leftPanelVisible: !state.panelVisibility.leftPanelVisible,
+          }
+        }))
+      },
+
+      toggleRightPanel: () => {
+        set(state => ({
+          panelVisibility: {
+            ...state.panelVisibility,
+            rightPanelVisible: !state.panelVisibility.rightPanelVisible,
+          }
+        }))
       },
     }),
     {

@@ -2,13 +2,17 @@ import { create } from 'zustand'
 import type { Quote, CandleData, WatchlistItem } from '../types'
 import { TICKERS, generateQuote, generateCandleData } from '../lib/mockData'
 
+// Extended timeframe options: 1M, 5M, 15M, 30M, 45M, 1H, 2H, 4H, 5H, 1D, 1W
+type Timeframe = '1min' | '5min' | '15min' | '30min' | '45min' | '60min' | '120min' | '240min' | '300min' | 'daily' | 'weekly'
+
 interface MarketState {
   watchlist: WatchlistItem[]
   selectedTicker: string
   chartData: CandleData[]
   cacheStatus: { age: number; isFresh: boolean } | null
-  timeframe: 'daily' | '1min' | '5min' | '15min' | '30min' | '60min'  // Chart timeframe
+  timeframe: Timeframe  // Chart timeframe
   selectedDate: string  // ISO date string (YYYY-MM-DD)
+  isChartExpanded: boolean  // Full-screen chart mode
 
   // Actions
   setSelectedTicker: (symbol: string) => void
@@ -16,11 +20,12 @@ interface MarketState {
   setQuotes: (quotes: Quote[]) => void
   setCacheStatus: (status: { age: number; isFresh: boolean }) => void
   refreshAllQuotes: () => void
-  setTimeframe: (timeframe: 'daily' | '1min' | '5min' | '15min' | '30min' | '60min') => void
+  setTimeframe: (timeframe: Timeframe) => void
   setSelectedDate: (date: string) => void
-  loadChartData: (symbol?: string, interval?: 'daily' | '1min' | '5min' | '15min' | '30min' | '60min') => Promise<void>
+  loadChartData: (symbol?: string, interval?: Timeframe) => Promise<void>
   addToWatchlist: (symbol: string, name?: string) => void
   removeFromWatchlist: (symbol: string) => void
+  toggleChartExpanded: () => void
 }
 
 export const useMarketStore = create<MarketState>((set, get) => ({
@@ -39,11 +44,13 @@ export const useMarketStore = create<MarketState>((set, get) => ({
 
   selectedDate: new Date().toISOString().split('T')[0],  // Today's date
 
+  isChartExpanded: false,
+
   setSelectedDate: (date: string) => {
     set({ selectedDate: date })
-    // Reload chart with new date (for daily timeframe)
+    // Reload chart with new date (for daily/weekly timeframe)
     const { selectedTicker, timeframe } = get()
-    if (timeframe === 'daily') {
+    if (timeframe === 'daily' || timeframe === 'weekly') {
       get().loadChartData(selectedTicker, timeframe).catch(err => {
         console.error('[Market Store] Chart load error:', err)
       })
@@ -90,7 +97,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
     }))
   },
 
-  setTimeframe: (timeframe: 'daily' | '1min' | '5min' | '15min' | '30min' | '60min') => {
+  setTimeframe: (timeframe: Timeframe) => {
     set({ timeframe })
     // Reload chart with new timeframe
     const { selectedTicker } = get()
@@ -99,7 +106,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
     })
   },
 
-  loadChartData: async (symbol?: string, interval?: 'daily' | '1min' | '5min' | '15min' | '30min' | '60min') => {
+  loadChartData: async (symbol?: string, interval?: Timeframe) => {
     try {
       const state = get()
       const targetSymbol = symbol || state.selectedTicker
@@ -152,5 +159,9 @@ export const useMarketStore = create<MarketState>((set, get) => ({
       watchlist: state.watchlist.filter(item => item.symbol !== symbol)
     }))
     console.log(`[Market Store] Removed ${symbol} from watchlist`)
+  },
+
+  toggleChartExpanded: () => {
+    set(state => ({ isChartExpanded: !state.isChartExpanded }))
   },
 }))

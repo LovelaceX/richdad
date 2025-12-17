@@ -106,12 +106,12 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
+          {/* Backdrop - Solid background so no dashboard data shows */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 z-50"
+            className="fixed inset-0 bg-terminal-bg z-50"
             onClick={handleSkip}
           />
 

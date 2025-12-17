@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Newspaper, Filter, TrendingUp, TrendingDown, Minus, ChevronRight } from 'lucide-react'
+import { Newspaper, Filter, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { useNewsStore } from '../stores/newsStore'
 import { useMarketStore } from '../stores/marketStore'
@@ -91,66 +91,54 @@ export function News() {
         </div>
       </div>
 
-      {/* News Feed - Centered Single Column */}
-      <div className="flex-1 overflow-y-auto flex justify-center">
-        <div className="w-full max-w-[800px] p-4">
-          <div className="space-y-3">
-            {filteredNews.length === 0 ? (
-              <div className="text-center py-12">
-                <Newspaper className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-                <p className="text-gray-500">No news articles found</p>
-                <p className="text-gray-600 text-sm mt-1">Try changing your filter or check back later</p>
-              </div>
-            ) : (
-              filteredNews.map((item: NewsItem) => (
-                <div
-                  key={item.id}
-                  className="bg-terminal-panel border border-terminal-border rounded-lg p-4"
-                >
-                  <div className="flex items-start gap-3">
-                    {/* Sentiment Indicator */}
-                    <div className="mt-0.5 flex-shrink-0">
-                      {getSentimentIcon(item.sentiment)}
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      {/* Headline */}
-                      <div className="mb-2">
-                        <h3 className="text-white text-sm font-medium leading-relaxed">
-                          {item.headline}
-                          {item.ticker && (
-                            <span className="inline-block ml-2 text-terminal-amber text-xs font-mono bg-terminal-amber/10 px-1.5 py-0.5 rounded">
-                              ${item.ticker}
-                            </span>
-                          )}
-                        </h3>
-                      </div>
-
-                      {/* Metadata + Source Link */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="text-gray-400">{item.source}</span>
-                          <span className="text-gray-600">•</span>
-                          <span className="text-gray-500">{formatTime(item.timestamp)}</span>
-                        </div>
-                        {item.url && (
-                          <button
-                            onClick={() => handleNewsClick(item)}
-                            className="flex items-center gap-1 text-gray-500 hover:text-terminal-amber transition-colors"
-                          >
-                            <span className="text-xs font-medium">Read More</span>
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
+      {/* News Feed - Multi-Column Grid */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {filteredNews.length === 0 ? (
+          <div className="text-center py-12">
+            <Newspaper className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+            <p className="text-gray-500">No news articles found</p>
+            <p className="text-gray-600 text-sm mt-1">Try changing your filter or check back later</p>
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filteredNews.map((item: NewsItem) => (
+              <div
+                key={item.id}
+                onClick={() => item.url && handleNewsClick(item)}
+                className={`
+                  bg-terminal-panel border border-terminal-border rounded-lg p-4
+                  hover:border-terminal-amber/50 transition-colors
+                  ${item.url ? 'cursor-pointer' : ''}
+                  flex flex-col h-[120px]
+                `}
+              >
+                {/* Top row: Sentiment + Ticker */}
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex-shrink-0">
+                    {getSentimentIcon(item.sentiment)}
+                  </div>
+                  {item.ticker && (
+                    <span className="text-terminal-amber text-xs font-mono bg-terminal-amber/10 px-1.5 py-0.5 rounded">
+                      ${item.ticker}
+                    </span>
+                  )}
+                </div>
+
+                {/* Headline - 2 lines max */}
+                <h3 className="text-white text-sm font-medium leading-snug line-clamp-2 flex-1">
+                  {item.headline}
+                </h3>
+
+                {/* Bottom: Source + Time */}
+                <div className="flex items-center gap-2 text-xs mt-2">
+                  <span className="text-gray-400 truncate">{item.source}</span>
+                  <span className="text-gray-600">•</span>
+                  <span className="text-gray-500 flex-shrink-0">{formatTime(item.timestamp)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

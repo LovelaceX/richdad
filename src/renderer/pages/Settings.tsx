@@ -2097,11 +2097,19 @@ export function Settings() {
                   </div>
                 </div>
 
-                {/* Info Note */}
-                <div className="text-xs text-gray-500 mt-4">
-                  <p>
-                    <strong>Note:</strong> On macOS, app data is stored in ~/Library/Application Support/com.richdad.app/.
-                    Deleting the app from Applications does not remove this data. Use "Factory Reset" for a clean slate.
+                {/* Data Location Info */}
+                <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4 mt-4">
+                  <h4 className="text-white text-sm font-medium mb-2">📁 Data Storage Location</h4>
+                  <p className="text-gray-400 text-xs mb-2">
+                    On macOS, RichDad stores data in:
+                  </p>
+                  <code className="block text-terminal-amber text-xs bg-terminal-panel px-2 py-1 rounded mb-3 font-mono">
+                    ~/Library/Application Support/richdad/
+                  </code>
+                  <p className="text-gray-500 text-xs">
+                    <strong>Note:</strong> Deleting the app from Applications does NOT remove this folder.
+                    To completely remove all data after uninstalling, delete this folder manually.
+                    Alternatively, use "Factory Reset" above before uninstalling.
                   </p>
                 </div>
               </div>
