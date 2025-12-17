@@ -1,27 +1,39 @@
 import { Clock } from 'lucide-react'
 
 interface TimeframeSelectorProps {
-  value: 'intraday' | 'daily'
-  onChange: (value: 'intraday' | 'daily') => void
+  value: string
+  onChange: (value: string) => void
   symbol: string
 }
 
+const SPY_TIMEFRAMES = [
+  { label: '1M', value: '1min' },
+  { label: '5M', value: '5min' },
+  { label: '15M', value: '15min' },
+  { label: '30M', value: '30min' },
+  { label: '1H', value: '60min' },
+  { label: 'Daily', value: 'daily' },
+]
+
+const OTHER_TIMEFRAMES = [
+  { label: '5M', value: '5min' },
+  { label: 'Daily', value: 'daily' },
+]
+
 export function TimeframeSelector({ value, onChange, symbol }: TimeframeSelectorProps) {
-  // Only SPY gets intraday 5-minute data (free tier budget optimization)
-  const showIntraday = symbol === 'SPY'
+  const options = symbol === 'SPY' ? SPY_TIMEFRAMES : OTHER_TIMEFRAMES
 
   return (
     <div className="flex items-center gap-2 no-drag">
       <Clock size={12} className="text-gray-400" />
       <select
         value={value}
-        onChange={(e) => onChange(e.target.value as 'intraday' | 'daily')}
+        onChange={(e) => onChange(e.target.value)}
         className="bg-terminal-bg border border-terminal-border text-white text-xs px-2 py-1 rounded hover:border-terminal-amber transition-colors focus:outline-none focus:border-terminal-amber"
       >
-        {showIntraday && (
-          <option value="intraday">5-Minute</option>
-        )}
-        <option value="daily">Daily</option>
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
       </select>
     </div>
   )

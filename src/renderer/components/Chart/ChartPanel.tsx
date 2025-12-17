@@ -48,7 +48,7 @@ export function ChartPanel() {
           {/* Timeframe Selector */}
           <TimeframeSelector
             value={timeframe}
-            onChange={setTimeframe}
+            onChange={(value) => setTimeframe(value as any)}
             symbol={selectedTicker}
           />
         </div>

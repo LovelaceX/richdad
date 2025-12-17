@@ -30,6 +30,8 @@ import { useSettingsStore } from '../stores/settingsStore'
 import { useProTraderStore } from '../stores/proTraderStore'
 import { useAlertStore } from '../stores/alertStore'
 import { OnboardingWizard } from '../components/Onboarding/OnboardingWizard'
+import { AIPerformanceDetail } from '../components/AI/AIPerformanceDetail'
+import { APIBudgetMeter } from '../components/Settings/APIBudgetMeter'
 import {
   getSettings,
   updateSettings,
@@ -208,6 +210,9 @@ export function Settings() {
     await updateAISettings(newSettings)
     setAiSettings(newSettings)
     setSaving(false)
+
+    // Notify DataHeartbeatService of AI settings change
+    window.dispatchEvent(new Event('ai-settings-updated'))
 
     // Show saved feedback
     setShowSavedMessage(true)
@@ -625,6 +630,71 @@ export function Settings() {
 
                 <div className="border-t border-terminal-border" />
 
+                {/* AI Recommendation Interval */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <label className="text-white text-sm block mb-3">Recommendation Interval</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => saveAISettings({ recommendationInterval: 5 })}
+                      className={`flex-1 px-4 py-2 rounded transition-colors ${
+                        (aiSettings.recommendationInterval ?? 15) === 5
+                          ? 'bg-terminal-amber text-terminal-bg'
+                          : 'bg-terminal-bg border border-terminal-border text-white hover:bg-terminal-border'
+                      }`}
+                    >
+                      5 min
+                    </button>
+                    <button
+                      onClick={() => saveAISettings({ recommendationInterval: 10 })}
+                      className={`flex-1 px-4 py-2 rounded transition-colors ${
+                        (aiSettings.recommendationInterval ?? 15) === 10
+                          ? 'bg-terminal-amber text-terminal-bg'
+                          : 'bg-terminal-bg border border-terminal-border text-white hover:bg-terminal-border'
+                      }`}
+                    >
+                      10 min
+                    </button>
+                    <button
+                      onClick={() => saveAISettings({ recommendationInterval: 15 })}
+                      className={`flex-1 px-4 py-2 rounded transition-colors ${
+                        (aiSettings.recommendationInterval ?? 15) === 15
+                          ? 'bg-terminal-amber text-terminal-bg'
+                          : 'bg-terminal-bg border border-terminal-border text-white hover:bg-terminal-border'
+                      }`}
+                    >
+                      15 min
+                    </button>
+                  </div>
+                  <p className="text-gray-500 text-xs mt-2">
+                    How often AI analyzes the market during trading hours (lower = more API usage)
+                  </p>
+                </div>
+
+                {/* Confidence Threshold */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-white text-sm">Minimum Confidence Threshold</span>
+                    <span className="text-terminal-amber font-mono">{aiSettings.confidenceThreshold ?? 70}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={aiSettings.confidenceThreshold ?? 70}
+                    onChange={(e) => saveAISettings({ confidenceThreshold: parseInt(e.target.value) })}
+                    className="w-full accent-terminal-amber"
+                  />
+                  <p className="text-gray-500 text-xs mt-2">
+                    Only show AI recommendations with confidence ≥ {aiSettings.confidenceThreshold ?? 70}%
+                  </p>
+                  {(aiSettings.confidenceThreshold ?? 70) < 50 && (
+                    <p className="text-yellow-500 text-xs mt-1">⚠️ Low threshold may show unreliable signals</p>
+                  )}
+                </div>
+
+                <div className="border-t border-terminal-border" />
+
                 {/* Response Style / Personality */}
                 <div>
                   <h3 className="text-white text-sm font-medium mb-3">Response Style</h3>
@@ -654,6 +724,12 @@ export function Settings() {
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* AI Performance Tracking */}
+                <div className="border-t border-terminal-border pt-6">
+                  <h3 className="text-white text-sm font-medium mb-4">AI Performance History</h3>
+                  <AIPerformanceDetail />
                 </div>
               </div>
             </div>
@@ -869,6 +945,9 @@ export function Settings() {
                     </button>
                   </div>
                 )}
+
+                {/* API Budget Meter */}
+                <APIBudgetMeter />
 
                 <div className="border-t border-terminal-border" />
 

@@ -4,6 +4,7 @@ import { CommandInput } from './CommandInput'
 // import { WindowControls } from './WindowControls' - Disabled: Using native OS window controls
 import { NavBar } from '../Navigation/NavBar'
 import { HelpModal } from '../Help/HelpModal'
+import { APIBudgetAlert } from './APIBudgetAlert'
 import { useSettingsStore } from '../../stores/settingsStore'
 
 function ZoomControls() {
@@ -88,6 +89,9 @@ export function TopBar() {
           {/* <WindowControls /> - Disabled: Using native OS window controls */}
         </div>
       </div>
+
+      {/* API Budget Alert */}
+      <APIBudgetAlert />
 
       {/* Help Modal */}
       <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />

@@ -20,7 +20,10 @@ interface RecommendationResponse {
 /**
  * Generate AI trading recommendation for a symbol
  */
-export async function generateRecommendation(symbol: string): Promise<AIRecommendation | null> {
+export async function generateRecommendation(
+  symbol: string,
+  confidenceThreshold?: number
+): Promise<AIRecommendation | null> {
   try {
     console.log(`[AI Engine] Starting analysis for ${symbol}`)
 
@@ -41,8 +44,8 @@ export async function generateRecommendation(symbol: string): Promise<AIRecommen
     }
 
     // 3. Fetch historical data for technical analysis
-    // Use intraday for SPY, daily for others (budget-friendly)
-    const interval = symbol === 'SPY' ? 'intraday' : 'daily'
+    // Use 5min for SPY, daily for others (budget-friendly)
+    const interval = symbol === 'SPY' ? '5min' : 'daily'
     const candles = await fetchHistoricalData(symbol, interval)
 
     if (candles.length === 0) {
@@ -75,9 +78,10 @@ export async function generateRecommendation(symbol: string): Promise<AIRecommen
       return null
     }
 
-    // 9. Validate confidence threshold (minimum 70% to display)
-    if (recommendation.confidence < 70) {
-      console.log(`[AI Engine] Confidence too low (${recommendation.confidence}%), skipping recommendation`)
+    // 9. Validate confidence threshold (configurable, default 70%)
+    const threshold = confidenceThreshold ?? 70
+    if (recommendation.confidence < threshold) {
+      console.log(`[AI Engine] Confidence too low (${recommendation.confidence}% < ${threshold}%), skipping recommendation`)
       return null
     }
 

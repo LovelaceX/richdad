@@ -7,7 +7,7 @@ interface MarketState {
   selectedTicker: string
   chartData: CandleData[]
   cacheStatus: { age: number; isFresh: boolean } | null
-  timeframe: 'intraday' | 'daily'  // Chart timeframe
+  timeframe: 'daily' | '1min' | '5min' | '15min' | '30min' | '60min'  // Chart timeframe
 
   // Actions
   setSelectedTicker: (symbol: string) => void
@@ -15,8 +15,8 @@ interface MarketState {
   setQuotes: (quotes: Quote[]) => void
   setCacheStatus: (status: { age: number; isFresh: boolean }) => void
   refreshAllQuotes: () => void
-  setTimeframe: (timeframe: 'intraday' | 'daily') => void
-  loadChartData: (symbol?: string, interval?: 'intraday' | 'daily') => Promise<void>
+  setTimeframe: (timeframe: 'daily' | '1min' | '5min' | '15min' | '30min' | '60min') => void
+  loadChartData: (symbol?: string, interval?: 'daily' | '1min' | '5min' | '15min' | '30min' | '60min') => Promise<void>
 }
 
 export const useMarketStore = create<MarketState>((set, get) => ({
@@ -31,11 +31,11 @@ export const useMarketStore = create<MarketState>((set, get) => ({
 
   cacheStatus: null,
 
-  timeframe: 'intraday',  // Default to intraday for SPY
+  timeframe: '5min',  // Default to 5min for SPY
 
   setSelectedTicker: (symbol: string) => {
     // When changing ticker, set appropriate default timeframe
-    const timeframe = symbol === 'SPY' ? 'intraday' : 'daily'
+    const timeframe = symbol === 'SPY' ? '5min' : 'daily'
     set({ selectedTicker: symbol, timeframe })
     // Trigger chart load asynchronously (don't await)
     get().loadChartData(symbol, timeframe).catch(err => {
@@ -73,7 +73,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
     }))
   },
 
-  setTimeframe: (timeframe: 'intraday' | 'daily') => {
+  setTimeframe: (timeframe: 'daily' | '1min' | '5min' | '15min' | '30min' | '60min') => {
     set({ timeframe })
     // Reload chart with new timeframe
     const { selectedTicker } = get()
@@ -82,7 +82,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
     })
   },
 
-  loadChartData: async (symbol?: string, interval?: 'intraday' | 'daily') => {
+  loadChartData: async (symbol?: string, interval?: 'daily' | '1min' | '5min' | '15min' | '30min' | '60min') => {
     try {
       const state = get()
       const targetSymbol = symbol || state.selectedTicker

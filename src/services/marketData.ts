@@ -138,16 +138,17 @@ export function getCacheStatus(): {
  */
 export async function fetchHistoricalData(
   symbol: string,
-  interval: 'daily' | 'intraday' = 'daily'
+  interval: 'daily' | '1min' | '5min' | '15min' | '30min' | '60min' = 'daily'
 ): Promise<any[]> {
 
-  // Check 24h cache first
-  const cached = cachedHistoricalData.get(symbol)
-  const cacheTime = historicalCacheTimestamps.get(symbol) || 0
+  // Check 24h cache first (cache key includes interval)
+  const cacheKey = `${symbol}-${interval}`
+  const cached = cachedHistoricalData.get(cacheKey)
+  const cacheTime = historicalCacheTimestamps.get(cacheKey) || 0
   const cacheAge = Date.now() - cacheTime
 
   if (cached && cacheAge < HISTORICAL_CACHE_DURATION_MS) {
-    console.log(`[Market Data] Serving ${symbol} chart from cache (age: ${Math.round(cacheAge / 3600000)}h)`)
+    console.log(`[Market Data] Serving ${symbol} (${interval}) chart from cache (age: ${Math.round(cacheAge / 3600000)}h)`)
     return cached
   }
 
@@ -179,13 +180,13 @@ export async function fetchHistoricalData(
       ? 'TIME_SERIES_DAILY'
       : 'TIME_SERIES_INTRADAY'
 
-    console.log(`[Market Data] Fetching historical data for ${symbol} (${functionName})`)
+    console.log(`[Market Data] Fetching historical data for ${symbol} (${interval})`)
 
     const params = new URLSearchParams({
       function: functionName,
       symbol,
       apikey: apiKey,
-      ...(interval === 'intraday' ? { interval: '5min' } : {})
+      ...(interval !== 'daily' ? { interval } : {})
     })
 
     const response = await fetch(`${ALPHA_VANTAGE_BASE_URL}?${params}`)
@@ -213,11 +214,12 @@ export async function fetchHistoricalData(
     // Slice based on interval type
     let filtered: any[]
 
-    if (interval === 'intraday') {
-      // For intraday (5-min): Show all available candles (compact = ~8 hours)
+    if (interval !== 'daily') {
+      // For intraday intervals (1min, 5min, 15min, 30min, 60min):
+      // Show all available candles (compact = ~8 hours for most intervals)
       // No slicing needed - already limited by API compact output
       filtered = candles
-      console.log(`[Market Data] Returning ${filtered.length} intraday candles (5-min interval)`)
+      console.log(`[Market Data] Returning ${filtered.length} intraday candles (${interval} interval)`)
     } else {
       // For daily: Slice to last 90 days (user preference from previous plan)
       const ninetyDaysAgo = Date.now() / 1000 - (90 * 24 * 60 * 60)
@@ -226,9 +228,9 @@ export async function fetchHistoricalData(
     }
 
     // Cache the result for 24 hours
-    cachedHistoricalData.set(symbol, filtered)
-    historicalCacheTimestamps.set(symbol, Date.now())
-    console.log(`[Market Data] Cached ${filtered.length} candles for ${symbol}`)
+    cachedHistoricalData.set(cacheKey, filtered)
+    historicalCacheTimestamps.set(cacheKey, Date.now())
+    console.log(`[Market Data] Cached ${filtered.length} candles for ${symbol} (${interval})`)
 
     // Record API call in budget tracker
     recordChartCall()

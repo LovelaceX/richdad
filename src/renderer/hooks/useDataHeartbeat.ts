@@ -35,6 +35,17 @@ export function useDataHeartbeat() {
     }
   }, [])
 
+  // Listen for AI settings changes and update interval
+  useEffect(() => {
+    const handleAISettingsChange = () => {
+      console.log('[useDataHeartbeat] AI settings changed, updating interval')
+      dataHeartbeat.updateAIInterval().catch(console.error)
+    }
+
+    window.addEventListener('ai-settings-updated', handleAISettingsChange)
+    return () => window.removeEventListener('ai-settings-updated', handleAISettingsChange)
+  }, [])
+
   const handleDataUpdate: DataUpdateCallback = ({ type, payload }) => {
     switch (type) {
       case 'market':

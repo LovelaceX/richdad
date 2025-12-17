@@ -24,7 +24,7 @@ class DataHeartbeatService {
   private MARKET_UPDATE_INTERVAL = 60000 // 1 minute (but respects 1-hour cache)
   private NEWS_UPDATE_INTERVAL = 300000 // 5 minutes
   private SENTIMENT_UPDATE_INTERVAL = 600000 // 10 minutes
-  private AI_ANALYSIS_INTERVAL = 900000 // 15 minutes (during market hours only)
+  private AI_ANALYSIS_INTERVAL = 900000 // Default 15 minutes (overridden in start() from AISettings)
 
   /**
    * Start the heartbeat service
@@ -37,6 +37,11 @@ class DataHeartbeatService {
 
     console.log('[Heartbeat] Starting data heartbeat service...')
     this.isRunning = true
+
+    // Load AI settings and set interval
+    const { getAISettings } = await import('../renderer/lib/db')
+    const aiSettings = await getAISettings()
+    this.AI_ANALYSIS_INTERVAL = (aiSettings.recommendationInterval ?? 15) * 60000
 
     // Initialize sentiment analysis worker
     initializeSentimentAnalysis()
@@ -76,6 +81,23 @@ class DataHeartbeatService {
     outcomeTracker.stop()
 
     console.log('[Heartbeat] Service stopped')
+  }
+
+  /**
+   * Update AI analysis interval from settings and restart
+   */
+  async updateAIInterval(): Promise<void> {
+    const { getAISettings } = await import('../renderer/lib/db')
+    const aiSettings = await getAISettings()
+    this.AI_ANALYSIS_INTERVAL = (aiSettings.recommendationInterval ?? 15) * 60000
+
+    // Restart AI analysis with new interval
+    if (this.aiAnalysisInterval) {
+      clearInterval(this.aiAnalysisInterval)
+    }
+    this.startAIAnalysis()
+
+    console.log(`[Heartbeat] AI analysis interval updated to ${aiSettings.recommendationInterval} minutes`)
   }
 
   /**
@@ -194,7 +216,15 @@ class DataHeartbeatService {
       }
 
       console.log(`[Heartbeat] Running AI analysis for ${symbol}`)
-      const recommendation = await generateRecommendation(symbol)
+
+      // Load AI settings to get confidence threshold
+      const { getAISettings } = await import('../renderer/lib/db')
+      const aiSettings = await getAISettings()
+
+      const recommendation = await generateRecommendation(
+        symbol,
+        aiSettings.confidenceThreshold
+      )
 
       if (recommendation) {
         console.log(`[Heartbeat] Generated ${recommendation.action} recommendation (${recommendation.confidence}% confidence)`)

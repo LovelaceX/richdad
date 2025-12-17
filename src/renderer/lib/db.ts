@@ -124,6 +124,8 @@ export interface AISettings {
   apiKey: string
   model?: string
   recommendationFormat?: RecommendationFormat
+  recommendationInterval?: 5 | 10 | 15  // minutes, default: 15
+  confidenceThreshold?: number  // 0-100, default: 70
 }
 
 export const AI_PROVIDERS = {
@@ -180,7 +182,9 @@ export const DEFAULT_PROFILE: UserProfile = {
 export const DEFAULT_AI_SETTINGS: AISettings = {
   provider: 'openai',
   apiKey: '',
-  model: 'gpt-4.0-turbo'
+  model: 'gpt-4.0-turbo',
+  recommendationInterval: 15,
+  confidenceThreshold: 70
 }
 
 // Database class
@@ -226,6 +230,28 @@ class DadAppDatabase extends Dexie {
       pnlEntries: '++id, date',
       userProfile: '++id',
       aiSettings: '++id, provider'
+    })
+
+    this.version(4).stores({
+      tradeDecisions: '++id, timestamp, symbol, action, decision, source, outcome',
+      userSettings: '++id',
+      newsSources: '++id, name, type, enabled, category',
+      proTraders: '++id, handle, source, enabled',
+      priceAlerts: '++id, symbol, triggered, createdAt',
+      pnlEntries: '++id, date',
+      userProfile: '++id',
+      aiSettings: '++id, provider'
+    }).upgrade(async tx => {
+      const aiSettings = await tx.table('aiSettings').toArray()
+
+      for (const setting of aiSettings) {
+        await tx.table('aiSettings').update(setting.id!, {
+          recommendationInterval: setting.recommendationInterval ?? 15,
+          confidenceThreshold: setting.confidenceThreshold ?? 70
+        })
+      }
+
+      console.log('[DB Migration v4] Added AI customization settings')
     })
   }
 }
