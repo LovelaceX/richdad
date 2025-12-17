@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { dataHeartbeat } from '../../services/DataHeartbeatService'
 import { useMarketStore } from '../stores/marketStore'
 import { useNewsStore } from '../stores/newsStore'
+import { useAIStore } from '../stores/aiStore'
 import type { DataUpdateCallback } from '../../services/DataHeartbeatService'
 
 /**
@@ -13,6 +14,7 @@ export function useDataHeartbeat() {
   const setCacheStatus = useMarketStore(state => state.setCacheStatus)
   const setNews = useNewsStore(state => state.setNews)
   const setLoading = useNewsStore(state => state.setLoading)
+  const setRecommendation = useAIStore(state => state.setRecommendation)
 
   useEffect(() => {
     console.log('[useDataHeartbeat] Initializing heartbeat service')
@@ -53,6 +55,12 @@ export function useDataHeartbeat() {
         // News with updated sentiment
         setNews(payload)
         break
+
+      case 'ai_recommendation':
+        // New AI-generated recommendation
+        console.log('[useDataHeartbeat] Received AI recommendation:', payload)
+        setRecommendation(payload)
+        break
     }
   }
 }
@@ -73,9 +81,14 @@ export function useDataRefresh() {
     return dataHeartbeat.updateSentiment()
   }
 
+  const refreshAI = (symbol: string = 'SPY') => {
+    return dataHeartbeat.updateAIAnalysis(symbol)
+  }
+
   return {
     refreshMarket,
     refreshNews,
-    refreshSentiment
+    refreshSentiment,
+    refreshAI
   }
 }

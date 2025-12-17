@@ -1,10 +1,12 @@
 import { fetchLivePrices, getCacheStatus } from './marketData'
 import { fetchNews } from './newsService'
 import { analyzeSentiment, initializeSentimentAnalysis } from './sentimentService'
+import { generateRecommendation, isMarketOpen } from './aiRecommendationEngine'
+import { outcomeTracker } from './outcomeTracker'
 import type { Quote, NewsItem } from '../renderer/types'
 
 export type DataUpdateCallback = (data: {
-  type: 'market' | 'news' | 'sentiment'
+  type: 'market' | 'news' | 'sentiment' | 'ai_recommendation'
   payload: any
 }) => void
 
@@ -12,6 +14,7 @@ class DataHeartbeatService {
   private marketInterval: NodeJS.Timeout | null = null
   private newsInterval: NodeJS.Timeout | null = null
   private sentimentInterval: NodeJS.Timeout | null = null
+  private aiAnalysisInterval: NodeJS.Timeout | null = null
   private callbacks: Set<DataUpdateCallback> = new Set()
   private isRunning = false
   private cachedNews: NewsItem[] = []
@@ -21,6 +24,7 @@ class DataHeartbeatService {
   private MARKET_UPDATE_INTERVAL = 60000 // 1 minute (but respects 1-hour cache)
   private NEWS_UPDATE_INTERVAL = 300000 // 5 minutes
   private SENTIMENT_UPDATE_INTERVAL = 600000 // 10 minutes
+  private AI_ANALYSIS_INTERVAL = 900000 // 15 minutes (during market hours only)
 
   /**
    * Start the heartbeat service
@@ -37,10 +41,14 @@ class DataHeartbeatService {
     // Initialize sentiment analysis worker
     initializeSentimentAnalysis()
 
+    // Start outcome tracker (for AI performance monitoring)
+    outcomeTracker.start().catch(console.error)
+
     // Start periodic updates
     this.startMarketUpdates()
     this.startNewsUpdates()
     this.startSentimentUpdates()
+    this.startAIAnalysis()
 
     console.log('[Heartbeat] Service started')
   }
@@ -57,10 +65,15 @@ class DataHeartbeatService {
     if (this.marketInterval) clearInterval(this.marketInterval)
     if (this.newsInterval) clearInterval(this.newsInterval)
     if (this.sentimentInterval) clearInterval(this.sentimentInterval)
+    if (this.aiAnalysisInterval) clearInterval(this.aiAnalysisInterval)
 
     this.marketInterval = null
     this.newsInterval = null
     this.sentimentInterval = null
+    this.aiAnalysisInterval = null
+
+    // Stop outcome tracker
+    outcomeTracker.stop()
 
     console.log('[Heartbeat] Service stopped')
   }
@@ -170,6 +183,36 @@ class DataHeartbeatService {
   }
 
   /**
+   * Manually trigger AI analysis for a symbol
+   */
+  async updateAIAnalysis(symbol: string = 'SPY'): Promise<void> {
+    try {
+      // Only run during market hours
+      if (!isMarketOpen()) {
+        console.log('[Heartbeat] Market closed, skipping AI analysis')
+        return
+      }
+
+      console.log(`[Heartbeat] Running AI analysis for ${symbol}`)
+      const recommendation = await generateRecommendation(symbol)
+
+      if (recommendation) {
+        console.log(`[Heartbeat] Generated ${recommendation.action} recommendation (${recommendation.confidence}% confidence)`)
+
+        this.notifyCallbacks({
+          type: 'ai_recommendation',
+          payload: recommendation
+        })
+      } else {
+        console.log('[Heartbeat] No recommendation generated (AI not configured or low confidence)')
+      }
+
+    } catch (error) {
+      console.error('[Heartbeat] AI analysis failed:', error)
+    }
+  }
+
+  /**
    * Get cached news (latest)
    */
   getCachedNews(): NewsItem[] {
@@ -225,6 +268,18 @@ class DataHeartbeatService {
     this.sentimentInterval = setInterval(() => {
       this.updateSentiment()
     }, this.SENTIMENT_UPDATE_INTERVAL)
+  }
+
+  private startAIAnalysis(): void {
+    // Initial AI analysis (after first market data fetch)
+    setTimeout(() => {
+      this.updateAIAnalysis('SPY')
+    }, 10000) // Wait 10s for market data to load
+
+    // Periodic updates (every 15 minutes)
+    this.aiAnalysisInterval = setInterval(() => {
+      this.updateAIAnalysis('SPY')
+    }, this.AI_ANALYSIS_INTERVAL)
   }
 
   private notifyCallbacks(data: Parameters<DataUpdateCallback>[0]): void {

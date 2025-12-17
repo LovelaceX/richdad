@@ -11,6 +11,15 @@ export interface TradeDecision {
   rationale: string
   priceAtDecision?: number
   source?: 'local_llm' | 'cloud_ai' | 'manual'  // Track verdict origin
+
+  // Outcome Tracking (for AI accuracy metrics)
+  priceTarget?: number
+  stopLoss?: number
+  outcomeCheckedAt?: number  // Last time we checked for outcome
+  outcome?: 'win' | 'loss' | 'pending' | 'neutral'  // neutral for HOLD or expired
+  priceAtOutcome?: number  // Price when outcome was determined
+  profitLoss?: number  // Percentage gain/loss
+  daysHeld?: number  // Days between decision and outcome
 }
 
 export interface UserSettings {
@@ -399,6 +408,120 @@ export async function getDecisionStats() {
       HOLD: { total: byAction.HOLD.length, executed: byAction.HOLD.filter(d => d.decision === 'execute').length }
     }
   }
+}
+
+/**
+ * Get AI Performance Statistics (Batting Average)
+ * Only includes executed trades with determined outcomes
+ */
+export async function getAIPerformanceStats(daysBack: number = 30) {
+  const cutoffDate = Date.now() - (daysBack * 24 * 60 * 60 * 1000)
+
+  // Get all executed decisions from the last N days
+  const decisions = await db.tradeDecisions
+    .where('timestamp')
+    .above(cutoffDate)
+    .and(d => d.decision === 'execute')
+    .toArray()
+
+  const total = decisions.length
+
+  // Filter by outcome status
+  const wins = decisions.filter(d => d.outcome === 'win').length
+  const losses = decisions.filter(d => d.outcome === 'loss').length
+  const pending = decisions.filter(d => d.outcome === 'pending' || !d.outcome).length
+  const neutral = decisions.filter(d => d.outcome === 'neutral').length
+
+  // Calculate win rate (batting average) - excludes pending and neutral
+  const completed = wins + losses
+  const winRate = completed > 0 ? (wins / completed) * 100 : 0
+
+  // Calculate average profit/loss
+  const completedTrades = decisions.filter(d => d.outcome === 'win' || d.outcome === 'loss')
+  const avgProfitLoss = completedTrades.length > 0
+    ? completedTrades.reduce((sum, d) => sum + (d.profitLoss || 0), 0) / completedTrades.length
+    : 0
+
+  // Find best and worst trades
+  const profitLosses = completedTrades.map(d => d.profitLoss || 0)
+  const bestTrade = profitLosses.length > 0 ? Math.max(...profitLosses) : 0
+  const worstTrade = profitLosses.length > 0 ? Math.min(...profitLosses) : 0
+
+  // Calculate average hold time
+  const tradesWithDuration = decisions.filter(d => d.daysHeld !== undefined)
+  const avgDaysHeld = tradesWithDuration.length > 0
+    ? tradesWithDuration.reduce((sum, d) => sum + (d.daysHeld || 0), 0) / tradesWithDuration.length
+    : 0
+
+  // Find best performing symbol
+  const symbolStats = new Map<string, { wins: number; total: number }>()
+  completedTrades.forEach(d => {
+    const stats = symbolStats.get(d.symbol) || { wins: 0, total: 0 }
+    stats.total++
+    if (d.outcome === 'win') stats.wins++
+    symbolStats.set(d.symbol, stats)
+  })
+
+  let bestSymbol = ''
+  let bestSymbolWinRate = 0
+  symbolStats.forEach((stats, symbol) => {
+    const winRate = (stats.wins / stats.total) * 100
+    if (stats.total >= 3 && winRate > bestSymbolWinRate) {  // Minimum 3 trades
+      bestSymbol = symbol
+      bestSymbolWinRate = winRate
+    }
+  })
+
+  return {
+    // Overview
+    totalRecommendations: total,
+    completed,
+    pending,
+
+    // Win/Loss Record
+    wins,
+    losses,
+    neutral,
+    winRate,  // Batting average
+
+    // Performance Metrics
+    avgProfitLoss,
+    bestTrade,
+    worstTrade,
+    avgDaysHeld,
+
+    // Best Performer
+    bestSymbol,
+    bestSymbolWinRate
+  }
+}
+
+/**
+ * Update a trade decision's outcome
+ */
+export async function updateTradeOutcome(
+  decisionId: number,
+  outcome: 'win' | 'loss' | 'neutral',
+  priceAtOutcome: number
+): Promise<void> {
+  const decision = await db.tradeDecisions.get(decisionId)
+  if (!decision) return
+
+  const daysHeld = decision.timestamp
+    ? (Date.now() - decision.timestamp) / (1000 * 60 * 60 * 24)
+    : 0
+
+  const profitLoss = decision.priceAtDecision
+    ? ((priceAtOutcome - decision.priceAtDecision) / decision.priceAtDecision) * 100
+    : 0
+
+  await db.tradeDecisions.update(decisionId, {
+    outcome,
+    outcomeCheckedAt: Date.now(),
+    priceAtOutcome,
+    daysHeld: Math.round(daysHeld * 10) / 10,
+    profitLoss: Math.round(profitLoss * 100) / 100
+  })
 }
 
 // User Profile helpers

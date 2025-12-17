@@ -19,7 +19,7 @@ export function ProactiveAlert({ recommendation }: ProactiveAlertProps) {
   const currentPrice = watchlistItem?.quote.price
 
   const handleDecision = useCallback(async (decision: 'execute' | 'skip') => {
-    // Log decision to database
+    // Log decision to database (with price targets for outcome tracking)
     await logTradeDecision({
       timestamp: Date.now(),
       symbol: recommendation.ticker,
@@ -28,6 +28,10 @@ export function ProactiveAlert({ recommendation }: ProactiveAlertProps) {
       confidence: recommendation.confidence,
       rationale: recommendation.rationale,
       priceAtDecision: currentPrice,
+      priceTarget: recommendation.priceTarget,
+      stopLoss: recommendation.stopLoss,
+      outcome: decision === 'execute' ? 'pending' : undefined,  // Track executed trades
+      source: 'cloud_ai',  // AI-generated recommendation
     })
 
     // Play sound notification based on action

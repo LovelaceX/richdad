@@ -7,6 +7,7 @@ interface MarketState {
   selectedTicker: string
   chartData: CandleData[]
   cacheStatus: { age: number; isFresh: boolean } | null
+  timeframe: 'intraday' | 'daily'  // Chart timeframe
 
   // Actions
   setSelectedTicker: (symbol: string) => void
@@ -14,7 +15,8 @@ interface MarketState {
   setQuotes: (quotes: Quote[]) => void
   setCacheStatus: (status: { age: number; isFresh: boolean }) => void
   refreshAllQuotes: () => void
-  loadChartData: (symbol: string) => Promise<void>
+  setTimeframe: (timeframe: 'intraday' | 'daily') => void
+  loadChartData: (symbol?: string, interval?: 'intraday' | 'daily') => Promise<void>
 }
 
 export const useMarketStore = create<MarketState>((set, get) => ({
@@ -29,10 +31,14 @@ export const useMarketStore = create<MarketState>((set, get) => ({
 
   cacheStatus: null,
 
+  timeframe: 'intraday',  // Default to intraday for SPY
+
   setSelectedTicker: (symbol: string) => {
-    set({ selectedTicker: symbol })
+    // When changing ticker, set appropriate default timeframe
+    const timeframe = symbol === 'SPY' ? 'intraday' : 'daily'
+    set({ selectedTicker: symbol, timeframe })
     // Trigger chart load asynchronously (don't await)
-    get().loadChartData(symbol).catch(err => {
+    get().loadChartData(symbol, timeframe).catch(err => {
       console.error('[Market Store] Chart load error:', err)
     })
   },
@@ -67,31 +73,39 @@ export const useMarketStore = create<MarketState>((set, get) => ({
     }))
   },
 
-  loadChartData: async (symbol: string) => {
+  setTimeframe: (timeframe: 'intraday' | 'daily') => {
+    set({ timeframe })
+    // Reload chart with new timeframe
+    const { selectedTicker } = get()
+    get().loadChartData(selectedTicker, timeframe).catch(err => {
+      console.error('[Market Store] Chart load error:', err)
+    })
+  },
+
+  loadChartData: async (symbol?: string, interval?: 'intraday' | 'daily') => {
     try {
+      const state = get()
+      const targetSymbol = symbol || state.selectedTicker
+      const targetInterval = interval || state.timeframe
+
       // Import marketData service
       const { fetchHistoricalData } = await import('../../services/marketData')
 
-      // Determine interval based on symbol
-      // SPY uses 5-minute intraday data for better technical signals
-      // Other symbols use daily data (less API budget)
-      const interval = symbol === 'SPY' ? 'intraday' : 'daily'
-
-      console.log(`[Market Store] Loading chart data for ${symbol} (${interval})`)
-      const candles = await fetchHistoricalData(symbol, interval)
+      console.log(`[Market Store] Loading chart data for ${targetSymbol} (${targetInterval})`)
+      const candles = await fetchHistoricalData(targetSymbol, targetInterval)
 
       set({
         chartData: candles,
-        selectedTicker: symbol
+        selectedTicker: targetSymbol
       })
 
-      console.log(`[Market Store] Chart updated with ${candles.length} candles (${interval})`)
+      console.log(`[Market Store] Chart updated with ${candles.length} candles (${targetInterval})`)
     } catch (error) {
       console.error('[Market Store] Failed to load chart data:', error)
 
       // Fallback to mock data
       const { generateCandleData } = await import('../lib/mockData')
-      set({ chartData: generateCandleData(symbol, 90) })
+      set({ chartData: generateCandleData(symbol || get().selectedTicker, 90) })
     }
   },
 }))
