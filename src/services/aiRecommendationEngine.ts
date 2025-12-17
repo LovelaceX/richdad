@@ -6,6 +6,7 @@
 import { getAISettings } from '../renderer/lib/db'
 import { fetchHistoricalData, fetchLivePrices } from './marketData'
 import { calculateIndicators } from './technicalIndicators'
+import { calculateMarketRegime, formatRegimeForPrompt, type MarketRegime } from './marketRegime'
 import type { AIRecommendation, Quote } from '../renderer/types'
 import { generateId } from '../renderer/lib/utils'
 import { canMakeAICall, recordAICall, getAIBudgetStatus } from './aiBudgetTracker'
@@ -67,10 +68,13 @@ export async function generateRecommendation(
     // 5. Get recent news headlines (from news store if available)
     const newsHeadlines = await getRecentNews(symbol)
 
-    // 6. Build analysis prompt
-    const prompt = buildAnalysisPrompt(symbol, quote, indicators, newsHeadlines)
+    // 6. Get market regime context
+    const marketRegime = await calculateMarketRegime()
 
-    // 7. Send to AI for analysis
+    // 7. Build analysis prompt
+    const prompt = buildAnalysisPrompt(symbol, quote, indicators, newsHeadlines, marketRegime)
+
+    // 8. Send to AI for analysis
     const aiResponse = await sendAnalysisToAI(prompt, aiSettings.provider, aiSettings.apiKey, aiSettings.model)
 
     // Record the AI call (budget tracking)
@@ -81,7 +85,7 @@ export async function generateRecommendation(
       return null
     }
 
-    // 8. Parse AI response
+    // 9. Parse AI response
     const recommendation = parseAIResponse(aiResponse, symbol, quote.price)
 
     if (!recommendation) {
@@ -89,14 +93,14 @@ export async function generateRecommendation(
       return null
     }
 
-    // 9. Validate confidence threshold (configurable, default 70%)
+    // 10. Validate confidence threshold (configurable, default 70%)
     const threshold = confidenceThreshold ?? 70
     if (recommendation.confidence < threshold) {
       console.log(`[AI Engine] Confidence too low (${recommendation.confidence}% < ${threshold}%), skipping recommendation`)
       return null
     }
 
-    // 10. Build final recommendation object
+    // 11. Build final recommendation object
     const finalRecommendation: AIRecommendation = {
       id: generateId(),
       ticker: symbol,
@@ -128,9 +132,16 @@ function buildAnalysisPrompt(
   symbol: string,
   quote: Quote,
   indicators: any,
-  newsHeadlines: string[]
+  newsHeadlines: string[],
+  marketRegime: MarketRegime | null
 ): string {
+  const regimeSection = marketRegime
+    ? formatRegimeForPrompt(marketRegime)
+    : '**MARKET REGIME:** Unable to calculate (insufficient data)'
+
   const prompt = `You are a professional trading analyst. Analyze the following data for ${symbol} and provide a trading recommendation.
+
+${regimeSection}
 
 **CURRENT PRICE DATA:**
 - Symbol: ${symbol}
@@ -151,12 +162,19 @@ ${indicators.ma200 ? `- MA(200): $${indicators.ma200}` : ''}
 ${newsHeadlines.length > 0 ? newsHeadlines.map((h, i) => `${i + 1}. ${h}`).join('\n') : 'No recent news available'}
 
 **INSTRUCTIONS:**
-Based on this data, provide a trading recommendation. Respond ONLY with valid JSON in this exact format:
+Based on this data AND THE MARKET REGIME, provide a trading recommendation. The market regime is critical context:
+- In HIGH_VOL_BEARISH (Fear Mode): Be very cautious, favor HOLD or defensive positions
+- In HIGH_VOL_BULLISH: Reduce position size recommendations, tighter stops
+- In CHOPPY: Avoid directional bets entirely. Strongly favor HOLD. Wait for trend clarity.
+- In LOW_VOL_BULLISH: More aggressive targets acceptable
+- In LOW_VOL_BEARISH: Watch for reversal signals
+
+Respond ONLY with valid JSON in this exact format:
 
 {
   "action": "BUY" | "SELL" | "HOLD",
   "confidence": 0-100,
-  "rationale": "Brief 2-3 sentence explanation of your reasoning",
+  "rationale": "Brief 2-3 sentence explanation referencing market regime and specific data points",
   "priceTarget": number or null,
   "stopLoss": number or null
 }
@@ -164,8 +182,9 @@ Based on this data, provide a trading recommendation. Respond ONLY with valid JS
 Rules:
 - confidence should be 0-100 (whole number)
 - priceTarget and stopLoss are optional but recommended for BUY/SELL
-- rationale should reference specific data points (RSI, MACD, news, etc.)
-- Be honest about uncertainty - lower confidence if data is mixed
+- rationale MUST reference the market regime AND specific technical data (RSI, MACD, news, etc.)
+- In high volatility regimes, recommend tighter stops and lower position sizes
+- Be honest about uncertainty - lower confidence if data is mixed or regime is risky
 
 Respond with ONLY the JSON object, no additional text.`
 

@@ -2,6 +2,7 @@ import { getSettings } from '../renderer/lib/db'
 import { generateQuote } from '../renderer/lib/mockData'
 import type { Quote } from '../renderer/types'
 import { canUseAlphaVantageForMarket, canUseAlphaVantageForCharts, recordMarketCall, recordChartCall, getBudgetStatus } from './apiBudgetTracker'
+import { fetchPolygonQuotes, fetchPolygonHistorical } from './polygonService'
 
 const ALPHA_VANTAGE_BASE_URL = 'https://www.alphavantage.co/query'
 const CACHE_DURATION_MS = 3600000 // 1 hour (3600 seconds)
@@ -17,18 +18,37 @@ let historicalCacheTimestamps: Map<string, number> = new Map()
 const HISTORICAL_CACHE_DURATION_MS = 86400000 // 24 hours
 
 /**
- * Fetch live prices from Alpha Vantage (batch endpoint)
- * Uses 1-hour client-side cache to avoid exceeding daily API limit
- * (1 call every ~60 min = ~24 calls/day, within 25/day free tier limit)
+ * Fetch live prices from configured provider (Polygon or Alpha Vantage)
+ * Uses caching to minimize API calls
  * Falls back to mock data on error
  */
 export async function fetchLivePrices(symbols: string[]): Promise<Quote[]> {
   const settings = await getSettings()
+  const provider = settings.marketDataProvider || 'polygon'
+
+  // Route to Polygon if configured
+  if (provider === 'polygon') {
+    const polygonKey = settings.polygonApiKey
+    if (!polygonKey) {
+      console.warn('[Market Data] No Polygon API key configured, using mock data')
+      return symbols.map(symbol => generateQuote(symbol))
+    }
+    try {
+      const quotes = await fetchPolygonQuotes(symbols, polygonKey)
+      if (quotes.length > 0) return quotes
+    } catch (error) {
+      console.error('[Market Data] Polygon fetch failed:', error)
+    }
+    // Fallback to mock if Polygon fails
+    return symbols.map(symbol => generateQuote(symbol))
+  }
+
+  // Alpha Vantage path
   const apiKey = settings.alphaVantageApiKey
 
   // Fallback to mock if no API key
   if (!apiKey) {
-    console.warn('No Alpha Vantage API key configured, using mock data')
+    console.warn('[Market Data] No Alpha Vantage API key configured, using mock data')
     return symbols.map(symbol => generateQuote(symbol))
   }
 
@@ -180,6 +200,29 @@ export async function fetchHistoricalData(
   symbol: string,
   interval: string = 'daily'
 ): Promise<any[]> {
+  const settings = await getSettings()
+  const provider = settings.marketDataProvider || 'polygon'
+
+  // Route to Polygon if configured
+  if (provider === 'polygon') {
+    const polygonKey = settings.polygonApiKey
+    if (!polygonKey) {
+      console.warn('[Market Data] No Polygon API key configured, falling back to mock data')
+      const { generateCandleData } = await import('../renderer/lib/mockData')
+      return generateCandleData(symbol, 100)
+    }
+    try {
+      const candles = await fetchPolygonHistorical(symbol, interval, polygonKey)
+      if (candles.length > 0) return candles
+    } catch (error) {
+      console.error('[Market Data] Polygon historical fetch failed:', error)
+    }
+    // Fallback to mock if Polygon fails
+    const { generateCandleData } = await import('../renderer/lib/mockData')
+    return generateCandleData(symbol, 100)
+  }
+
+  // Alpha Vantage path below
   // Get base interval and aggregation config
   const mapping = INTERVAL_MAPPING[interval] || { baseInterval: interval, aggregateCount: 1 }
   const { baseInterval, aggregateCount } = mapping
@@ -209,7 +252,6 @@ export async function fetchHistoricalData(
     return generateCandleData(symbol, 100)
   }
 
-  const settings = await getSettings()
   const apiKey = settings.alphaVantageApiKey
 
   if (!apiKey) {

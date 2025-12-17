@@ -4,6 +4,7 @@ import { TopBar } from './components/TopBar'
 import { Dashboard, News, Settings } from './pages'
 import { useNavigationStore } from './stores/navigationStore'
 import { useSettingsStore } from './stores/settingsStore'
+import { useMarketStore } from './stores/marketStore'
 import { useDataHeartbeat } from './hooks/useDataHeartbeat'
 import { initializeDatabase, getSettings } from './lib/db'
 import { OnboardingWizard } from './components/Onboarding/OnboardingWizard'
@@ -19,12 +20,17 @@ export default function App() {
   const zoomIn = useSettingsStore(state => state.zoomIn)
   const zoomOut = useSettingsStore(state => state.zoomOut)
   const resetZoom = useSettingsStore(state => state.resetZoom)
+  const loadUserWatchlist = useMarketStore(state => state.loadUserWatchlist)
   const [showWizard, setShowWizard] = useState(false)
 
-  // Initialize database on mount
+  // Initialize database and load user watchlist on mount
   useEffect(() => {
-    initializeDatabase().catch(console.error)
-  }, [])
+    const init = async () => {
+      await initializeDatabase()
+      await loadUserWatchlist()
+    }
+    init().catch(console.error)
+  }, [loadUserWatchlist])
 
   // Check if user needs onboarding wizard on mount
   useEffect(() => {
@@ -32,6 +38,7 @@ export default function App() {
       const settings = await getSettings()
       const needsOnboarding = !settings.hasCompletedOnboarding &&
                              !settings.alphaVantageApiKey &&
+                             !settings.polygonApiKey &&
                              !settings.finnhubApiKey
       setShowWizard(needsOnboarding)
     }

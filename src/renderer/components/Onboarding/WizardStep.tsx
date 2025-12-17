@@ -1,15 +1,29 @@
-import { BarChart3, TrendingUp, ExternalLink } from 'lucide-react'
+import { BarChart3, ExternalLink, Database } from 'lucide-react'
 import { ApiKeyInput } from './ApiKeyInput'
 
 interface WizardStepProps {
   stepNumber: number
   totalSteps: number
-  provider: 'alpha-vantage' | 'finnhub'
+  provider: 'alpha-vantage' | 'polygon'
   apiKey: string
   onApiKeyChange: (value: string) => void
 }
 
 const PROVIDER_CONFIG = {
+  'polygon': {
+    name: 'Massive.com (formerly Polygon.io)',
+    icon: Database,
+    description: 'Professional market data with unlimited API calls',
+    signupUrl: 'https://massive.com/dashboard/signup',
+    instructions: [
+      'Visit massive.com and click "Get your free API Key"',
+      'Create an account (email verification required)',
+      'Copy your API key from the dashboard',
+      'Free tier: Unlimited calls, 15-min delayed data',
+    ],
+    freeTier: 'Unlimited calls (rate limited), 15-min delay',
+    budgetNote: 'Best for charts and technical analysis. No daily limit to worry about!',
+  },
   'alpha-vantage': {
     name: 'Alpha Vantage',
     icon: BarChart3,
@@ -22,21 +36,7 @@ const PROVIDER_CONFIG = {
       'Free tier: 25 calls/day (we cache data efficiently)',
     ],
     freeTier: '25 calls/day, 5 calls/minute',
-    budgetNote: 'Sufficient for hourly quote updates + 1 chart per day',
-  },
-  'finnhub': {
-    name: 'Finnhub',
-    icon: TrendingUp,
-    description: 'Alternative market data provider with higher rate limits',
-    signupUrl: 'https://finnhub.io/register',
-    instructions: [
-      'Visit finnhub.io and click "Get free API key"',
-      'Create an account (email verification required)',
-      'Copy your API token from the dashboard',
-      'Free tier: 60 calls/minute (more flexible than Alpha Vantage)',
-    ],
-    freeTier: '60 calls/minute',
-    budgetNote: 'Automatic fallback when Alpha Vantage budget exhausted',
+    budgetNote: 'Real-time data but limited daily calls. Best for live quotes.',
   },
 }
 

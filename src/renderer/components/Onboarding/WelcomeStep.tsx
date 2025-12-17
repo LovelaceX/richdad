@@ -25,7 +25,7 @@ export function WelcomeStep({ stepNumber, totalSteps }: WelcomeStepProps) {
           Welcome to RichDad
         </h2>
         <p className="text-gray-400 text-sm max-w-md mx-auto">
-          Your AI-powered trading co-pilot for institutional-grade market intelligence
+          Your AI-powered trading co-pilot for smarter market decisions
         </p>
       </div>
 
@@ -69,7 +69,7 @@ export function WelcomeStep({ stepNumber, totalSteps }: WelcomeStepProps) {
       </div>
 
       {/* Note */}
-      <div className="bg-terminal-bg border border-terminal-border rounded p-4 text-center">
+      <div className="text-center py-4">
         <p className="text-gray-400 text-sm">
           Let's get started by reviewing our terms and setting up your API keys
         </p>

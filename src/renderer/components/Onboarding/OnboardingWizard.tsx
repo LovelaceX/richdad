@@ -1,23 +1,28 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X } from 'lucide-react'
+import { X, Sparkles, Zap } from 'lucide-react'
 import { WelcomeStep } from './WelcomeStep'
 import { TermsStep } from './TermsStep'
 import { WizardStep } from './WizardStep'
-import { updateSettings } from '../../lib/db'
+import { updateSettings, updateAISettings } from '../../lib/db'
 
 interface OnboardingWizardProps {
   isOpen: boolean
   onClose: () => void
 }
 
-type WizardStepType = 'welcome' | 'terms' | 'alpha-vantage' | 'finnhub'
+type MarketDataProvider = 'polygon' | 'alphavantage'
+type AIProviderChoice = 'openai' | 'groq'
+type WizardStepType = 'welcome' | 'terms' | 'provider-choice' | 'api-key' | 'ai-provider'
 
 export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
   const [currentStep, setCurrentStep] = useState<WizardStepType>('welcome')
   const [termsAccepted, setTermsAccepted] = useState(false)
+  const [selectedProvider, setSelectedProvider] = useState<MarketDataProvider>('polygon')
+  const [polygonKey, setPolygonKey] = useState('')
   const [alphaVantageKey, setAlphaVantageKey] = useState('')
-  const [finnhubKey, setFinnhubKey] = useState('')
+  const [selectedAIProvider, setSelectedAIProvider] = useState<AIProviderChoice>('openai')
+  const [aiApiKey, setAiApiKey] = useState('')
 
   const handleSkip = async () => {
     // Mark onboarding complete even without keys
@@ -29,17 +34,26 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
     if (currentStep === 'welcome') {
       setCurrentStep('terms')
     } else if (currentStep === 'terms') {
-      setCurrentStep('alpha-vantage')
-    } else if (currentStep === 'alpha-vantage') {
-      // Save Alpha Vantage key (if provided)
-      if (alphaVantageKey) {
+      setCurrentStep('provider-choice')
+    } else if (currentStep === 'provider-choice') {
+      // Save provider choice
+      await updateSettings({ marketDataProvider: selectedProvider })
+      setCurrentStep('api-key')
+    } else if (currentStep === 'api-key') {
+      // Save the appropriate API key based on selected provider
+      if (selectedProvider === 'polygon' && polygonKey) {
+        await updateSettings({ polygonApiKey: polygonKey })
+      } else if (selectedProvider === 'alphavantage' && alphaVantageKey) {
         await updateSettings({ alphaVantageApiKey: alphaVantageKey })
       }
-      setCurrentStep('finnhub')
+      setCurrentStep('ai-provider')
     } else {
-      // Save Finnhub key and complete onboarding
-      if (finnhubKey) {
-        await updateSettings({ finnhubApiKey: finnhubKey })
+      // Save AI provider choice and complete onboarding
+      if (aiApiKey) {
+        // Map groq to llama provider (Groq hosts Llama models)
+        const provider = selectedAIProvider === 'groq' ? 'llama' : 'openai'
+        const model = selectedAIProvider === 'groq' ? 'llama-3.3-70b-versatile' : 'gpt-4.0-turbo'
+        await updateAISettings({ provider, apiKey: aiApiKey, model })
       }
       await updateSettings({ hasCompletedOnboarding: true })
       onClose()
@@ -47,7 +61,13 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
   }
 
   const getStepNumber = () => {
-    const stepOrder = { welcome: 1, terms: 2, 'alpha-vantage': 3, finnhub: 4 }
+    const stepOrder: Record<WizardStepType, number> = {
+      welcome: 1,
+      terms: 2,
+      'provider-choice': 3,
+      'api-key': 4,
+      'ai-provider': 5
+    }
     return stepOrder[currentStep]
   }
 
@@ -59,12 +79,12 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
   }
 
   const getButtonText = () => {
-    if (currentStep === 'finnhub') return 'Finish'
+    if (currentStep === 'ai-provider') return 'Finish'
     return 'Continue'
   }
 
   const renderStep = () => {
-    const totalSteps = 4
+    const totalSteps = 5
     const stepNumber = getStepNumber()
 
     switch (currentStep) {
@@ -79,25 +99,140 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
             onAcceptChange={setTermsAccepted}
           />
         )
-      case 'alpha-vantage':
+      case 'provider-choice':
+        return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <p className="text-gray-400 text-sm mb-1">Step {stepNumber} of {totalSteps}</p>
+              <h3 className="text-white text-lg font-medium">Choose Market Data Provider</h3>
+              <p className="text-gray-500 text-sm mt-2">Select your preferred source for stock prices and charts</p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => setSelectedProvider('polygon')}
+                className={`w-full p-4 rounded-lg border text-left transition-colors ${
+                  selectedProvider === 'polygon'
+                    ? 'border-terminal-amber bg-terminal-amber/10'
+                    : 'border-terminal-border hover:border-gray-600'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-white font-medium">Massive.com (formerly Polygon.io)</div>
+                    <div className="text-gray-400 text-sm mt-1">Unlimited API calls, 15-min delayed data</div>
+                  </div>
+                  <span className="text-terminal-amber text-xs font-medium px-2 py-1 bg-terminal-amber/20 rounded">
+                    Recommended
+                  </span>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setSelectedProvider('alphavantage')}
+                className={`w-full p-4 rounded-lg border text-left transition-colors ${
+                  selectedProvider === 'alphavantage'
+                    ? 'border-terminal-amber bg-terminal-amber/10'
+                    : 'border-terminal-border hover:border-gray-600'
+                }`}
+              >
+                <div>
+                  <div className="text-white font-medium">Alpha Vantage</div>
+                  <div className="text-gray-400 text-sm mt-1">Real-time data, 25 calls/day limit</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        )
+      case 'api-key':
         return (
           <WizardStep
             stepNumber={stepNumber}
             totalSteps={totalSteps}
-            provider="alpha-vantage"
-            apiKey={alphaVantageKey}
-            onApiKeyChange={setAlphaVantageKey}
+            provider={selectedProvider === 'polygon' ? 'polygon' : 'alpha-vantage'}
+            apiKey={selectedProvider === 'polygon' ? polygonKey : alphaVantageKey}
+            onApiKeyChange={selectedProvider === 'polygon' ? setPolygonKey : setAlphaVantageKey}
           />
         )
-      case 'finnhub':
+      case 'ai-provider':
         return (
-          <WizardStep
-            stepNumber={stepNumber}
-            totalSteps={totalSteps}
-            provider="finnhub"
-            apiKey={finnhubKey}
-            onApiKeyChange={setFinnhubKey}
-          />
+          <div className="space-y-6">
+            <div className="text-center">
+              <p className="text-gray-400 text-sm mb-1">Step {stepNumber} of {totalSteps}</p>
+              <h3 className="text-white text-lg font-medium">Choose AI Provider</h3>
+              <p className="text-gray-500 text-sm mt-2">Select your AI copilot for trading recommendations</p>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                onClick={() => setSelectedAIProvider('openai')}
+                className={`w-full p-4 rounded-lg border text-left transition-colors ${
+                  selectedAIProvider === 'openai'
+                    ? 'border-terminal-amber bg-terminal-amber/10'
+                    : 'border-terminal-border hover:border-gray-600'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-terminal-bg border border-terminal-border rounded">
+                      <Sparkles className="w-5 h-5 text-terminal-amber" />
+                    </div>
+                    <div>
+                      <div className="text-white font-medium">OpenAI (GPT-4)</div>
+                      <div className="text-gray-400 text-sm mt-1">Most capable reasoning</div>
+                    </div>
+                  </div>
+                  <span className="text-terminal-amber text-xs font-medium px-2 py-1 bg-terminal-amber/20 rounded">
+                    Recommended
+                  </span>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setSelectedAIProvider('groq')}
+                className={`w-full p-4 rounded-lg border text-left transition-colors ${
+                  selectedAIProvider === 'groq'
+                    ? 'border-terminal-amber bg-terminal-amber/10'
+                    : 'border-terminal-border hover:border-gray-600'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-terminal-bg border border-terminal-border rounded">
+                    <Zap className="w-5 h-5 text-terminal-up" />
+                  </div>
+                  <div>
+                    <div className="text-white font-medium">Groq (Free)</div>
+                    <div className="text-gray-400 text-sm mt-1">Fast Llama 3 inference, completely free</div>
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            {/* API Key Input */}
+            <div className="space-y-2">
+              <label className="text-gray-400 text-sm">
+                {selectedAIProvider === 'openai' ? 'OpenAI API Key' : 'Groq API Key'}
+              </label>
+              <input
+                type="password"
+                value={aiApiKey}
+                onChange={(e) => setAiApiKey(e.target.value)}
+                placeholder={selectedAIProvider === 'openai' ? 'sk-...' : 'gsk_...'}
+                className="w-full bg-terminal-bg border border-terminal-border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:border-terminal-amber focus:outline-none"
+              />
+              <p className="text-gray-500 text-xs">
+                {selectedAIProvider === 'openai'
+                  ? 'Get your key at platform.openai.com/api-keys'
+                  : 'Get your free key at console.groq.com/keys'}
+              </p>
+            </div>
+
+            <div className="text-center">
+              <p className="text-gray-500 text-xs">
+                You can skip this and set up AI later in Settings
+              </p>
+            </div>
+          </div>
         )
     }
   }

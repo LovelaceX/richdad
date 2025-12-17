@@ -7,9 +7,10 @@ interface WatchlistItemProps {
   item: WatchlistItemType
   isSelected: boolean
   onClick: () => void
+  isTop10?: boolean  // Top 10 items cannot be removed
 }
 
-export function WatchlistItem({ item, isSelected, onClick }: WatchlistItemProps) {
+export function WatchlistItem({ item, isSelected, onClick, isTop10 = false }: WatchlistItemProps) {
   const { quote } = item
   const colorClass = getColorClass(quote.change)
   const removeFromWatchlist = useMarketStore(state => state.removeFromWatchlist)
@@ -50,14 +51,16 @@ export function WatchlistItem({ item, isSelected, onClick }: WatchlistItemProps)
       {/* Spacer */}
       <div className="flex-1 min-w-2" />
 
-      {/* Delete button - appears on hover, never overlaps */}
-      <button
-        onClick={handleDelete}
-        className="p-1 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all flex-shrink-0"
-        title="Remove from watchlist"
-      >
-        <X size={14} />
-      </button>
+      {/* Delete button - appears on hover, hidden for Top 10 */}
+      {!isTop10 && (
+        <button
+          onClick={handleDelete}
+          className="p-1 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all flex-shrink-0"
+          title="Remove from watchlist"
+        >
+          <X size={14} />
+        </button>
+      )}
     </div>
   )
 }

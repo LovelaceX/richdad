@@ -12,6 +12,10 @@ export interface TradeDecision {
   priceAtDecision?: number
   source?: 'local_llm' | 'cloud_ai' | 'manual'  // Track verdict origin
 
+  // Manual trade fields (for human-triggered trades)
+  shares?: number        // Number of shares traded
+  dollarAmount?: number  // Dollar amount invested/sold
+
   // Outcome Tracking (for AI accuracy metrics)
   priceTarget?: number
   stopLoss?: number
@@ -53,7 +57,9 @@ export interface UserSettings {
   lastSoundPlayed: number          // Timestamp of last sound
 
   // Data Sources
+  marketDataProvider: 'alphavantage' | 'polygon'
   alphaVantageApiKey?: string
+  polygonApiKey?: string
   useAlphaVantageForNews?: boolean
   finnhubApiKey?: string
 
@@ -102,6 +108,15 @@ export interface PnLEntry {
   realized: number
   unrealized?: number
   notes?: string
+}
+
+// Watchlist entry for user-added symbols (persisted to IndexedDB)
+export interface WatchlistEntry {
+  id?: number
+  symbol: string
+  name?: string
+  sector?: string
+  addedAt: number
 }
 
 export interface UserProfile {
@@ -212,6 +227,7 @@ class DadAppDatabase extends Dexie {
   pnlEntries!: EntityTable<PnLEntry, 'id'>
   userProfile!: EntityTable<UserProfile, 'id'>
   aiSettings!: EntityTable<AISettings, 'id'>
+  watchlist!: EntityTable<WatchlistEntry, 'id'>
 
   constructor() {
     super('dadapp')
@@ -268,6 +284,19 @@ class DadAppDatabase extends Dexie {
 
       console.log('[DB Migration v4] Added AI customization settings')
     })
+
+    // v5: Add watchlist table for user-added symbols persistence
+    this.version(5).stores({
+      tradeDecisions: '++id, timestamp, symbol, action, decision, source, outcome',
+      userSettings: '++id',
+      newsSources: '++id, name, type, enabled, category',
+      proTraders: '++id, handle, source, enabled',
+      priceAlerts: '++id, symbol, triggered, createdAt',
+      pnlEntries: '++id, date',
+      userProfile: '++id',
+      aiSettings: '++id, provider',
+      watchlist: '++id, symbol, addedAt'
+    })
   }
 }
 
@@ -304,7 +333,9 @@ export const DEFAULT_SETTINGS: UserSettings = {
   lastSoundPlayed: 0,
 
   // Data Sources
+  marketDataProvider: 'polygon',  // Polygon recommended: unlimited calls
   alphaVantageApiKey: undefined,
+  polygonApiKey: undefined,
   useAlphaVantageForNews: false,
   finnhubApiKey: undefined,
 
@@ -538,6 +569,77 @@ export async function getAIPerformanceStats(daysBack: number = 30) {
 }
 
 /**
+ * Get Performance Statistics filtered by source (Human vs AI)
+ * @param source - 'manual' for human trades, 'ai' for AI recommendations
+ * @param daysBack - Number of days to look back (default 30)
+ */
+export async function getPerformanceStatsBySource(
+  source: 'manual' | 'ai',
+  daysBack: number = 30
+) {
+  const cutoffDate = Date.now() - (daysBack * 24 * 60 * 60 * 1000)
+
+  // Get all executed decisions from the last N days
+  const allDecisions = await db.tradeDecisions
+    .where('timestamp')
+    .above(cutoffDate)
+    .and(d => d.decision === 'execute')
+    .toArray()
+
+  // Filter by source type
+  const decisions = allDecisions.filter(d => {
+    if (source === 'manual') {
+      return d.source === 'manual'
+    } else {
+      // AI includes cloud_ai and local_llm
+      return d.source === 'cloud_ai' || d.source === 'local_llm'
+    }
+  })
+
+  const total = decisions.length
+
+  // Filter by outcome status
+  const wins = decisions.filter(d => d.outcome === 'win').length
+  const losses = decisions.filter(d => d.outcome === 'loss').length
+  const pending = decisions.filter(d => d.outcome === 'pending' || !d.outcome).length
+  const neutral = decisions.filter(d => d.outcome === 'neutral').length
+
+  // Calculate win rate (batting average) - excludes pending and neutral
+  const completed = wins + losses
+  const winRate = completed > 0 ? (wins / completed) * 100 : 0
+
+  // Calculate average profit/loss
+  const completedTrades = decisions.filter(d => d.outcome === 'win' || d.outcome === 'loss')
+  const avgProfitLoss = completedTrades.length > 0
+    ? completedTrades.reduce((sum, d) => sum + (d.profitLoss || 0), 0) / completedTrades.length
+    : 0
+
+  // Calculate total invested (for manual trades with dollarAmount)
+  const totalInvested = decisions
+    .filter(d => d.dollarAmount)
+    .reduce((sum, d) => sum + (d.dollarAmount || 0), 0)
+
+  // Calculate total shares traded
+  const totalShares = decisions
+    .filter(d => d.shares)
+    .reduce((sum, d) => sum + (d.shares || 0), 0)
+
+  return {
+    source,
+    totalTrades: total,
+    completed,
+    pending,
+    wins,
+    losses,
+    neutral,
+    winRate,
+    avgProfitLoss,
+    totalInvested,
+    totalShares
+  }
+}
+
+/**
  * Update a trade decision's outcome
  */
 export async function updateTradeOutcome(
@@ -682,4 +784,64 @@ export async function factoryReset(): Promise<void> {
 
   // Reload the app to start fresh
   window.location.reload()
+}
+
+// ==========================================
+// USER WATCHLIST PERSISTENCE
+// ==========================================
+
+/**
+ * Get all user-added watchlist symbols from IndexedDB
+ */
+export async function getUserWatchlist(): Promise<WatchlistEntry[]> {
+  return await db.watchlist.orderBy('addedAt').toArray()
+}
+
+/**
+ * Add a symbol to user's watchlist (persisted)
+ */
+export async function addToUserWatchlist(
+  symbol: string,
+  name?: string,
+  sector?: string
+): Promise<number> {
+  // Check if already exists
+  const existing = await db.watchlist.where('symbol').equals(symbol.toUpperCase()).first()
+  if (existing) {
+    console.log(`[DB] ${symbol} already in user watchlist`)
+    return existing.id!
+  }
+
+  const id = await db.watchlist.add({
+    symbol: symbol.toUpperCase(),
+    name,
+    sector,
+    addedAt: Date.now()
+  })
+  console.log(`[DB] Added ${symbol} to user watchlist`)
+  return id as number
+}
+
+/**
+ * Remove a symbol from user's watchlist
+ */
+export async function removeFromUserWatchlist(symbol: string): Promise<void> {
+  await db.watchlist.where('symbol').equals(symbol.toUpperCase()).delete()
+  console.log(`[DB] Removed ${symbol} from user watchlist`)
+}
+
+/**
+ * Check if a symbol is in user's watchlist
+ */
+export async function isInUserWatchlist(symbol: string): Promise<boolean> {
+  const entry = await db.watchlist.where('symbol').equals(symbol.toUpperCase()).first()
+  return !!entry
+}
+
+/**
+ * Clear all user watchlist entries
+ */
+export async function clearUserWatchlist(): Promise<void> {
+  await db.watchlist.clear()
+  console.log('[DB] User watchlist cleared')
 }

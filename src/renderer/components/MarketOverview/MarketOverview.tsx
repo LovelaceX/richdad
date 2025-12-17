@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { TrendingUp, TrendingDown, Clock, Trophy } from 'lucide-react'
+import { TrendingUp, TrendingDown, Clock, Trophy, Activity } from 'lucide-react'
 import { getAIPerformanceStats } from '../../lib/db'
+import { calculateMarketRegime, getRegimeLabel, type MarketRegime } from '../../../services/marketRegime'
 import type { MarketIndex } from '../../types'
 
 // Mock market indices data
@@ -42,10 +43,40 @@ function getMarketStatus(): { isOpen: boolean; status: string } {
   return { isOpen: false, status: 'CLOSED' }
 }
 
+// Get color class for regime risk level
+function getRegimeColorClass(regime: MarketRegime | null): string {
+  if (!regime) return 'text-gray-500'
+  switch (regime.riskLevel) {
+    case 'low': return 'text-terminal-up'
+    case 'moderate': return 'text-terminal-amber'
+    case 'high': return 'text-orange-500'
+    case 'extreme': return 'text-terminal-down'
+    default: return 'text-gray-500'
+  }
+}
+
 export function MarketOverview() {
   const [indices, setIndices] = useState<MarketIndex[]>(MOCK_INDICES)
   const [marketStatus, setMarketStatus] = useState(getMarketStatus())
   const [aiWinRate, setAiWinRate] = useState<{ winRate: number; record: string } | null>(null)
+  const [marketRegime, setMarketRegime] = useState<MarketRegime | null>(null)
+
+  // Load market regime
+  useEffect(() => {
+    async function loadRegime() {
+      try {
+        const regime = await calculateMarketRegime()
+        setMarketRegime(regime)
+      } catch (error) {
+        console.error('Failed to load market regime:', error)
+      }
+    }
+
+    loadRegime()
+    // Refresh every 5 minutes
+    const interval = setInterval(loadRegime, 300000)
+    return () => clearInterval(interval)
+  }, [])
 
   // Load AI performance
   useEffect(() => {
@@ -126,6 +157,21 @@ export function MarketOverview() {
             {aiWinRate.winRate.toFixed(0)}%
           </span>
           <span className="text-gray-500 text-xs">({aiWinRate.record})</span>
+        </div>
+      )}
+
+      {/* Market Regime Badge */}
+      {marketRegime && (
+        <div
+          className="flex items-center gap-2 whitespace-nowrap border-l border-terminal-border pl-4 cursor-help"
+          title={`${marketRegime.description}\n\nVIX: ${marketRegime.vix.toFixed(2)}\nSPY: $${marketRegime.spyPrice.toFixed(2)} vs MA50: $${marketRegime.spyMA50?.toFixed(2) ?? 'N/A'}\n\n${marketRegime.tradingGuidance}`}
+        >
+          <Activity className={`w-3 h-3 ${getRegimeColorClass(marketRegime)}`} />
+          <span className="text-gray-400 text-xs">Regime</span>
+          <span className={`text-xs font-medium ${getRegimeColorClass(marketRegime)}`}>
+            {getRegimeLabel(marketRegime.regime)}
+          </span>
+          <span className="text-gray-500 text-xs">(VIX {marketRegime.vix.toFixed(1)})</span>
         </div>
       )}
 

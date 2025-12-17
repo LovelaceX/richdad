@@ -1,4 +1,4 @@
-import { FileText, CheckCircle2 } from 'lucide-react'
+import { FileText, CheckCircle2, Shield, Lock, Eye, Server } from 'lucide-react'
 
 interface TermsStepProps {
   stepNumber: number
@@ -106,8 +106,46 @@ export function TermsStep({ stepNumber, totalSteps, accepted, onAcceptChange }: 
         </div>
       </div>
 
+      {/* Privacy Highlights */}
+      <div className="bg-terminal-up/5 border border-terminal-up/20 rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Shield className="w-4 h-4 text-terminal-up" />
+          <span className="text-terminal-up text-sm font-medium">Privacy Promise</span>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex items-start gap-2">
+            <Lock className="w-3.5 h-3.5 text-terminal-up mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-white text-xs font-medium">No Ads, No Trackers</p>
+              <p className="text-gray-500 text-xs">Ever. Period.</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <Eye className="w-3.5 h-3.5 text-terminal-up mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-white text-xs font-medium">Your Trades Are Yours</p>
+              <p className="text-gray-500 text-xs">Local storage only</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <Server className="w-3.5 h-3.5 text-terminal-up mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-white text-xs font-medium">No Cloud Servers</p>
+              <p className="text-gray-500 text-xs">Data stays on your machine</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <Shield className="w-3.5 h-3.5 text-terminal-up mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-white text-xs font-medium">No Crowdsourcing</p>
+              <p className="text-gray-500 text-xs">Your strategy stays private</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Acceptance Checkbox */}
-      <div className="bg-terminal-bg border-2 border-terminal-border rounded-lg p-4">
+      <div className="py-4">
         <label className="flex items-start gap-3 cursor-pointer group">
           <div className="relative flex-shrink-0 mt-0.5">
             <input

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-3.0.0-gold?style=for-the-badge" alt="Version 3.0.0"/>
+  <img src="https://img.shields.io/badge/version-3.8.0-gold?style=for-the-badge" alt="Version 3.8.0"/>
   <img src="https://img.shields.io/badge/tauri-2.x-blue?style=for-the-badge&logo=tauri" alt="Tauri 2.x"/>
   <img src="https://img.shields.io/badge/react-18-61DAFB?style=for-the-badge&logo=react" alt="React 18"/>
   <img src="https://img.shields.io/badge/typescript-strict-3178C6?style=for-the-badge&logo=typescript" alt="TypeScript"/>
@@ -20,13 +20,34 @@
 
 ## Why RichDad?
 
-| Feature | Traditional Apps | RichDad |
-|---------|------------------|---------|
-| AI Analysis | Single provider, basic | **6 AI providers**, confidence thresholds, batting average tracking |
-| Alerts | Price-only | **AI-powered recommendations** with Execute/Skip workflow |
-| Themes | Light/Dark | **5 professional themes** including Clearview light mode |
-| Performance | Electron bloat | **Tauri 2.x** - 773 KB bundle, <150MB RAM |
-| Cost | Expensive APIs | **Free tier optimized** - Alpha Vantage 25 calls/day |
+### vs Bloomberg Terminal
+
+| Category | Bloomberg Terminal | RichDad | Edge |
+|----------|-------------------|---------|------|
+| **Cost** | $24,000/year | Free | RichDad |
+| **Target User** | Institutions, hedge funds | Retail traders | — |
+| **AI Analysis** | None built-in | 6 providers + batting average | **RichDad** |
+| **Privacy** | Cloud-based, logged | 100% local, zero telemetry | **RichDad** |
+| **Trade Journaling** | Basic | Outcome tracking + AI comparison | **RichDad** |
+| **Position Sizing** | Manual calculation | Built-in calculator | **RichDad** |
+| **Data Latency** | Real-time | 15-min delayed (free tier) | Bloomberg |
+| **Asset Classes** | All (FX, bonds, derivatives) | US equities | Bloomberg |
+| **Historical Data** | Decades | 90 days (API limit) | Bloomberg |
+| **News Sources** | Bloomberg News + 1000s | RSS feeds | Bloomberg |
+| **Setup Time** | IT department required | 5 minutes | **RichDad** |
+| **Open Source** | No | Yes, auditable | **RichDad** |
+
+### Our Moat
+
+| Advantage | Why It Matters |
+|-----------|----------------|
+| **AI-First Architecture** | Bloomberg has data; we have intelligence. AI recommendations with confidence scores and performance tracking. |
+| **Privacy by Design** | Your strategy never leaves your machine. Bloomberg knows everything you look at. |
+| **Human vs AI Scorecard** | No platform tracks whether you're beating your AI copilot. We do. |
+| **Zero Cost** | Democratizes tools that were $24K/year. Retail traders get institutional-style analysis. |
+| **Outcome Accountability** | We track if recommendations actually worked. Bloomberg just gives you data. |
+
+<p align="center"><em>"Bloomberg gives you data. RichDad gives you decisions."</em></p>
 
 ---
 
@@ -46,6 +67,9 @@
 
 ### Professional Charts
 - **Real-Time Candlesticks**: Powered by TradingView's Lightweight Charts
+- **Candlestick Pattern Recognition**: Auto-detect 18+ patterns (Engulfing, Hammer, Doji, Morning Star, etc.) with on-chart P markers
+- **News Markers**: N markers on chart showing when news broke, with click-to-view tooltips
+- **Pattern Tooltips**: Click markers to see pattern diagrams, descriptions, and reliability ratings
 - **Multiple Timeframes**: 1M, 5M, 15M, 30M, 1H, Daily
 - **Live Price Updates**: Volume, change %, bid/ask spreads
 - **Resizable Panels**: Customize your workspace layout
@@ -70,6 +94,36 @@
 - **Keyboard Shortcuts**: Cmd+1 (Dashboard), Cmd+2 (News), Cmd+3 (Settings)
 - **Floating Help**: Quick access to all shortcuts and features
 - **Adjustable Ticker Speed**: Control news feed scroll rate
+
+---
+
+## Privacy & Security
+
+RichDad is built with privacy as a core principle, not an afterthought.
+
+| Promise | What It Means |
+|---------|---------------|
+| **No Ads, No Trackers** | Zero analytics, telemetry, or tracking pixels. Ever. |
+| **Your Trades Are Yours** | All data stored locally in IndexedDB on your machine |
+| **No Crowdsourcing** | We don't harvest your strategy to train models or sell insights |
+| **No Cloud Servers** | RichDad has no backend - your data can't leak because it's never collected |
+| **Open Source** | Every line of code is auditable. We have nothing to hide. |
+
+### Why Desktop?
+
+We built RichDad as a desktop app specifically for privacy. Unlike web apps that require servers:
+- Your trading data never leaves your machine
+- API keys are stored locally, never transmitted to us
+- Your strategy is your intellectual property - we're not interested in monetizing it
+
+### Third-Party Services
+
+RichDad makes direct API calls to services you configure:
+- **Market Data**: Massive.com (formerly Polygon.io) or Alpha Vantage (your API key, your account)
+- **AI Analysis**: Your chosen provider (OpenAI, Claude, etc.)
+- **News**: Public RSS feeds
+
+These calls go directly from your machine to the provider. RichDad never sees or proxies this traffic.
 
 ---
 
@@ -141,10 +195,11 @@ RichDad includes a guided onboarding:
 
 ### 2. Get Your API Keys
 
-**Market Data (Required)**:
-| Provider | Free Tier | Link |
-|----------|-----------|------|
-| Alpha Vantage | 25 calls/day | [Get API Key](https://www.alphavantage.co/support/#api-key) |
+**Market Data (Choose one)**:
+| Provider | Free Tier | Best For | Link |
+|----------|-----------|----------|------|
+| **Massive.com** (Recommended) | Unlimited calls, 15-min delay | Charts, technical analysis | [Get API Key](https://massive.com/dashboard/signup) |
+| Alpha Vantage | 25 calls/day, real-time | Live quotes | [Get API Key](https://www.alphavantage.co/support/#api-key) |
 
 **AI Provider (Choose one)**:
 | Provider | Link |
@@ -167,10 +222,10 @@ RichDad includes a guided onboarding:
 
 ```
 Frontend                    Backend                     Data
-├── React 18               ├── Tauri 2.x (Rust)       ├── Alpha Vantage API
-├── TypeScript (strict)    ├── IndexedDB (Dexie.js)   ├── RSS News Feeds
-├── Tailwind CSS           └── Native OS Integration  └── AI Providers
-├── Zustand (state)
+├── React 18               ├── Tauri 2.x (Rust)       ├── Massive.com API (default)
+├── TypeScript (strict)    ├── IndexedDB (Dexie.js)   ├── Alpha Vantage API (alt)
+├── Tailwind CSS           └── Native OS Integration  ├── RSS News Feeds
+├── Zustand (state)                                    └── AI Providers
 ├── Framer Motion
 └── Lightweight Charts
 ```
@@ -183,6 +238,99 @@ Frontend                    Backend                     Data
 | RAM Usage | ~300 MB | **~150 MB** |
 | Startup Time | 5-10s | **<3s** |
 | Security | Chromium sandbox | **Rust + native webview** |
+
+---
+
+## How AI Recommendations Work
+
+RichDad uses **LLM-based reasoning**, not algorithmic trading rules. Here's how it decides BUY/SELL/HOLD:
+
+### Data Sources
+
+| Source | What It Provides |
+|--------|------------------|
+| **Massive.com** (Default) | Unlimited historical candles, 15-min delayed quotes |
+| Alpha Vantage API | Real-time quotes, 25 calls/day limit |
+| RSS News Feeds | Last 24 hours of headlines from 20+ financial sources |
+| Technical Indicators | Calculated from historical price data |
+
+### Technical Indicators Calculated
+
+| Indicator | Meaning |
+|-----------|---------|
+| **RSI(14)** | Relative Strength Index - Overbought >70, Oversold <30 |
+| **MACD** | Moving Average Convergence Divergence - Bull/Bear momentum |
+| **MA(20)** | 20-day moving average - Short-term trend |
+| **MA(50)** | 50-day moving average - Medium-term trend |
+| **MA(200)** | 200-day moving average - Long-term trend ("Golden Cross/Death Cross") |
+
+### The Decision Process
+
+```
+IMPORTANT: This is NOT algorithmic trading with fixed weights!
+
+1. RichDad collects all market data + news for the selected ticker
+2. Data is formatted into a structured prompt
+3. Prompt is sent to your chosen AI (GPT-4, Claude, Gemini, etc.)
+4. AI uses its training on financial markets to reason through:
+   - Technical chart patterns
+   - Support/resistance levels
+   - Momentum indicators
+   - News sentiment
+   - Market context
+5. AI returns: action, confidence %, rationale, price target, stop loss
+6. Only recommendations ≥70% confidence (configurable) are displayed
+```
+
+**Key insight**: There are no hardcoded rules like "if RSI < 30, BUY". The AI interprets the full picture like a human analyst would - that's what makes it valuable.
+
+### What's NOT Used
+- Daily budget amount (that's for P&L tracking only)
+- Your actual portfolio positions
+- Real-time order book data
+- Insider trading information
+
+---
+
+## Data Storage & Uninstall
+
+### Where Data is Stored
+
+RichDad stores all user data locally in IndexedDB (browser database) at:
+
+| Platform | Location |
+|----------|----------|
+| **macOS** | `~/Library/Application Support/richdad/` |
+| **Windows** | `%APPDATA%/richdad/` |
+| **Linux** | `~/.config/richdad/` |
+
+**Stored data includes:**
+- API keys (Alpha Vantage, AI providers)
+- Watchlist customizations
+- AI recommendation history
+- Theme and panel preferences
+- Trade journal entries
+
+### Complete Uninstall
+
+**Important**: On macOS, deleting the app does NOT delete your data. To completely remove RichDad:
+
+**Option 1 - Factory Reset (In-App)**:
+1. Open Settings > Danger Zone
+2. Click "Factory Reset"
+3. Then delete the app
+
+**Option 2 - Manual Deletion**:
+```bash
+# macOS
+rm -rf ~/Library/Application\ Support/richdad/
+
+# Windows (PowerShell)
+Remove-Item -Recurse -Force "$env:APPDATA\richdad"
+
+# Linux
+rm -rf ~/.config/richdad/
+```
 
 ---
 
@@ -230,7 +378,58 @@ richdad/
 
 ## Changelog
 
-### v3.0.0 (Current)
+### v3.8.0 (Current)
+- **Candlestick Pattern Recognition**: Auto-detect 18+ patterns (Bullish/Bearish Engulfing, Hammer, Doji, Morning/Evening Star, Harami, Piercing Line, Dark Cloud Cover, Inside Bar, Outside Up/Down, Breakaway)
+- **On-Chart P Markers**: Green markers for bullish patterns, red for bearish - positioned above/below candles
+- **News N Markers**: Amber circle markers showing when news headlines matched candle timestamps
+- **Pattern Tooltips**: Click any marker to see pattern name, SVG diagram, description, reliability rating, and timestamp
+- **P/N Toggle Buttons**: New toolbar buttons to show/hide pattern and news markers
+
+### v3.7.0
+- **Onboarding Wizard Refresh**: Streamlined setup with Lucide icons (no emojis)
+- **Massive.com Integration**: Polygon.io rebranded to Massive.com with updated links
+- **AI Provider Selection**: Choose between OpenAI or Groq (free) during onboarding
+- **Cleaner UI**: Removed redundant containers and borders in wizard steps
+
+### v3.6.0
+- **Position Size Calculator**: Risk-based position sizing tool in chart toolbar - enter account size, risk %, entry & stop loss to calculate optimal share count
+
+### v3.5.0
+- **Top 10 Stocks**: Popular stocks (SPY, QQQ, AAPL, NVDA, TSLA, MSFT, AMZN, META, GOOGL, AMD) loaded on startup
+- **Watchlist Persistence**: Your custom watchlist saved across restarts via IndexedDB
+- **Quick Buy/Sell**: Manual trade logging via chart toolbar buttons with optional shares/dollar amounts
+- **Human vs AI Scorecard**: Compare your trading performance against AI Copilot with side-by-side batting averages
+- **Privacy Refresh**: Clearer messaging on local-only data storage throughout the app
+
+### v3.4.0
+- **Massive.com Integration**: Market data provider (formerly Polygon.io) with unlimited API calls (15-min delayed)
+- **Provider Choice**: Choose between Massive.com (recommended) or Alpha Vantage during onboarding
+- **CHOPPY Regime Detection**: New market regime for high volatility + sideways trend (SPY within 0.5% of MA50)
+- **Smarter Provider Routing**: Automatic fallback between providers if one fails
+
+### v3.3.0
+- **Market Regime Classifier**: Automatic detection of market conditions (Risk On, Caution, Fear Mode, etc.)
+- **Regime-Aware AI**: AI recommendations now factor in VIX level and SPY trend vs MA(50)
+- **VIX in Watchlist**: Volatility index added to default watchlist
+- **Regime Display**: Live regime indicator in MarketOverview bar with color-coded risk levels
+- **Smarter Prompts**: AI now receives market regime context for better recommendations
+
+### v3.2.0
+- **News Grid Layout**: Multi-column responsive grid (1-4 columns)
+- **Full-Screen Chart**: Expand icon to maximize chart view (Esc to exit)
+- **Extended Timeframes**: 45M, 2H, 4H, 5H, 1W added via aggregation
+- **Quick Timeframe Buttons**: Shortcut buttons below chart for SPY
+- **Collapsible Panels**: Hide Market Watch and AI Copilot with toggles
+- **Onboarding Fixes**: Solid backdrop, improved logo display
+- **Data Cleanup Info**: Danger Zone now shows manual deletion paths
+
+### v3.1.0
+- **Multi-Window Support**: Cmd+N/Ctrl+N opens new windows
+- **Panel Memory**: Collapse state persisted across sessions
+- **Theme Fixes**: Amber color consistency across all themes
+- **Keyboard Shortcut**: Cmd+N for new window
+
+### v3.0.0
 - **Clearview Theme**: New light mode for daytime trading
 - **Notification Center**: Bell icon with pending recommendations queue
 - **Bulk Actions**: Execute All / Skip All for efficient workflow
@@ -254,16 +453,19 @@ richdad/
 
 ## Roadmap
 
-### v3.1.0 (Next)
-- [ ] Multi-symbol AI analysis
+### v3.9.0 (Next)
+- [ ] Trade Tags/Categories (scalp, swing, earnings play)
+- [ ] Trader's Autopsy (session review dashboard)
+- [ ] Portfolio-aware AI (position sizing context)
+- [ ] News deduplication and clustering
 - [ ] Custom alert conditions builder
-- [ ] Advanced indicators (Bollinger Bands, Fibonacci)
 
 ### v4.0.0 (Future)
 - [ ] Broker integrations (Robinhood, TD Ameritrade)
 - [ ] Paper trading mode
 - [ ] Backtesting engine
 - [ ] Strategy sharing
+- [ ] Mobile companion app
 
 ---
 
@@ -300,7 +502,7 @@ See [LICENSE](./LICENSE) for full text.
 
 ## Acknowledgments
 
-Built with [Tauri](https://tauri.app), [React](https://react.dev), [Lightweight Charts](https://tradingview.github.io/lightweight-charts/), and [Alpha Vantage](https://www.alphavantage.co).
+Built with [Tauri](https://tauri.app), [React](https://react.dev), [Lightweight Charts](https://tradingview.github.io/lightweight-charts/), [Massive.com](https://massive.com/), and [Alpha Vantage](https://www.alphavantage.co).
 
 ---
 

@@ -3,8 +3,11 @@ import { TrendingUp, Calendar, Maximize2, Minimize2 } from 'lucide-react'
 import { TradingChart } from './TradingChart'
 import { ProactiveAlert } from './ProactiveAlert'
 import { TimeframeSelector } from './TimeframeSelector'
+import { QuickTradeButtons } from './QuickTradeButtons'
+import { PositionSizeCalculator } from './PositionSizeCalculator'
 import { useMarketStore } from '../../stores/marketStore'
 import { useAIStore } from '../../stores/aiStore'
+import { usePatternStore } from '../../stores/patternStore'
 import { formatPrice, formatChange, formatPercent, getColorClass } from '../../lib/utils'
 
 export function ChartPanel() {
@@ -17,6 +20,12 @@ export function ChartPanel() {
   const isChartExpanded = useMarketStore(state => state.isChartExpanded)
   const toggleChartExpanded = useMarketStore(state => state.toggleChartExpanded)
   const currentRecommendation = useAIStore(state => state.currentRecommendation)
+
+  // Pattern & News marker toggles
+  const showPatterns = usePatternStore(state => state.showPatterns)
+  const showNews = usePatternStore(state => state.showNews)
+  const togglePatterns = usePatternStore(state => state.togglePatterns)
+  const toggleNews = usePatternStore(state => state.toggleNews)
 
   // Handle Escape key to close expanded chart
   useEffect(() => {
@@ -70,6 +79,42 @@ export function ChartPanel() {
               </span>
             </div>
           )}
+
+          {/* Quick Buy/Sell Buttons */}
+          <QuickTradeButtons />
+
+          {/* Position Size Calculator */}
+          <PositionSizeCalculator />
+
+          {/* Pattern / News Marker Toggles */}
+          <div className="flex items-center gap-1 border-l border-terminal-border pl-3">
+            <button
+              onClick={togglePatterns}
+              title="Toggle pattern markers"
+              className={`
+                w-6 h-6 flex items-center justify-center text-xs font-bold rounded transition-all
+                ${showPatterns
+                  ? 'bg-terminal-amber/20 text-terminal-amber border border-terminal-amber/50'
+                  : 'text-gray-500 hover:text-white border border-transparent hover:border-terminal-border'
+                }
+              `}
+            >
+              P
+            </button>
+            <button
+              onClick={toggleNews}
+              title="Toggle news markers"
+              className={`
+                w-6 h-6 flex items-center justify-center text-xs font-bold rounded transition-all
+                ${showNews
+                  ? 'bg-terminal-amber/20 text-terminal-amber border border-terminal-amber/50'
+                  : 'text-gray-500 hover:text-white border border-transparent hover:border-terminal-border'
+                }
+              `}
+            >
+              N
+            </button>
+          </div>
 
           {/* Date Picker */}
           <div className="relative group">

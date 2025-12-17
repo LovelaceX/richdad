@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Loader2, CheckCircle2, XCircle, Wifi } from 'lucide-react'
 import { testAlphaVantageKey } from '../../../services/alphaVantageValidator'
-import { testFinnhubKey } from '../../../services/finnhubValidator'
+import { testPolygonKey } from '../../../services/polygonValidator'
 
 interface ApiKeyInputProps {
-  provider: 'alpha-vantage' | 'finnhub'
+  provider: 'alpha-vantage' | 'polygon'
   value: string
   onChange: (value: string) => void
   placeholder?: string
@@ -32,9 +32,7 @@ export function ApiKeyInput({
     setErrorMessage('')
 
     try {
-      const validator = provider === 'alpha-vantage'
-        ? testAlphaVantageKey
-        : testFinnhubKey
+      const validator = provider === 'polygon' ? testPolygonKey : testAlphaVantageKey
 
       const result = await validator(value)
 

@@ -967,35 +967,82 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             <p className="text-gray-400">Last updated: {new Date().toLocaleDateString()}</p>
           </div>
 
+          {/* Privacy Promise Banner */}
+          <div className="bg-terminal-up/10 border border-terminal-up/30 rounded-lg p-6">
+            <h3 className="text-terminal-up text-lg font-bold mb-4 flex items-center gap-2">
+              <Shield size={20} />
+              Our Privacy Promise
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-start gap-3">
+                <span className="text-terminal-up text-lg">✓</span>
+                <div>
+                  <p className="text-white font-medium">No Ads, No Trackers</p>
+                  <p className="text-gray-400 text-sm">Ever. Period.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="text-terminal-up text-lg">✓</span>
+                <div>
+                  <p className="text-white font-medium">Your Trades Are Yours</p>
+                  <p className="text-gray-400 text-sm">Local storage only</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="text-terminal-up text-lg">✓</span>
+                <div>
+                  <p className="text-white font-medium">No Crowdsourcing</p>
+                  <p className="text-gray-400 text-sm">We don't harvest your strategy</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="text-terminal-up text-lg">✓</span>
+                <div>
+                  <p className="text-white font-medium">Desktop = Your IP</p>
+                  <p className="text-gray-400 text-sm">No cloud servers collecting data</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-6 text-gray-300">
             <div>
               <h3 className="text-white font-semibold mb-2">Data Collection</h3>
-              <p>RichDad does <span className="text-terminal-up font-medium">NOT</span> collect, transmit, or store any personal data on external servers.</p>
+              <p>RichDad does <span className="text-terminal-up font-medium">NOT</span> collect, transmit, or store any personal data on external servers. There are no RichDad servers - the app runs entirely on your machine.</p>
             </div>
 
             <div>
               <h3 className="text-white font-semibold mb-2">Local Storage Only</h3>
-              <p className="mb-2">All data is stored locally on your computer:</p>
+              <p className="mb-2">All data stays on your computer:</p>
               <div className="space-y-1">
-                <Step>API keys (IndexedDB)</Step>
-                <Step>Trade history (IndexedDB)</Step>
-                <Step>Settings and preferences (IndexedDB, localStorage)</Step>
+                <Step>API keys - stored locally in IndexedDB</Step>
+                <Step>Trade decisions - your trading journal stays private</Step>
+                <Step>AI conversations - never sent to our servers (we have none)</Step>
+                <Step>Settings and preferences - IndexedDB, localStorage</Step>
               </div>
             </div>
 
             <div>
               <h3 className="text-white font-semibold mb-2">Third-Party API Calls</h3>
-              <p className="mb-2">Your computer makes API calls to:</p>
+              <p className="mb-2">Your computer makes direct API calls to:</p>
               <div className="space-y-1">
-                <Step>Alpha Vantage (market data) - subject to their privacy policy</Step>
+                <Step>Polygon.io or Alpha Vantage (market data) - subject to their privacy policy</Step>
                 <Step>Your chosen AI provider - subject to their privacy policy</Step>
                 <Step>RSS feeds (news sources) - publicly available data</Step>
               </div>
+              <p className="text-gray-400 text-sm mt-2">
+                These calls go directly from your machine to the provider. RichDad never sees or proxies this traffic.
+              </p>
             </div>
 
             <div>
               <h3 className="text-white font-semibold mb-2">No Analytics or Tracking</h3>
-              <p>RichDad does not use analytics, cookies, or tracking pixels.</p>
+              <p>RichDad contains zero analytics, telemetry, cookies, or tracking pixels. We don't know how you use the app, and we prefer it that way.</p>
+            </div>
+
+            <div>
+              <h3 className="text-white font-semibold mb-2">Why Desktop?</h3>
+              <p>We built RichDad as a desktop app specifically for privacy. Unlike web apps that require servers, your trading data never leaves your machine. Your strategy is your intellectual property - we're not interested in monetizing it.</p>
             </div>
           </div>
         </div>
@@ -1009,10 +1056,32 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             <p className="text-gray-400">How RichDad protects your data</p>
           </div>
 
+          {/* Security Highlights */}
+          <div className="bg-terminal-amber/10 border border-terminal-amber/30 rounded-lg p-6">
+            <h3 className="text-terminal-amber text-lg font-bold mb-4 flex items-center gap-2">
+              <Shield size={20} />
+              Security by Design
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <span className="text-terminal-amber text-lg">•</span>
+                <p className="text-gray-300"><span className="text-white font-medium">No Remote Servers</span> - RichDad has no backend. Your data can't be leaked because it's never collected.</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="text-terminal-amber text-lg">•</span>
+                <p className="text-gray-300"><span className="text-white font-medium">Open Source</span> - Every line of code is auditable. We have nothing to hide.</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="text-terminal-amber text-lg">•</span>
+                <p className="text-gray-300"><span className="text-white font-medium">Minimal Permissions</span> - Built with Tauri, RichDad requests only what it needs.</p>
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-6 text-gray-300">
             <div>
               <h3 className="text-white font-semibold mb-2">API Key Storage</h3>
-              <p>API keys are stored locally in IndexedDB on your computer. They are never transmitted to RichDad servers (there are no RichDad servers).</p>
+              <p>API keys are stored locally in IndexedDB on your computer. They are never transmitted to RichDad servers (there are no RichDad servers). Keys stay on your machine, period.</p>
             </div>
 
             <div>
@@ -1022,6 +1091,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 <Step>Never share your API keys</Step>
                 <Step>Rotate keys periodically</Step>
                 <Step>Set spending limits on AI provider accounts</Step>
+                <Step>Use Settings → Danger Zone to wipe data if needed</Step>
               </div>
             </div>
 
@@ -1030,8 +1100,21 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               <p className="mb-2">RichDad is built with Tauri, a security-focused framework that:</p>
               <div className="space-y-1">
                 <Step>Runs with minimal system permissions</Step>
-                <Step>Sandboxes web content</Step>
+                <Step>Sandboxes web content from system resources</Step>
                 <Step>Uses Content Security Policy (CSP)</Step>
+                <Step>Has a smaller attack surface than Electron</Step>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-white font-semibold mb-2">What We Can't Access</h3>
+              <p>Since RichDad has no servers, we literally cannot:</p>
+              <div className="space-y-1 mt-2">
+                <Step>See your API keys</Step>
+                <Step>View your trade history</Step>
+                <Step>Read your AI conversations</Step>
+                <Step>Track your watchlist or strategies</Step>
+                <Step>Identify you in any way</Step>
               </div>
             </div>
           </div>
@@ -1043,12 +1126,78 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
         <div className="space-y-8">
           <div>
             <h2 className="text-terminal-amber text-2xl font-bold mb-2">About RichDad</h2>
-            <p className="text-gray-400">AI-Powered Trading Terminal</p>
+            <p className="text-gray-400">AI-Powered Trading Terminal for Retail Investors</p>
           </div>
 
           <div className="bg-terminal-bg border border-terminal-amber/30 rounded-lg p-6 text-center">
-            <h3 className="text-terminal-amber text-3xl font-bold mb-2">RichDad v2.4.4</h3>
-            <p className="text-gray-400">Bloomberg-style trading terminal with AI analysis</p>
+            <h3 className="text-terminal-amber text-3xl font-bold mb-2">RichDad v3.6.0</h3>
+            <p className="text-gray-400 italic">"Bloomberg gives you data. RichDad gives you decisions."</p>
+          </div>
+
+          {/* Why RichDad - Bloomberg Comparison */}
+          <div>
+            <h3 className="text-white font-semibold mb-3">Why RichDad?</h3>
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-terminal-border">
+                    <th className="text-left text-gray-400 px-3 py-2 font-medium">Feature</th>
+                    <th className="text-left text-gray-400 px-3 py-2 font-medium">Bloomberg</th>
+                    <th className="text-left text-gray-400 px-3 py-2 font-medium">RichDad</th>
+                  </tr>
+                </thead>
+                <tbody className="text-xs">
+                  <tr className="border-b border-terminal-border/50">
+                    <td className="px-3 py-2 text-gray-300">Cost</td>
+                    <td className="px-3 py-2 text-gray-500">$24,000/year</td>
+                    <td className="px-3 py-2 text-terminal-up font-medium">Free</td>
+                  </tr>
+                  <tr className="border-b border-terminal-border/50">
+                    <td className="px-3 py-2 text-gray-300">AI Analysis</td>
+                    <td className="px-3 py-2 text-gray-500">None built-in</td>
+                    <td className="px-3 py-2 text-terminal-up font-medium">6 providers + batting avg</td>
+                  </tr>
+                  <tr className="border-b border-terminal-border/50">
+                    <td className="px-3 py-2 text-gray-300">Privacy</td>
+                    <td className="px-3 py-2 text-gray-500">Cloud, logged</td>
+                    <td className="px-3 py-2 text-terminal-up font-medium">100% local</td>
+                  </tr>
+                  <tr className="border-b border-terminal-border/50">
+                    <td className="px-3 py-2 text-gray-300">Trade Journal</td>
+                    <td className="px-3 py-2 text-gray-500">Basic</td>
+                    <td className="px-3 py-2 text-terminal-up font-medium">Outcome tracking</td>
+                  </tr>
+                  <tr>
+                    <td className="px-3 py-2 text-gray-300">Setup</td>
+                    <td className="px-3 py-2 text-gray-500">IT dept required</td>
+                    <td className="px-3 py-2 text-terminal-up font-medium">5 minutes</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Our Moat */}
+          <div>
+            <h3 className="text-white font-semibold mb-3">Our Edge</h3>
+            <div className="space-y-2">
+              <div className="flex items-start gap-2">
+                <span className="text-terminal-amber">•</span>
+                <p className="text-gray-300 text-sm"><span className="text-white font-medium">AI-First</span> - Intelligence, not just data</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-terminal-amber">•</span>
+                <p className="text-gray-300 text-sm"><span className="text-white font-medium">Human vs AI Scorecard</span> - Track if you're beating your copilot</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-terminal-amber">•</span>
+                <p className="text-gray-300 text-sm"><span className="text-white font-medium">Outcome Accountability</span> - We track if recommendations worked</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-terminal-amber">•</span>
+                <p className="text-gray-300 text-sm"><span className="text-white font-medium">Open Source</span> - Every line auditable</p>
+              </div>
+            </div>
           </div>
 
           <div>
@@ -1079,7 +1228,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 { label: 'State', value: 'Zustand' },
                 { label: 'Database', value: 'IndexedDB (Dexie.js)' },
                 { label: 'Charts', value: 'Lightweight Charts' },
-                { label: 'AI', value: 'Multi-provider support' },
+                { label: 'AI', value: '6 providers supported' },
               ].map(({ label, value }) => (
                 <div key={label} className="flex gap-2">
                   <span className="text-terminal-amber">{label}:</span>
@@ -1092,7 +1241,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           <div>
             <h3 className="text-white font-semibold mb-3">Acknowledgments</h3>
             <div className="space-y-1">
-              <Step>Alpha Vantage for market data API</Step>
+              <Step>Polygon.io & Alpha Vantage for market data</Step>
               <Step>TradingView for Lightweight Charts library</Step>
               <Step>All open-source contributors</Step>
             </div>

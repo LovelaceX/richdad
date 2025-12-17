@@ -2,6 +2,7 @@ import type { Ticker, Quote, CandleData, NewsItem, AIRecommendation, AIMessage }
 
 export const TICKERS: Ticker[] = [
   { symbol: 'SPY', name: 'SPDR S&P 500 ETF', sector: 'Index' },
+  { symbol: 'VIX', name: 'CBOE Volatility Index', sector: 'Index' },
   { symbol: 'AAPL', name: 'Apple Inc.', sector: 'Technology' },
   { symbol: 'MSFT', name: 'Microsoft Corp.', sector: 'Technology' },
   { symbol: 'NVDA', name: 'NVIDIA Corp.', sector: 'Technology' },
@@ -16,6 +17,7 @@ export const TICKERS: Ticker[] = [
 // Base prices for mock data
 const BASE_PRICES: Record<string, number> = {
   'SPY': 475.50,
+  'VIX': 18.50,
   'AAPL': 178.52,
   'MSFT': 378.91,
   'NVDA': 495.22,
