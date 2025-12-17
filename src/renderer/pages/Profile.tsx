@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   User,
   Pencil,
@@ -11,6 +10,7 @@ import {
   X
 } from 'lucide-react'
 import { useProfileStore } from '../stores/profileStore'
+import { useNavigationStore } from '../stores/navigationStore'
 import { getSettings, type UserSettings } from '../lib/db'
 
 const PLATFORM_SUGGESTIONS = [
@@ -27,7 +27,7 @@ const PLATFORM_SUGGESTIONS = [
 ]
 
 export function Profile() {
-  const navigate = useNavigate()
+  const setPage = useNavigationStore(state => state.setPage)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { profile, loading, loadProfile, updateProfile, addPlatform, removePlatform } = useProfileStore()
   const [settings, setSettings] = useState<UserSettings | null>(null)
@@ -293,7 +293,7 @@ export function Profile() {
               <h2 className="text-white font-medium">Risk Settings</h2>
             </div>
             <button
-              onClick={() => navigate('/settings')}
+              onClick={() => setPage('settings')}
               className="text-terminal-amber text-sm hover:underline"
             >
               Edit in Settings
