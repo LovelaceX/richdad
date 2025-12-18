@@ -66,6 +66,7 @@ import {
 import { exportDecisions } from '../lib/export'
 import { createFullBackup, restoreFromBackup, downloadBackup, validateBackup, getBackupSummary, type BackupData } from '../lib/backup'
 import { previewSound, SOUND_DISPLAY_NAMES } from '../lib/sounds'
+import { updateTierSettings, type PolygonTier, type TwelveDataTier, type FinnhubTier } from '../../services/apiBudgetTracker'
 import type { ToneType } from '../types'
 
 type SettingsSection = 'risk' | 'ai-copilot' | 'data-sources' | 'sounds' | 'style' | 'portfolio' | 'traders' | 'alerts' | 'display' | 'danger'
@@ -303,6 +304,37 @@ export function Settings() {
       setPendingFredKey(settings.fredApiKey || '')
     }
   }, [settings?.alphaVantageApiKey, settings?.finnhubApiKey, settings?.polygonApiKey, settings?.fasttrackApiKey, settings?.twelvedataApiKey, settings?.fredApiKey])
+
+  // Sync API tier settings with budget tracker when settings load
+  useEffect(() => {
+    if (settings?.apiTiers) {
+      updateTierSettings({
+        polygon: settings.apiTiers.polygon,
+        twelveData: settings.apiTiers.twelveData,
+        finnhub: settings.apiTiers.finnhub
+      })
+    }
+  }, [settings?.apiTiers])
+
+  // Handler to update API tier and sync with budget tracker
+  const handleTierChange = async (provider: 'polygon' | 'alphaVantage' | 'twelveData' | 'finnhub', tier: string) => {
+    if (!settings) return
+
+    const newTiers = {
+      ...settings.apiTiers,
+      [provider]: tier
+    }
+
+    // Update database
+    await saveSettings({ apiTiers: newTiers as typeof settings.apiTiers })
+
+    // Sync with budget tracker immediately
+    updateTierSettings({
+      polygon: newTiers.polygon as PolygonTier,
+      twelveData: newTiers.twelveData as TwelveDataTier,
+      finnhub: newTiers.finnhub as FinnhubTier
+    })
+  }
 
   const saveSettings = async (updates: Partial<UserSettings>) => {
     if (!settings) return
@@ -979,11 +1011,26 @@ export function Settings() {
                   </div>
 
                   <p className="text-gray-400 text-xs mb-4">
-                    5 API calls/min, 2 years historical, EOD data. Get your key at{' '}
+                    EOD & historical data. Get your key at{' '}
                     <a href="https://massive.com/dashboard/signup" target="_blank" rel="noopener noreferrer" className="text-terminal-amber hover:underline">
                       massive.com
                     </a>
                   </p>
+
+                  {/* Tier Selector */}
+                  <div className="mb-4">
+                    <label className="text-gray-400 text-xs mb-1 block">API Tier (determines rate limits)</label>
+                    <select
+                      value={settings?.apiTiers?.polygon || 'free'}
+                      onChange={(e) => handleTierChange('polygon', e.target.value)}
+                      className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-terminal-amber/50"
+                    >
+                      <option value="free">Free (5 calls/min)</option>
+                      <option value="starter">Starter (100 calls/min)</option>
+                      <option value="developer">Developer (1K calls/min)</option>
+                      <option value="advanced">Advanced (Unlimited)</option>
+                    </select>
+                  </div>
 
                   {/* API Key Input */}
                   <div className="mb-4">
@@ -1162,8 +1209,21 @@ export function Settings() {
                   </div>
 
                   <p className="text-gray-400 text-xs mb-4">
-                    Alternative market data provider. Free tier: 60 calls/minute.
+                    Alternative market data provider with real-time news.
                   </p>
+
+                  {/* Tier Selector */}
+                  <div className="mb-4">
+                    <label className="text-gray-400 text-xs mb-1 block">API Tier (determines rate limits)</label>
+                    <select
+                      value={settings?.apiTiers?.finnhub || 'free'}
+                      onChange={(e) => handleTierChange('finnhub', e.target.value)}
+                      className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-terminal-amber/50"
+                    >
+                      <option value="free">Free (60 calls/min)</option>
+                      <option value="premium">Premium (300 calls/min)</option>
+                    </select>
+                  </div>
 
                   {/* API Key Input */}
                   <div className="mb-4">
@@ -1201,7 +1261,7 @@ export function Settings() {
                       </button>
                     </div>
                     <p className="text-gray-600 text-xs mt-2">
-                      Free tier: 60 calls/minute • Automatic fallback when Alpha Vantage exhausted
+                      Limit based on tier selection • Automatic fallback when other providers exhausted
                     </p>
                   </div>
 
@@ -1362,11 +1422,25 @@ export function Settings() {
                   </div>
 
                   <p className="text-gray-400 text-xs mb-4">
-                    800 API calls/day, real-time data, all US markets. Get your key at{' '}
+                    Real-time data, all US markets. Get your key at{' '}
                     <a href="https://twelvedata.com/register" target="_blank" rel="noopener noreferrer" className="text-terminal-amber hover:underline">
                       twelvedata.com
                     </a>
                   </p>
+
+                  {/* Tier Selector */}
+                  <div className="mb-4">
+                    <label className="text-gray-400 text-xs mb-1 block">API Tier (determines rate limits)</label>
+                    <select
+                      value={settings?.apiTiers?.twelveData || 'free'}
+                      onChange={(e) => handleTierChange('twelveData', e.target.value)}
+                      className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-terminal-amber/50"
+                    >
+                      <option value="free">Free (8/min, 800/day)</option>
+                      <option value="basic">Basic (30/min, 5K/day)</option>
+                      <option value="pro">Pro (80/min, Unlimited daily)</option>
+                    </select>
+                  </div>
 
                   {/* API Key Input */}
                   <div className="mb-4">

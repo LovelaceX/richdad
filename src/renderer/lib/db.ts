@@ -66,6 +66,14 @@ export interface UserSettings {
   twelvedataApiKey?: string  // TwelveData.com - 800 calls/day free, real-time
   fredApiKey?: string  // FRED (Federal Reserve Economic Data) - free, 120 calls/min
 
+  // API Tier Selection (determines rate limits per provider)
+  apiTiers?: {
+    polygon: 'free' | 'starter' | 'developer' | 'advanced'
+    alphaVantage: 'free' | 'premium'
+    twelveData: 'free' | 'basic' | 'pro'
+    finnhub: 'free' | 'premium'
+  }
+
   // Onboarding
   hasCompletedOnboarding?: boolean
 
@@ -416,6 +424,14 @@ export const DEFAULT_SETTINGS: UserSettings = {
   fasttrackApiKey: undefined,
   twelvedataApiKey: undefined,
   fredApiKey: undefined,
+
+  // API Tier Selection (defaults to free tier for all providers)
+  apiTiers: {
+    polygon: 'free',
+    alphaVantage: 'free',
+    twelveData: 'free',
+    finnhub: 'free'
+  },
 
   // Onboarding
   hasCompletedOnboarding: undefined,

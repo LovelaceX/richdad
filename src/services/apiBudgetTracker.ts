@@ -1,25 +1,25 @@
 /**
  * API Budget Tracker
- * Tracks Alpha Vantage (daily) and Finnhub (minute-based) API usage
+ * Tracks API usage across ALL market data providers with tier-aware limits
  *
- * Alpha Vantage Free Tier: 25 calls/day, 5 calls/minute
- * Finnhub Free Tier: 60 calls/minute
+ * Supported Providers:
+ * - Alpha Vantage: Free (25/day, 5/min) | Premium (unlimited)
+ * - Finnhub: Free (60/min) | Premium (300/min)
+ * - Polygon: Free (5/min) | Starter (100/min) | Developer (1K/min) | Advanced (unlimited)
+ * - TwelveData: Free (8/min, 800/day) | Basic (30/min, 5K/day) | Pro (80/min, unlimited)
  *
- * Budget Split (Alpha Vantage):
+ * Budget Split (Alpha Vantage Free):
  * - Market Data: 23 calls/day (BATCH_STOCK_QUOTES for SPY + top 9, hourly cache)
  * - Chart Data: 1 call/day (TIME_SERIES_INTRADAY for SPY 5-min, 24h cache)
  *               Other symbols use TIME_SERIES_DAILY (same budget)
  * - News: 1 call/day (hybrid RSS + Alpha Vantage fallback)
  * TOTAL: 25 calls/day
  *
- * Finnhub Budget:
- * - 60 calls/minute (no daily limit on free tier)
- * - Used as fallback when Alpha Vantage exhausted
- *
- * SPY-Focused Strategy:
- * - SPY chart: 5-minute intraday candles (TIME_SERIES_INTRADAY)
- * - Watchlist: SPY + top 9 S&P 500 holdings (AAPL, MSFT, NVDA, etc.)
- * - Other charts: Daily candles only (budget-efficient)
+ * Fallback Strategy:
+ * When primary provider is exhausted, falls back to:
+ * 1. Cached data (if < 24h old)
+ * 2. Alternative provider (if configured)
+ * 3. Mock data (last resort)
  */
 
 const STORAGE_KEY = 'richdad_api_budget'
@@ -34,6 +34,15 @@ export interface BudgetTracker {
   // Finnhub (minute-based)
   finnhubCallsThisMinute: number
   finnhubMinuteWindow: number  // Unix timestamp in minutes
+
+  // Polygon (minute-based)
+  polygonCallsThisMinute: number
+  polygonMinuteWindow: number
+
+  // TwelveData (minute and daily)
+  twelveDataCallsThisMinute: number
+  twelveDataMinuteWindow: number
+  twelveDataCallsToday: number
 }
 
 // Alpha Vantage limits
@@ -41,8 +50,58 @@ const MAX_MARKET_CALLS_PER_DAY = 23  // Reduced from 24
 const MAX_CHART_CALLS_PER_DAY = 1    // NEW - for historical data
 const MAX_NEWS_CALLS_PER_DAY = 1
 
-// Finnhub limits
+// Finnhub limits by tier
+const FINNHUB_LIMITS = {
+  free: { callsPerMinute: 60 },
+  premium: { callsPerMinute: 300 }
+} as const
+
+// Polygon limits by tier
+const POLYGON_LIMITS = {
+  free: { callsPerMinute: 5 },
+  starter: { callsPerMinute: 100 },
+  developer: { callsPerMinute: 1000 },
+  advanced: { callsPerMinute: Infinity }  // Unlimited
+} as const
+
+// TwelveData limits by tier
+const TWELVEDATA_LIMITS = {
+  free: { callsPerMinute: 8, callsPerDay: 800 },
+  basic: { callsPerMinute: 30, callsPerDay: 5000 },
+  pro: { callsPerMinute: 80, callsPerDay: Infinity }  // Unlimited daily
+} as const
+
+// Legacy constant for backward compatibility
 const MAX_FINNHUB_CALLS_PER_MINUTE = 60
+
+// Type for tier keys
+export type PolygonTier = keyof typeof POLYGON_LIMITS
+export type TwelveDataTier = keyof typeof TWELVEDATA_LIMITS
+export type FinnhubTier = keyof typeof FINNHUB_LIMITS
+
+// Current tier settings (loaded from user settings)
+let currentPolygonTier: PolygonTier = 'free'
+let currentTwelveDataTier: TwelveDataTier = 'free'
+let currentFinnhubTier: FinnhubTier = 'free'
+
+/**
+ * Update tier settings from user preferences
+ * Called when settings change
+ */
+export function updateTierSettings(tiers: {
+  polygon?: PolygonTier
+  twelveData?: TwelveDataTier
+  finnhub?: FinnhubTier
+}): void {
+  if (tiers.polygon) currentPolygonTier = tiers.polygon
+  if (tiers.twelveData) currentTwelveDataTier = tiers.twelveData
+  if (tiers.finnhub) currentFinnhubTier = tiers.finnhub
+  console.log('[API Budget] Tier settings updated:', {
+    polygon: currentPolygonTier,
+    twelveData: currentTwelveDataTier,
+    finnhub: currentFinnhubTier
+  })
+}
 
 /**
  * Get current minute window (Unix timestamp in minutes)
@@ -68,7 +127,12 @@ function loadBudget(): BudgetTracker {
         newsCallsToday: 0,
         lastResetDate: today,
         finnhubCallsThisMinute: 0,
-        finnhubMinuteWindow: currentMinute
+        finnhubMinuteWindow: currentMinute,
+        polygonCallsThisMinute: 0,
+        polygonMinuteWindow: currentMinute,
+        twelveDataCallsThisMinute: 0,
+        twelveDataMinuteWindow: currentMinute,
+        twelveDataCallsToday: 0
       }
       saveBudget(freshBudget)
       return freshBudget
@@ -78,19 +142,49 @@ function loadBudget(): BudgetTracker {
 
     // Check if date has changed (midnight reset)
     if (budget.lastResetDate !== today) {
-      console.log('[API Budget] New day detected, resetting Alpha Vantage counters')
+      console.log('[API Budget] New day detected, resetting daily counters')
       budget.marketCallsToday = 0
       budget.chartCallsToday = 0
       budget.newsCallsToday = 0
+      budget.twelveDataCallsToday = 0
       budget.lastResetDate = today
       saveBudget(budget)
     }
 
-    // Reset Finnhub minute window if we've moved to a new minute
+    // Reset minute windows if we've moved to a new minute
+    let needsSave = false
+
     if (budget.finnhubMinuteWindow !== currentMinute) {
       budget.finnhubCallsThisMinute = 0
       budget.finnhubMinuteWindow = currentMinute
+      needsSave = true
+    }
+
+    if (budget.polygonMinuteWindow !== currentMinute) {
+      budget.polygonCallsThisMinute = 0
+      budget.polygonMinuteWindow = currentMinute
+      needsSave = true
+    }
+
+    if (budget.twelveDataMinuteWindow !== currentMinute) {
+      budget.twelveDataCallsThisMinute = 0
+      budget.twelveDataMinuteWindow = currentMinute
+      needsSave = true
+    }
+
+    if (needsSave) {
       saveBudget(budget)
+    }
+
+    // Ensure new fields exist (for migration from old budget format)
+    if (budget.polygonCallsThisMinute === undefined) {
+      budget.polygonCallsThisMinute = 0
+      budget.polygonMinuteWindow = currentMinute
+    }
+    if (budget.twelveDataCallsThisMinute === undefined) {
+      budget.twelveDataCallsThisMinute = 0
+      budget.twelveDataMinuteWindow = currentMinute
+      budget.twelveDataCallsToday = 0
     }
 
     return budget
@@ -105,7 +199,12 @@ function loadBudget(): BudgetTracker {
       newsCallsToday: 0,
       lastResetDate: today,
       finnhubCallsThisMinute: 0,
-      finnhubMinuteWindow: currentMinute
+      finnhubMinuteWindow: currentMinute,
+      polygonCallsThisMinute: 0,
+      polygonMinuteWindow: currentMinute,
+      twelveDataCallsThisMinute: 0,
+      twelveDataMinuteWindow: currentMinute,
+      twelveDataCallsToday: 0
     }
   }
 }
@@ -242,7 +341,12 @@ export function __resetBudgetForTesting(): void {
     newsCallsToday: 0,
     lastResetDate: today,
     finnhubCallsThisMinute: 0,
-    finnhubMinuteWindow: currentMinute
+    finnhubMinuteWindow: currentMinute,
+    polygonCallsThisMinute: 0,
+    polygonMinuteWindow: currentMinute,
+    twelveDataCallsThisMinute: 0,
+    twelveDataMinuteWindow: currentMinute,
+    twelveDataCallsToday: 0
   }
   saveBudget(freshBudget)
   console.log('[API Budget] Budget manually reset (testing mode)')
@@ -255,10 +359,12 @@ export function __resetBudgetForTesting(): void {
  */
 export function canUseFinnhub(): boolean {
   const budget = loadBudget()
-  const canUse = budget.finnhubCallsThisMinute < MAX_FINNHUB_CALLS_PER_MINUTE
+  const limit = FINNHUB_LIMITS[currentFinnhubTier].callsPerMinute
+  const canUse = budget.finnhubCallsThisMinute < limit
 
   if (!canUse) {
-    console.warn(`[API Budget] Finnhub minute budget exhausted (${budget.finnhubCallsThisMinute}/${MAX_FINNHUB_CALLS_PER_MINUTE} used this minute)`)
+    console.warn(`[API Budget] Finnhub minute budget exhausted (${budget.finnhubCallsThisMinute}/${limit} used this minute)`)
+    emitLimitReached('finnhub', `Rate limit reached (${limit}/min on ${currentFinnhubTier} tier)`)
   }
 
   return canUse
@@ -272,7 +378,8 @@ export function recordFinnhubCall(): void {
   budget.finnhubCallsThisMinute++
   saveBudget(budget)
 
-  console.log(`[API Budget] Finnhub call recorded: ${budget.finnhubCallsThisMinute}/${MAX_FINNHUB_CALLS_PER_MINUTE} this minute`)
+  const limit = FINNHUB_LIMITS[currentFinnhubTier].callsPerMinute
+  console.log(`[API Budget] Finnhub call recorded: ${budget.finnhubCallsThisMinute}/${limit} this minute`)
 }
 
 /**
@@ -282,11 +389,242 @@ export function getFinnhubBudgetStatus(): {
   used: number
   limit: number
   remaining: number
+  tier: FinnhubTier
 } {
   const budget = loadBudget()
+  const limit = FINNHUB_LIMITS[currentFinnhubTier].callsPerMinute
   return {
     used: budget.finnhubCallsThisMinute,
-    limit: MAX_FINNHUB_CALLS_PER_MINUTE,
-    remaining: MAX_FINNHUB_CALLS_PER_MINUTE - budget.finnhubCallsThisMinute
+    limit,
+    remaining: Math.max(0, limit - budget.finnhubCallsThisMinute),
+    tier: currentFinnhubTier
+  }
+}
+
+// ==========================================
+// POLYGON BUDGET FUNCTIONS
+// ==========================================
+
+/**
+ * Check if we can make a Polygon API call this minute
+ */
+export function canUsePolygon(): boolean {
+  const budget = loadBudget()
+  const limit = POLYGON_LIMITS[currentPolygonTier].callsPerMinute
+
+  // Unlimited tier
+  if (limit === Infinity) return true
+
+  const canUse = budget.polygonCallsThisMinute < limit
+
+  if (!canUse) {
+    console.warn(`[API Budget] Polygon minute budget exhausted (${budget.polygonCallsThisMinute}/${limit} used this minute)`)
+    emitLimitReached('polygon', `Rate limit reached (${limit}/min on ${currentPolygonTier} tier). Using cached data.`)
+  }
+
+  return canUse
+}
+
+/**
+ * Record a Polygon API call
+ */
+export function recordPolygonCall(): void {
+  const budget = loadBudget()
+  budget.polygonCallsThisMinute++
+  saveBudget(budget)
+
+  const limit = POLYGON_LIMITS[currentPolygonTier].callsPerMinute
+  const limitStr = limit === Infinity ? '∞' : String(limit)
+  console.log(`[API Budget] Polygon call recorded: ${budget.polygonCallsThisMinute}/${limitStr} this minute`)
+}
+
+/**
+ * Get Polygon budget status (for UI display)
+ */
+export function getPolygonBudgetStatus(): {
+  used: number
+  limit: number
+  remaining: number
+  tier: PolygonTier
+  isUnlimited: boolean
+} {
+  const budget = loadBudget()
+  const limit = POLYGON_LIMITS[currentPolygonTier].callsPerMinute
+  const isUnlimited = limit === Infinity
+
+  return {
+    used: budget.polygonCallsThisMinute,
+    limit: isUnlimited ? 999999 : limit,
+    remaining: isUnlimited ? 999999 : Math.max(0, limit - budget.polygonCallsThisMinute),
+    tier: currentPolygonTier,
+    isUnlimited
+  }
+}
+
+// ==========================================
+// TWELVEDATA BUDGET FUNCTIONS
+// ==========================================
+
+/**
+ * Check if we can make a TwelveData API call
+ * Checks both minute and daily limits
+ */
+export function canUseTwelveData(): boolean {
+  const budget = loadBudget()
+  const tierLimits = TWELVEDATA_LIMITS[currentTwelveDataTier]
+
+  // Check minute limit
+  const minuteLimitOk = budget.twelveDataCallsThisMinute < tierLimits.callsPerMinute
+
+  // Check daily limit (Infinity means unlimited)
+  const dailyLimitOk = tierLimits.callsPerDay === Infinity ||
+    budget.twelveDataCallsToday < tierLimits.callsPerDay
+
+  if (!minuteLimitOk) {
+    console.warn(`[API Budget] TwelveData minute limit reached (${budget.twelveDataCallsThisMinute}/${tierLimits.callsPerMinute})`)
+    emitLimitReached('twelveData', `Minute limit reached (${tierLimits.callsPerMinute}/min). Wait 60 seconds.`)
+    return false
+  }
+
+  if (!dailyLimitOk) {
+    console.warn(`[API Budget] TwelveData daily limit reached (${budget.twelveDataCallsToday}/${tierLimits.callsPerDay})`)
+    emitLimitReached('twelveData', `Daily limit reached (${tierLimits.callsPerDay}/day on ${currentTwelveDataTier} tier). Resets at midnight.`)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * Record a TwelveData API call
+ */
+export function recordTwelveDataCall(): void {
+  const budget = loadBudget()
+  budget.twelveDataCallsThisMinute++
+  budget.twelveDataCallsToday++
+  saveBudget(budget)
+
+  const tierLimits = TWELVEDATA_LIMITS[currentTwelveDataTier]
+  const dailyStr = tierLimits.callsPerDay === Infinity ? '∞' : String(tierLimits.callsPerDay)
+  console.log(`[API Budget] TwelveData call recorded: ${budget.twelveDataCallsThisMinute}/${tierLimits.callsPerMinute}/min, ${budget.twelveDataCallsToday}/${dailyStr}/day`)
+}
+
+/**
+ * Get TwelveData budget status (for UI display)
+ */
+export function getTwelveDataBudgetStatus(): {
+  minuteUsed: number
+  minuteLimit: number
+  minuteRemaining: number
+  dailyUsed: number
+  dailyLimit: number
+  dailyRemaining: number
+  tier: TwelveDataTier
+  isDailyUnlimited: boolean
+} {
+  const budget = loadBudget()
+  const tierLimits = TWELVEDATA_LIMITS[currentTwelveDataTier]
+  const isDailyUnlimited = tierLimits.callsPerDay === Infinity
+
+  return {
+    minuteUsed: budget.twelveDataCallsThisMinute,
+    minuteLimit: tierLimits.callsPerMinute,
+    minuteRemaining: Math.max(0, tierLimits.callsPerMinute - budget.twelveDataCallsThisMinute),
+    dailyUsed: budget.twelveDataCallsToday,
+    dailyLimit: isDailyUnlimited ? 999999 : tierLimits.callsPerDay,
+    dailyRemaining: isDailyUnlimited ? 999999 : Math.max(0, tierLimits.callsPerDay - budget.twelveDataCallsToday),
+    tier: currentTwelveDataTier,
+    isDailyUnlimited
+  }
+}
+
+// ==========================================
+// UNIFIED BUDGET STATUS (ALL PROVIDERS)
+// ==========================================
+
+export interface ProviderBudgetStatus {
+  provider: string
+  used: number
+  limit: number
+  remaining: number
+  tier: string
+  type: 'minute' | 'daily'
+  isUnlimited: boolean
+  percentUsed: number
+}
+
+/**
+ * Get unified budget status for all providers (for UI display)
+ */
+export function getAllProvidersBudgetStatus(): ProviderBudgetStatus[] {
+  const statuses: ProviderBudgetStatus[] = []
+
+  // Alpha Vantage (daily limits)
+  const avStatus = getBudgetStatus()
+  statuses.push({
+    provider: 'Alpha Vantage',
+    used: avStatus.marketCallsUsed + avStatus.chartCallsUsed + avStatus.newsCallsUsed,
+    limit: MAX_MARKET_CALLS_PER_DAY + MAX_CHART_CALLS_PER_DAY + MAX_NEWS_CALLS_PER_DAY,
+    remaining: avStatus.marketCallsRemaining + avStatus.chartCallsRemaining + avStatus.newsCallsRemaining,
+    tier: 'free',
+    type: 'daily',
+    isUnlimited: false,
+    percentUsed: Math.round(((avStatus.marketCallsUsed + avStatus.chartCallsUsed + avStatus.newsCallsUsed) / 25) * 100)
+  })
+
+  // Finnhub
+  const finnhubStatus = getFinnhubBudgetStatus()
+  statuses.push({
+    provider: 'Finnhub',
+    used: finnhubStatus.used,
+    limit: finnhubStatus.limit,
+    remaining: finnhubStatus.remaining,
+    tier: finnhubStatus.tier,
+    type: 'minute',
+    isUnlimited: false,
+    percentUsed: Math.round((finnhubStatus.used / finnhubStatus.limit) * 100)
+  })
+
+  // Polygon
+  const polygonStatus = getPolygonBudgetStatus()
+  statuses.push({
+    provider: 'Polygon',
+    used: polygonStatus.used,
+    limit: polygonStatus.limit,
+    remaining: polygonStatus.remaining,
+    tier: polygonStatus.tier,
+    type: 'minute',
+    isUnlimited: polygonStatus.isUnlimited,
+    percentUsed: polygonStatus.isUnlimited ? 0 : Math.round((polygonStatus.used / polygonStatus.limit) * 100)
+  })
+
+  // TwelveData (show daily limit as primary)
+  const tdStatus = getTwelveDataBudgetStatus()
+  statuses.push({
+    provider: 'TwelveData',
+    used: tdStatus.dailyUsed,
+    limit: tdStatus.dailyLimit,
+    remaining: tdStatus.dailyRemaining,
+    tier: tdStatus.tier,
+    type: 'daily',
+    isUnlimited: tdStatus.isDailyUnlimited,
+    percentUsed: tdStatus.isDailyUnlimited ? 0 : Math.round((tdStatus.dailyUsed / tdStatus.dailyLimit) * 100)
+  })
+
+  return statuses
+}
+
+// ==========================================
+// EVENT EMISSION FOR UI NOTIFICATIONS
+// ==========================================
+
+/**
+ * Emit event when API limit is reached (for toast notifications)
+ */
+function emitLimitReached(provider: string, message: string): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('api-limit-reached', {
+      detail: { provider, message, timestamp: Date.now() }
+    }))
   }
 }

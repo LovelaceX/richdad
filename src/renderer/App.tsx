@@ -15,6 +15,7 @@ import { useDataHeartbeat } from './hooks/useDataHeartbeat'
 import { initializeDatabase, getSettings } from './lib/db'
 import { OnboardingWizard } from './components/Onboarding/OnboardingWizard'
 import { FloatingHelp } from './components/Help/FloatingHelp'
+import { ToastContainer } from './components/Toast/ToastContainer'
 import { applyTheme } from './lib/themes'
 
 export default function App() {
@@ -139,6 +140,9 @@ export default function App() {
 
       {/* Floating Help Button */}
       <FloatingHelp />
+
+      {/* Toast Notifications (for API limit warnings, etc.) */}
+      <ToastContainer />
     </>
   )
 }

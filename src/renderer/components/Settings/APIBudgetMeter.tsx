@@ -1,122 +1,113 @@
 import { useState, useEffect } from 'react'
-import { BarChart3 } from 'lucide-react'
-import { getBudgetStatus } from '../../../services/apiBudgetTracker'
-import { getSettings } from '../../lib/db'
-
-interface TwelveDataUsage {
-  used: number
-  limit: number
-  remaining: number
-}
+import { BarChart3, Clock, Calendar, Infinity } from 'lucide-react'
+import { getAllProvidersBudgetStatus, type ProviderBudgetStatus } from '../../../services/apiBudgetTracker'
 
 export function APIBudgetMeter() {
-  const [budget, setBudget] = useState<any>(null)
-  const [twelveDataUsage, setTwelveDataUsage] = useState<TwelveDataUsage | null>(null)
+  const [providers, setProviders] = useState<ProviderBudgetStatus[]>([])
 
   useEffect(() => {
     const updateBudget = () => {
-      const status = getBudgetStatus()
-      setBudget(status)
+      const statuses = getAllProvidersBudgetStatus()
+      setProviders(statuses)
     }
 
     updateBudget()
+    // Update every 30 seconds
     const interval = setInterval(updateBudget, 30000)
     return () => clearInterval(interval)
   }, [])
 
-  // Fetch TwelveData usage
-  useEffect(() => {
-    const fetchTwelveDataUsage = async () => {
-      try {
-        const settings = await getSettings()
-        if (settings?.twelvedataApiKey) {
-          const { getTwelveDataUsage } = await import('../../../services/twelveDataService')
-          const usage = await getTwelveDataUsage(settings.twelvedataApiKey)
-          if (usage) {
-            setTwelveDataUsage({
-              used: usage.dailyUsage,
-              limit: usage.dailyLimit,
-              remaining: usage.remaining
-            })
-          }
-        }
-      } catch (error) {
-        console.error('[APIBudgetMeter] Failed to fetch TwelveData usage:', error)
-      }
-    }
+  if (providers.length === 0) return null
 
-    fetchTwelveDataUsage()
-    const interval = setInterval(fetchTwelveDataUsage, 60000) // Every minute
-    return () => clearInterval(interval)
-  }, [])
-
-  if (!budget) return null
-
-  const totalUsed = budget.marketCallsUsed + budget.chartCallsUsed + budget.newsCallsUsed
-  const totalPercent = (totalUsed / 25) * 100
-
-  const getColor = (percent: number) => {
+  const getColor = (percent: number, isUnlimited: boolean) => {
+    if (isUnlimited) return 'bg-terminal-up'
     if (percent >= 100) return 'bg-red-500'
     if (percent >= 80) return 'bg-yellow-500'
     if (percent >= 50) return 'bg-yellow-600'
     return 'bg-terminal-amber'
   }
 
+  const getTextColor = (percent: number, isUnlimited: boolean) => {
+    if (isUnlimited) return 'text-terminal-up'
+    if (percent >= 100) return 'text-red-400'
+    if (percent >= 80) return 'text-yellow-400'
+    return 'text-white'
+  }
+
+  const formatLimit = (status: ProviderBudgetStatus) => {
+    if (status.isUnlimited) return '∞'
+    return status.limit.toLocaleString()
+  }
+
   return (
     <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-4">
         <BarChart3 size={16} className="text-gray-400" />
-        <span className="text-white text-sm">API Budget Status</span>
+        <span className="text-white text-sm font-medium">API Budget Status</span>
       </div>
 
-      {/* Progress Bar */}
-      <div className="w-full h-2 bg-terminal-bg rounded-full overflow-hidden mb-3">
-        <div
-          className={`h-full transition-all ${getColor(totalPercent)}`}
-          style={{ width: `${Math.min(100, totalPercent)}%` }}
-        />
-      </div>
+      <div className="space-y-4">
+        {providers.map((status) => (
+          <div key={status.provider} className="space-y-2">
+            {/* Provider Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-white text-xs font-medium">{status.provider}</span>
+                <span className="text-[9px] px-1.5 py-0.5 bg-terminal-bg rounded text-gray-400">
+                  {status.tier}
+                </span>
+              </div>
+              <div className="flex items-center gap-1 text-xs">
+                {status.type === 'minute' ? (
+                  <Clock size={10} className="text-gray-500" />
+                ) : (
+                  <Calendar size={10} className="text-gray-500" />
+                )}
+                <span className={getTextColor(status.percentUsed, status.isUnlimited)}>
+                  {status.isUnlimited ? (
+                    <span className="flex items-center gap-1">
+                      <Infinity size={12} className="text-terminal-up" />
+                      <span>Unlimited</span>
+                    </span>
+                  ) : (
+                    `${status.used}/${formatLimit(status)}`
+                  )}
+                </span>
+                <span className="text-gray-500">
+                  /{status.type === 'minute' ? 'min' : 'day'}
+                </span>
+              </div>
+            </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 text-xs">
-        <div>
-          <div className="text-gray-400">Market Data</div>
-          <div className="text-white font-mono">{budget.marketCallsUsed}/23</div>
-        </div>
-        <div>
-          <div className="text-gray-400">Charts</div>
-          <div className="text-white font-mono">{budget.chartCallsUsed}/1</div>
-        </div>
-        <div>
-          <div className="text-gray-400">News</div>
-          <div className="text-white font-mono">{budget.newsCallsUsed}/1</div>
-        </div>
-      </div>
+            {/* Progress Bar */}
+            {!status.isUnlimited && (
+              <div className="w-full h-1.5 bg-terminal-bg rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all ${getColor(status.percentUsed, status.isUnlimited)}`}
+                  style={{ width: `${Math.min(100, status.percentUsed)}%` }}
+                />
+              </div>
+            )}
 
-      <div className="text-xs text-gray-400 mt-3">
-        Resets at: {new Date(budget.resetsAt).toLocaleTimeString()}
-      </div>
-
-      {/* TwelveData Budget (if configured) */}
-      {twelveDataUsage && (
-        <div className="mt-4 pt-4 border-t border-terminal-border">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-gray-400 text-xs">TwelveData</span>
-            <span className="text-xs text-gray-400">
-              {twelveDataUsage.used}/{twelveDataUsage.limit} calls
-            </span>
+            {/* Unlimited indicator */}
+            {status.isUnlimited && (
+              <div className="w-full h-1.5 bg-terminal-up/20 rounded-full overflow-hidden">
+                <div className="h-full bg-terminal-up/40 w-full" />
+              </div>
+            )}
           </div>
-          <div className="w-full h-2 bg-terminal-bg rounded-full overflow-hidden">
-            <div
-              className={`h-full transition-all ${getColor((twelveDataUsage.used / twelveDataUsage.limit) * 100)}`}
-              style={{ width: `${Math.min(100, (twelveDataUsage.used / twelveDataUsage.limit) * 100)}%` }}
-            />
-          </div>
-          <p className="text-gray-500 text-xs mt-1">
-            {twelveDataUsage.remaining} calls remaining today
-          </p>
-        </div>
-      )}
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div className="mt-4 pt-3 border-t border-terminal-border">
+        <p className="text-[10px] text-gray-500">
+          Daily limits reset at midnight • Minute limits reset every 60s
+        </p>
+        <p className="text-[10px] text-gray-500 mt-1">
+          When limits are reached, cached data is used automatically
+        </p>
+      </div>
     </div>
   )
 }

@@ -75,6 +75,14 @@ export function IntelPanel() {
     return `${Math.floor(minutes / 60)}h ago`
   }
 
+  // Check if data is stale (patterns: >30 min, news: >10 min)
+  const isDataStale = () => {
+    if (!lastUpdate) return false
+    const diff = Date.now() - lastUpdate
+    const staleThreshold = activeIntelTab === 'patterns' ? 30 * 60000 : 10 * 60000
+    return diff > staleThreshold
+  }
+
   // Get urgency indicator color
   const getUrgencyColor = () => {
     if (activeIntelTab === 'patterns') {
@@ -124,6 +132,11 @@ export function IntelPanel() {
         </div>
 
         <div className="flex items-center gap-2">
+          {isDataStale() && (
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-yellow-900/30 text-yellow-400">
+              Cached
+            </span>
+          )}
           <span className="text-[10px] text-gray-500">{formatLastUpdate()}</span>
           {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </div>

@@ -3,7 +3,17 @@ import { generateQuote } from '../renderer/lib/mockData'
 import type { Quote } from '../renderer/types'
 import type { Timeframe } from '../renderer/lib/mockData'
 import type { DataProvider, DataSource } from '../renderer/stores/marketStore'
-import { canUseAlphaVantageForMarket, canUseAlphaVantageForCharts, recordMarketCall, recordChartCall, getBudgetStatus } from './apiBudgetTracker'
+import {
+  canUseAlphaVantageForMarket,
+  canUseAlphaVantageForCharts,
+  recordMarketCall,
+  recordChartCall,
+  getBudgetStatus,
+  canUsePolygon,
+  recordPolygonCall,
+  canUseTwelveData,
+  recordTwelveDataCall
+} from './apiBudgetTracker'
 import { fetchPolygonQuotes, fetchPolygonHistorical, fetchPolygonHistoricalRange } from './polygonService'
 import { fetchTwelveDataBatchQuotes, fetchTwelveDataCandles } from './twelveDataService'
 
@@ -57,9 +67,26 @@ export async function fetchLivePrices(symbols: string[]): Promise<Quote[]> {
       console.warn('[Market Data] No Polygon API key configured, using mock data')
       return symbols.map(symbol => generateQuote(symbol))
     }
+
+    // Check budget before making API call
+    if (!canUsePolygon()) {
+      console.warn('[Market Data] Polygon rate limit reached, using cached/mock data')
+      // Try to return cached data if available
+      if (cachedQuotes.length > 0 && Date.now() - cacheTimestamp < CACHE_DURATION_MS * 2) {
+        return cachedQuotes.filter(q => symbols.includes(q.symbol))
+      }
+      return symbols.map(symbol => generateQuote(symbol))
+    }
+
     try {
+      recordPolygonCall()
       const quotes = await fetchPolygonQuotes(symbols, polygonKey)
-      if (quotes.length > 0) return quotes
+      if (quotes.length > 0) {
+        // Update cache
+        cachedQuotes = quotes
+        cacheTimestamp = Date.now()
+        return quotes
+      }
     } catch (error) {
       console.error('[Market Data] Polygon fetch failed:', error)
     }
@@ -74,7 +101,18 @@ export async function fetchLivePrices(symbols: string[]): Promise<Quote[]> {
       console.warn('[Market Data] No TwelveData API key configured, using mock data')
       return symbols.map(symbol => generateQuote(symbol))
     }
+
+    // Check budget before making API call
+    if (!canUseTwelveData()) {
+      console.warn('[Market Data] TwelveData rate limit reached, using cached/mock data')
+      if (cachedQuotes.length > 0 && Date.now() - cacheTimestamp < CACHE_DURATION_MS * 2) {
+        return cachedQuotes.filter(q => symbols.includes(q.symbol))
+      }
+      return symbols.map(symbol => generateQuote(symbol))
+    }
+
     try {
+      recordTwelveDataCall()
       const quotesMap = await fetchTwelveDataBatchQuotes(symbols, twelveDataKey)
       const quotes: Quote[] = symbols.map(symbol => {
         const data = quotesMap.get(symbol)
@@ -274,9 +312,34 @@ export async function fetchHistoricalData(
         source: createDataSource('mock', false, 0)
       }
     }
+
+    // Check budget before making API call
+    if (!canUsePolygon()) {
+      console.warn('[Market Data] Polygon rate limit reached, checking cache')
+      // Try to return cached historical data
+      const cacheKey = `${symbol}_${interval}`
+      if (cachedHistoricalData.has(cacheKey)) {
+        const cacheAge = Date.now() - (historicalCacheTimestamps.get(cacheKey) || 0)
+        return {
+          candles: cachedHistoricalData.get(cacheKey)!,
+          source: createDataSource('polygon', true, cacheAge)
+        }
+      }
+      const { generateCandleData } = await import('../renderer/lib/mockData')
+      return {
+        candles: generateCandleData(symbol, interval as Timeframe),
+        source: createDataSource('mock', false, 0)
+      }
+    }
+
     try {
+      recordPolygonCall()
       const candles = await fetchPolygonHistorical(symbol, interval, polygonKey)
       if (candles.length > 0) {
+        // Cache the results
+        const cacheKey = `${symbol}_${interval}`
+        cachedHistoricalData.set(cacheKey, candles)
+        historicalCacheTimestamps.set(cacheKey, Date.now())
         return {
           candles,
           source: createDataSource('polygon', true, 0) // Polygon free tier is 15-min delayed
@@ -304,7 +367,27 @@ export async function fetchHistoricalData(
         source: createDataSource('mock', false, 0)
       }
     }
+
+    // Check budget before making API call
+    if (!canUseTwelveData()) {
+      console.warn('[Market Data] TwelveData rate limit reached, checking cache')
+      const cacheKey = `${symbol}_${interval}`
+      if (cachedHistoricalData.has(cacheKey)) {
+        const cacheAge = Date.now() - (historicalCacheTimestamps.get(cacheKey) || 0)
+        return {
+          candles: cachedHistoricalData.get(cacheKey)!,
+          source: createDataSource('twelvedata', false, cacheAge)
+        }
+      }
+      const { generateCandleData } = await import('../renderer/lib/mockData')
+      return {
+        candles: generateCandleData(symbol, interval as Timeframe),
+        source: createDataSource('mock', false, 0)
+      }
+    }
+
     try {
+      recordTwelveDataCall()
       const candles = await fetchTwelveDataCandles(symbol, interval, twelveDataKey)
       if (candles.length > 0) {
         return {
