@@ -4,7 +4,6 @@ Thank you for your interest in contributing to RichDad! This document provides g
 
 ## Table of Contents
 
-- [Code of Conduct](#code-of-conduct)
 - [Getting Started](#getting-started)
 - [Development Setup](#development-setup)
 - [Code Style](#code-style)
