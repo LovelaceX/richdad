@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   Settings as SettingsIcon,
   Shield,
@@ -156,8 +156,6 @@ export function Settings() {
   const [pendingAlphaVantageKey, setPendingAlphaVantageKey] = useState<string>('')
   const [pendingFinnhubKey, setPendingFinnhubKey] = useState<string>('')
   const [pendingPolygonKey, setPendingPolygonKey] = useState<string>('')
-  const [hasApiKeyChanges, setHasApiKeyChanges] = useState(false)
-  const [savingApiKeys, setSavingApiKeys] = useState(false)
   const [finnhubMessage, setFinnhubMessage] = useState('')
 
   // Polygon connection test state
@@ -182,6 +180,23 @@ export function Settings() {
   const [testingFred, setTestingFred] = useState(false)
   const [fredStatus, setFredStatus] = useState<'idle' | 'valid' | 'invalid'>('idle')
   const [fredMessage, setFredMessage] = useState('')
+
+  // Auto-save debounce ref
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Auto-save API key with debounce
+  const autoSaveApiKey = useCallback((key: keyof UserSettings, value: string) => {
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current)
+    }
+    autoSaveTimeoutRef.current = setTimeout(async () => {
+      if (settings) {
+        const newSettings = { ...settings, [key]: value }
+        await updateSettings(newSettings)
+        setSettings(newSettings)
+      }
+    }, 500)
+  }, [settings])
 
   // Onboarding wizard state
   const [showOnboardingWizard, setShowOnboardingWizard] = useState(false)
@@ -286,7 +301,6 @@ export function Settings() {
       setPendingFastTrackKey(settings.fasttrackApiKey || '')
       setPendingTwelveDataKey(settings.twelvedataApiKey || '')
       setPendingFredKey(settings.fredApiKey || '')
-      setHasApiKeyChanges(false)
     }
   }, [settings?.alphaVantageApiKey, settings?.finnhubApiKey, settings?.polygonApiKey, settings?.fasttrackApiKey, settings?.twelvedataApiKey, settings?.fredApiKey])
 
@@ -319,53 +333,21 @@ export function Settings() {
     setTimeout(() => setShowSavedMessage(false), 3000)
   }
 
-  // API Keys save/discard handlers
-  const handleSaveApiKeys = async () => {
-    setSavingApiKeys(true)
-    await saveSettings({
-      alphaVantageApiKey: pendingAlphaVantageKey,
-      finnhubApiKey: pendingFinnhubKey,
-      polygonApiKey: pendingPolygonKey,
-      fasttrackApiKey: pendingFastTrackKey,
-      twelvedataApiKey: pendingTwelveDataKey,
-      fredApiKey: pendingFredKey
-    })
-    setHasApiKeyChanges(false)
-    setSavingApiKeys(false)
-    // Reset connection status when saving new keys
-    setConnectionStatus('idle')
-    setConnectionMessage('')
-    setFinnhubStatus('idle')
-    setFinnhubMessage('')
-    setPolygonStatus('idle')
-    setPolygonMessage('')
-    setFasttrackStatus('idle')
-    setFasttrackMessage('')
-    setTwelvedataStatus('idle')
-    setTwelvedataMessage('')
-    setFredStatus('idle')
-    setFredMessage('')
-  }
-
-  const handleDiscardApiKeys = () => {
-    setPendingAlphaVantageKey(settings?.alphaVantageApiKey || '')
-    setPendingFinnhubKey(settings?.finnhubApiKey || '')
-    setPendingPolygonKey(settings?.polygonApiKey || '')
-    setPendingFastTrackKey(settings?.fasttrackApiKey || '')
-    setPendingTwelveDataKey(settings?.twelvedataApiKey || '')
-    setPendingFredKey(settings?.fredApiKey || '')
-    setHasApiKeyChanges(false)
-  }
-
   // FastTrack connection test handler
   const handleTestFastTrackConnection = async () => {
+    if (!pendingFastTrackKey) {
+      setFasttrackStatus('invalid')
+      setFasttrackMessage('No API key entered')
+      return
+    }
+
     setTestingFastTrack(true)
     setFasttrackStatus('idle')
     setFasttrackMessage('')
 
     try {
       const { testFastTrackConnection } = await import('../../services/fasttrackService')
-      const result = await testFastTrackConnection(settings?.fasttrackApiKey || '')
+      const result = await testFastTrackConnection(pendingFastTrackKey)
 
       if (result.success) {
         setFasttrackStatus('valid')
@@ -438,7 +420,7 @@ export function Settings() {
   }
 
   const handleTestConnection = async () => {
-    if (!settings?.alphaVantageApiKey) {
+    if (!pendingAlphaVantageKey) {
       setConnectionStatus('invalid')
       setConnectionMessage('No API key entered')
       return
@@ -451,7 +433,7 @@ export function Settings() {
     try {
       // Dynamically import the validator to avoid bundling issues
       const { testAlphaVantageKey } = await import('../../services/alphaVantageValidator')
-      const result = await testAlphaVantageKey(settings.alphaVantageApiKey)
+      const result = await testAlphaVantageKey(pendingAlphaVantageKey)
 
       if (result.valid) {
         setConnectionStatus('valid')
@@ -470,7 +452,7 @@ export function Settings() {
   }
 
   const handleTestFinnhubConnection = async () => {
-    if (!settings?.finnhubApiKey) {
+    if (!pendingFinnhubKey) {
       setFinnhubStatus('invalid')
       setFinnhubMessage('No API key entered')
       return
@@ -483,7 +465,7 @@ export function Settings() {
     try {
       // Dynamically import the validator to avoid bundling issues
       const { testFinnhubKey } = await import('../../services/finnhubValidator')
-      const result = await testFinnhubKey(settings.finnhubApiKey)
+      const result = await testFinnhubKey(pendingFinnhubKey)
 
       if (result.valid) {
         setFinnhubStatus('valid')
@@ -502,7 +484,7 @@ export function Settings() {
   }
 
   const handleTestPolygonConnection = async () => {
-    if (!settings?.polygonApiKey) {
+    if (!pendingPolygonKey) {
       setPolygonStatus('invalid')
       setPolygonMessage('No API key entered')
       return
@@ -515,7 +497,7 @@ export function Settings() {
     try {
       // Test with a simple quote request
       const response = await fetch(
-        `https://api.polygon.io/v2/aggs/ticker/SPY/prev?adjusted=true&apiKey=${settings.polygonApiKey}`
+        `https://api.polygon.io/v2/aggs/ticker/SPY/prev?adjusted=true&apiKey=${pendingPolygonKey}`
       )
       const data = await response.json()
 
@@ -537,7 +519,7 @@ export function Settings() {
 
   // TwelveData connection test handler
   const handleTestTwelveDataConnection = async () => {
-    if (!settings?.twelvedataApiKey) {
+    if (!pendingTwelveDataKey) {
       setTwelvedataStatus('invalid')
       setTwelvedataMessage('No API key entered')
       return
@@ -549,7 +531,7 @@ export function Settings() {
 
     try {
       const { testTwelveDataConnection } = await import('../../services/twelveDataService')
-      const result = await testTwelveDataConnection(settings.twelvedataApiKey)
+      const result = await testTwelveDataConnection(pendingTwelveDataKey)
 
       if (result.success) {
         setTwelvedataStatus('valid')
@@ -568,7 +550,7 @@ export function Settings() {
 
   // FRED connection test handler
   const handleTestFredConnection = async () => {
-    if (!settings?.fredApiKey) {
+    if (!pendingFredKey) {
       setFredStatus('invalid')
       setFredMessage('No API key entered')
       return
@@ -580,7 +562,7 @@ export function Settings() {
 
     try {
       const { testFredKey } = await import('../../services/fredValidator')
-      const result = await testFredKey(settings.fredApiKey)
+      const result = await testFredKey(pendingFredKey)
 
       if (result.valid) {
         setFredStatus('valid')
@@ -971,8 +953,9 @@ export function Settings() {
                         type="password"
                         value={pendingPolygonKey}
                         onChange={(e) => {
-                          setPendingPolygonKey(e.target.value)
-                          setHasApiKeyChanges(true)
+                          const value = e.target.value
+                          setPendingPolygonKey(value)
+                          autoSaveApiKey('polygonApiKey', value)
                           setPolygonStatus('idle')
                           setPolygonMessage('')
                         }}
@@ -981,7 +964,7 @@ export function Settings() {
                       />
                       <button
                         onClick={handleTestPolygonConnection}
-                        disabled={!settings?.polygonApiKey || testingPolygon}
+                        disabled={!pendingPolygonKey || testingPolygon}
                         className="px-4 py-2 bg-terminal-panel border border-terminal-border rounded text-sm text-white hover:bg-terminal-border/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                       >
                         {testingPolygon ? (
@@ -1066,8 +1049,9 @@ export function Settings() {
                         type="password"
                         value={pendingAlphaVantageKey}
                         onChange={(e) => {
-                          setPendingAlphaVantageKey(e.target.value)
-                          setHasApiKeyChanges(true)
+                          const value = e.target.value
+                          setPendingAlphaVantageKey(value)
+                          autoSaveApiKey('alphaVantageApiKey', value)
                           // Reset connection status when key changes
                           setConnectionStatus('idle')
                           setConnectionMessage('')
@@ -1077,7 +1061,7 @@ export function Settings() {
                       />
                       <button
                         onClick={handleTestConnection}
-                        disabled={!settings.alphaVantageApiKey || testingConnection}
+                        disabled={!pendingAlphaVantageKey || testingConnection}
                         className="px-4 py-2 bg-terminal-panel border border-terminal-border rounded text-sm text-white hover:bg-terminal-border/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                       >
                         {testingConnection ? (
@@ -1149,8 +1133,9 @@ export function Settings() {
                         type="password"
                         value={pendingFinnhubKey}
                         onChange={(e) => {
-                          setPendingFinnhubKey(e.target.value)
-                          setHasApiKeyChanges(true)
+                          const value = e.target.value
+                          setPendingFinnhubKey(value)
+                          autoSaveApiKey('finnhubApiKey', value)
                           setFinnhubStatus('idle')
                           setFinnhubMessage('')
                         }}
@@ -1159,7 +1144,7 @@ export function Settings() {
                       />
                       <button
                         onClick={handleTestFinnhubConnection}
-                        disabled={!settings.finnhubApiKey || testingFinnhub}
+                        disabled={!pendingFinnhubKey || testingFinnhub}
                         className="px-4 py-2 bg-terminal-panel border border-terminal-border rounded text-sm text-white hover:bg-terminal-border/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                       >
                         {testingFinnhub ? (
@@ -1243,8 +1228,9 @@ export function Settings() {
                         type="password"
                         value={pendingFastTrackKey}
                         onChange={(e) => {
-                          setPendingFastTrackKey(e.target.value)
-                          setHasApiKeyChanges(true)
+                          const value = e.target.value
+                          setPendingFastTrackKey(value)
+                          autoSaveApiKey('fasttrackApiKey', value)
                           setFasttrackStatus('idle')
                           setFasttrackMessage('')
                         }}
@@ -1253,7 +1239,7 @@ export function Settings() {
                       />
                       <button
                         onClick={handleTestFastTrackConnection}
-                        disabled={!settings?.fasttrackApiKey || testingFastTrack}
+                        disabled={!pendingFastTrackKey || testingFastTrack}
                         className="px-4 py-2 bg-terminal-panel border border-terminal-border rounded text-sm text-white hover:bg-terminal-border/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                       >
                         {testingFastTrack ? (
@@ -1350,8 +1336,9 @@ export function Settings() {
                         type="password"
                         value={pendingTwelveDataKey}
                         onChange={(e) => {
-                          setPendingTwelveDataKey(e.target.value)
-                          setHasApiKeyChanges(true)
+                          const value = e.target.value
+                          setPendingTwelveDataKey(value)
+                          autoSaveApiKey('twelvedataApiKey', value)
                           setTwelvedataStatus('idle')
                           setTwelvedataMessage('')
                         }}
@@ -1360,7 +1347,7 @@ export function Settings() {
                       />
                       <button
                         onClick={handleTestTwelveDataConnection}
-                        disabled={!settings?.twelvedataApiKey || testingTwelveData}
+                        disabled={!pendingTwelveDataKey || testingTwelveData}
                         className="px-4 py-2 bg-terminal-panel border border-terminal-border rounded text-sm text-white hover:bg-terminal-border/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                       >
                         {testingTwelveData ? (
@@ -1457,8 +1444,9 @@ export function Settings() {
                         type="password"
                         value={pendingFredKey}
                         onChange={(e) => {
-                          setPendingFredKey(e.target.value)
-                          setHasApiKeyChanges(true)
+                          const value = e.target.value
+                          setPendingFredKey(value)
+                          autoSaveApiKey('fredApiKey', value)
                           setFredStatus('idle')
                           setFredMessage('')
                         }}
@@ -1467,7 +1455,7 @@ export function Settings() {
                       />
                       <button
                         onClick={handleTestFredConnection}
-                        disabled={!settings?.fredApiKey || testingFred}
+                        disabled={!pendingFredKey || testingFred}
                         className="px-4 py-2 bg-terminal-panel border border-terminal-border rounded text-sm text-white hover:bg-terminal-border/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                       >
                         {testingFred ? (
@@ -1531,25 +1519,6 @@ export function Settings() {
                     </div>
                   )}
                 </div>
-
-                {/* Save/Discard Buttons for API Keys */}
-                {hasApiKeyChanges && (
-                  <div className="flex gap-2 p-4 bg-terminal-bg border border-terminal-amber/30 rounded-lg">
-                    <button
-                      onClick={handleSaveApiKeys}
-                      disabled={savingApiKeys}
-                      className="flex-1 px-4 py-2 bg-terminal-amber text-black rounded font-medium hover:bg-amber-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {savingApiKeys ? 'Saving...' : 'Save API Key Changes'}
-                    </button>
-                    <button
-                      onClick={handleDiscardApiKeys}
-                      className="px-4 py-2 bg-terminal-panel border border-terminal-border rounded text-white hover:bg-terminal-border/50 transition-colors"
-                    >
-                      Discard Changes
-                    </button>
-                  </div>
-                )}
 
                 {/* API Budget Meter */}
                 <APIBudgetMeter />

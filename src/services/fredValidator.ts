@@ -41,31 +41,46 @@ export async function testFredKey(apiKey: string): Promise<ValidationResult> {
 
     const response = await fetch(url)
 
+    // Handle specific HTTP status codes with helpful messages
     if (response.status === 400) {
-      const data = await response.json()
-      if (data.error_code === 400 && data.error_message?.includes('api_key')) {
+      const data = await response.json().catch(() => ({}))
+      if (data.error_message?.toLowerCase().includes('api_key')) {
         return {
           valid: false,
-          message: 'Invalid API key'
+          message: 'Invalid API key format - check your key at fred.stlouisfed.org'
         }
       }
       return {
         valid: false,
-        message: data.error_message || 'Bad request'
+        message: data.error_message || 'Invalid request format'
       }
     }
 
-    if (response.status === 401) {
+    if (response.status === 401 || response.status === 403) {
       return {
         valid: false,
-        message: 'Invalid API key'
+        message: 'API key not authorized - verify your key at fred.stlouisfed.org'
+      }
+    }
+
+    if (response.status === 429) {
+      return {
+        valid: false,
+        message: 'Rate limit exceeded - wait a minute and try again'
+      }
+    }
+
+    if (response.status >= 500) {
+      return {
+        valid: false,
+        message: 'FRED server error - try again later'
       }
     }
 
     if (!response.ok) {
       return {
         valid: false,
-        message: `HTTP error: ${response.status}`
+        message: `Connection failed (HTTP ${response.status})`
       }
     }
 
@@ -83,21 +98,30 @@ export async function testFredKey(apiKey: string): Promise<ValidationResult> {
     if (data.sources !== undefined) {
       return {
         valid: true,
-        message: 'Connection successful'
+        message: 'Connected successfully'
       }
     }
 
     // Unknown response structure, but no error
     return {
       valid: true,
-      message: 'API key appears valid'
+      message: 'API key verified'
     }
 
   } catch (error) {
     console.error('[FRED Validator] Test failed:', error)
+
+    // Provide helpful messages for common network errors
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      return {
+        valid: false,
+        message: 'Network error - check your internet connection'
+      }
+    }
+
     return {
       valid: false,
-      message: error instanceof Error ? error.message : 'Network error'
+      message: 'Connection failed - check your internet connection'
     }
   }
 }

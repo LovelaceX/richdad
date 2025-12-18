@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, BookOpen, Zap, BarChart3, Keyboard, HelpCircle, Shield, FileText, Mail,
-  Search, Gauge, AlertTriangle, Database, TrendingUp, Bell, Eye, Check, Calendar
+  Search, Gauge, AlertTriangle, Database, TrendingUp, Bell, Eye, Check, Calendar, ExternalLink, Bug
 } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 
@@ -29,6 +29,7 @@ type Section =
   | 'privacy'
   | 'security'
   | 'about'
+  | 'report-issue'
 
 const sectionContent: Record<Section, { title: string; keywords: string[] }> = {
   'get-started': { title: 'Get Started', keywords: ['setup', 'api key', 'configure', 'begin', 'first', 'install'] },
@@ -38,7 +39,7 @@ const sectionContent: Record<Section, { title: string; keywords: string[] }> = {
   'economic-calendar': { title: 'Economic Calendar', keywords: ['fred', 'cpi', 'jobs', 'fed', 'gdp', 'fomc', 'economic events', 'calendar'] },
   'price-alerts': { title: 'Price Alerts', keywords: ['notification', 'alert', 'trigger', 'above', 'below'] },
   'chart-guide': { title: 'Chart Controls', keywords: ['candlestick', 'timeframe', 'zoom', 'pan', 'daily', 'intraday'] },
-  'ai-copilot': { title: 'AI Copilot', keywords: ['openai', 'claude', 'gemini', 'grok', 'recommendation', 'chat', 'provider'] },
+  'ai-copilot': { title: 'AI Copilot', keywords: ['openai', 'claude', 'gemini', 'grok', 'recommendation', 'chat', 'provider', 'morning briefing', 'briefing', 'thinking', 'animation', 'phases', 'finnhub', 'news'] },
   'api-limits': { title: 'API Limits & Usage', keywords: ['rate limit', 'quota', 'calls', 'daily', 'budget', 'alpha vantage', 'polygon', 'massive', 'twelvedata', 'finnhub', 'fasttrack', 'fallback'] },
   'shortcuts': { title: 'Keyboard Shortcuts', keywords: ['hotkey', 'cmd', 'ctrl', 'key'] },
   'troubleshooting': { title: 'Troubleshooting', keywords: ['error', 'fix', 'problem', 'not working', 'issue', 'help'] },
@@ -47,6 +48,7 @@ const sectionContent: Record<Section, { title: string; keywords: string[] }> = {
   'privacy': { title: 'Privacy Policy', keywords: ['data', 'collection', 'storage'] },
   'security': { title: 'Security', keywords: ['safe', 'key', 'protection'] },
   'about': { title: 'About RichDad', keywords: ['version', 'developer', 'contact', 'lovelacex'] },
+  'report-issue': { title: 'Report Issue', keywords: ['bug', 'problem', 'feedback', 'github', 'issue', 'report'] },
 }
 
 export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
@@ -77,6 +79,7 @@ export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
     { id: 'privacy', label: 'Privacy Policy', icon: Shield },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'about', label: 'About', icon: Mail },
+    { id: 'report-issue', label: 'Report Issue', icon: Bug },
   ]
 
   // Filter sections based on search
@@ -116,7 +119,7 @@ export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
             <div className="flex items-center gap-3">
               <BookOpen size={22} className="text-terminal-amber" />
               <h2 className="text-white text-lg font-semibold">Reference Guide</h2>
-              <span className="text-gray-500 text-sm">v4.3.0</span>
+              <span className="text-gray-500 text-sm">v4.4.0</span>
             </div>
             <button
               onClick={onClose}
@@ -679,6 +682,55 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             </div>
           </div>
 
+          {/* NEW: AI Thinking Animation */}
+          <div className="bg-terminal-amber/10 border border-terminal-amber/30 rounded-lg p-5">
+            <h3 className="text-terminal-amber font-semibold mb-3">AI Thinking Animation</h3>
+            <p className="text-gray-300 text-sm mb-3">
+              When AI analyzes a ticker, you'll see a step-by-step breakdown:
+            </p>
+            <div className="space-y-1 text-sm">
+              <Step><span className="text-white">Checking Market Regime</span> - VIX + SPY trend</Step>
+              <Step><span className="text-white">Fetching Price Data</span> - Current quote</Step>
+              <Step><span className="text-white">Calculating Indicators</span> - RSI, MACD, MAs</Step>
+              <Step><span className="text-white">Detecting Patterns</span> - Candlesticks</Step>
+              <Step><span className="text-white">Gathering News</span> - Ticker-specific (Finnhub)</Step>
+              <Step><span className="text-white">Generating Recommendation</span> - AI synthesis</Step>
+            </div>
+          </div>
+
+          {/* NEW: Morning Briefing */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white font-semibold mb-3">Morning Briefing</h3>
+            <p className="text-gray-300 text-sm mb-3">
+              Analyze your entire watchlist with one click:
+            </p>
+            <div className="space-y-1">
+              <Step>Click <span className="text-terminal-amber">Morning Briefing</span> in AI Panel</Step>
+              <Step>AI analyzes each ticker sequentially</Step>
+              <Step>Results modal shows: X BUY / Y SELL / Z HOLD</Step>
+              <Step>Click any result to jump to that ticker's chart</Step>
+            </div>
+            <p className="text-gray-500 text-xs mt-3">
+              Note: Uses ~1 AI call per ticker. 15 stocks = ~30% of daily budget.
+            </p>
+          </div>
+
+          {/* NEW: Ticker-Specific News */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white font-semibold mb-3">Ticker-Specific News (Finnhub)</h3>
+            <p className="text-gray-300 text-sm mb-3">
+              With a Finnhub API key, AI gets news specifically about the ticker:
+            </p>
+            <div className="space-y-1">
+              <Step>Company-specific news from the last 7 days</Step>
+              <Step>Much better than generic RSS keyword matching</Step>
+              <Step>Falls back to RSS if Finnhub unavailable</Step>
+            </div>
+            <p className="text-gray-500 text-xs mt-3">
+              Get a free key at finnhub.io (60 calls/min)
+            </p>
+          </div>
+
           <div>
             <h3 className="text-white text-lg font-semibold mb-4">Acting on Recommendations</h3>
             <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5 space-y-3">
@@ -859,11 +911,18 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 <span className="text-gray-400">RSS Feeds</span>
                 <span className="text-terminal-up font-medium">Unlimited</span>
               </div>
+              <div className="flex justify-between py-2 border-b border-terminal-border">
+                <span className="text-gray-400">Finnhub News</span>
+                <span className="text-white">60 calls/min • Ticker-specific</span>
+              </div>
               <div className="flex justify-between py-2">
                 <span className="text-gray-400">Alpha Vantage News</span>
                 <span className="text-white">Shares 25 call/day quota</span>
               </div>
             </div>
+            <p className="text-gray-500 text-xs mt-3">
+              <span className="text-terminal-amber">New:</span> Finnhub provides ticker-specific news for AI analysis. Get a free key at finnhub.io.
+            </p>
           </div>
 
           {/* Usage Tips */}
@@ -1019,7 +1078,13 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             },
             {
               q: 'How does the AI decide BUY/SELL/HOLD?',
-              a: 'The AI analyzes: (1) Technical indicators like RSI, MACD, and moving averages, (2) Candlestick patterns like Engulfing, Hammer, and Doji, (3) Market regime based on VIX levels and SPY trend, (4) Recent news sentiment. In volatile markets (VIX >25), it becomes more cautious. In choppy markets, it favors HOLD. Each recommendation includes a confidence % and rationale.'
+              a: `The AI analyzes:
+1. Technical indicators (RSI, MACD, moving averages)
+2. Candlestick patterns (Engulfing, Hammer, Doji)
+3. Market regime (VIX levels + SPY trend)
+4. Recent news sentiment
+
+In volatile markets (VIX >25), it becomes more cautious. In choppy markets, it favors HOLD. Each recommendation includes a confidence % and rationale.`
             },
             {
               q: 'Can I use RichDad for day trading?',
@@ -1053,10 +1118,43 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               q: 'How do I reset everything?',
               a: 'Settings → Danger Zone → Reset All Data. This clears all settings, history, and shows onboarding again.'
             },
+            {
+              q: 'What is the Morning Briefing?',
+              a: `The Morning Briefing analyzes your entire watchlist with one click. Click the "Morning Briefing" button in the AI Panel and it will:
+1. Analyze each ticker sequentially (2-second delay between each)
+2. Show progress as it goes ("Analyzing AAPL 3/15")
+3. Display a summary modal with BUY/SELL/HOLD counts
+4. Let you click any result to jump to that ticker's chart
+
+Budget note: Uses ~1 AI call per ticker. A 15-stock watchlist uses ~30% of daily budget.`
+            },
+            {
+              q: 'What is the AI Thinking Animation?',
+              a: `When AI analyzes a ticker, you now see its step-by-step thinking process:
+1. Checking Market Regime (VIX + SPY trend)
+2. Fetching Price Data (current quote)
+3. Calculating Indicators (RSI, MACD, MAs)
+4. Detecting Patterns (candlestick patterns)
+5. Gathering News (ticker-specific from Finnhub)
+6. Generating Recommendation (AI synthesis)
+
+Each step shows a result preview (e.g., "RSI 65", "2 patterns found").`
+            },
+            {
+              q: 'What is Finnhub News and do I need it?',
+              a: `Finnhub provides ticker-specific news for AI analysis. Instead of generic RSS keyword matching, the AI gets news specifically about the stock being analyzed.
+
+Benefits:
+- Company-specific news from the last 7 days
+- Much better AI recommendation quality
+- Free tier: 60 API calls/minute
+
+Get a free key at finnhub.io. If not configured, the AI falls back to RSS feeds.`
+            },
           ].map(({ q, a }, i) => (
             <div key={i} className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
               <h3 className="text-white font-semibold mb-2">{q}</h3>
-              <p className="text-gray-300">{a}</p>
+              <p className="text-gray-300 whitespace-pre-line">{a}</p>
             </div>
           ))}
         </div>
@@ -1275,7 +1373,8 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           </div>
 
           <div className="bg-terminal-bg border border-terminal-amber/30 rounded-lg p-6 text-center">
-            <h3 className="text-terminal-amber text-3xl font-bold">RichDad v4.3.0</h3>
+            <h3 className="text-terminal-amber text-3xl font-bold">RichDad v4.4.0</h3>
+            <p className="text-gray-500 text-sm mt-2">Morning Briefing • AI Thinking Animation • Finnhub News</p>
           </div>
 
           {/* Why RichDad - Bloomberg Comparison */}
@@ -1395,6 +1494,61 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               <Step>Polygon.io & Alpha Vantage for market data</Step>
               <Step>TradingView for Lightweight Charts library</Step>
               <Step>All open-source contributors</Step>
+            </div>
+          </div>
+        </div>
+      )
+
+    case 'report-issue':
+      return (
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Report an Issue</h2>
+            <p className="text-gray-400">Found a bug or have a feature request?</p>
+          </div>
+
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-6">
+            <p className="text-gray-300 mb-4">
+              Help us improve RichDad by reporting issues on GitHub.
+            </p>
+            <button
+              onClick={() => openUrl('https://github.com/LovelaceX/richdad/issues')}
+              className="flex items-center gap-2 px-4 py-2 bg-terminal-amber text-black rounded font-medium hover:bg-amber-500 transition-colors"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Open GitHub Issues
+            </button>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Before Reporting</h3>
+            <div className="space-y-1">
+              <Step>Check if your issue already exists in open issues</Step>
+              <Step>Include your RichDad version (found in About section)</Step>
+              <Step>Describe steps to reproduce the problem</Step>
+              <Step>Include any error messages you see</Step>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">What to Include</h3>
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5 space-y-3">
+              <div className="flex items-start gap-3">
+                <span className="text-terminal-amber font-bold">1.</span>
+                <span className="text-gray-300">Operating system (macOS/Windows) and version</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="text-terminal-amber font-bold">2.</span>
+                <span className="text-gray-300">What you expected to happen</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="text-terminal-amber font-bold">3.</span>
+                <span className="text-gray-300">What actually happened</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <span className="text-terminal-amber font-bold">4.</span>
+                <span className="text-gray-300">Screenshots if applicable</span>
+              </div>
             </div>
           </div>
         </div>

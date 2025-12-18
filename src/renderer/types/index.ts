@@ -75,7 +75,7 @@ export interface MarketIndex {
 }
 
 // Page types
-export type PageId = 'dashboard' | 'news' | 'economic-calendar' | 'settings'
+export type PageId = 'dashboard' | 'news' | 'economic-calendar' | 'backtest' | 'settings'
 
 // Economic Calendar Event
 export interface EconomicEvent {
@@ -104,6 +104,122 @@ export interface NewsItemExtended extends NewsItem {
   url?: string
   imageUrl?: string
 }
+
+// AI Analysis Phase tracking
+export interface AnalysisPhase {
+  id: string
+  label: string
+  status: 'pending' | 'active' | 'complete' | 'error'
+  result?: string // Brief result text (e.g., "ELEVATED_VOL_BULLISH", "$595.42")
+}
+
+export interface AnalysisProgress {
+  ticker: string
+  phases: AnalysisPhase[]
+  startedAt: number
+}
+
+// Morning Briefing types
+export interface BriefingResult {
+  ticker: string
+  recommendation: AIRecommendation | null
+  error?: string
+}
+
+export interface MorningBriefing {
+  generatedAt: number
+  results: BriefingResult[]
+  summary: {
+    total: number
+    buy: number
+    sell: number
+    hold: number
+    failed: number
+  }
+}
+
+// Backtest types
+export interface BacktestConfig {
+  id: string
+  symbol: string
+  startDate: number  // Unix timestamp
+  endDate: number    // Unix timestamp
+  timeframe: '1d' | '1h' | '15m'
+  initialCapital: number
+  positionSizePercent: number
+  confidenceThreshold: number
+  maxConcurrentTrades: number
+  includeNews: boolean
+}
+
+export interface BacktestTrade {
+  id: string
+  entryDate: number
+  exitDate: number | null
+  symbol: string
+  action: 'BUY' | 'SELL'
+  entryPrice: number
+  exitPrice: number | null
+  priceTarget: number
+  stopLoss: number
+  confidence: number
+  rationale: string
+  outcome: 'win' | 'loss' | 'pending' | 'expired'
+  profitLossPercent: number
+  profitLossDollar: number
+  daysHeld: number
+  patterns?: string[]  // Candlestick patterns detected at entry
+  regime?: string      // Market regime at entry
+}
+
+export interface BacktestMetrics {
+  totalTrades: number
+  winningTrades: number
+  losingTrades: number
+  winRate: number
+  avgWin: number
+  avgLoss: number
+  profitFactor: number
+  maxDrawdown: number
+  maxDrawdownPercent: number
+  sharpeRatio: number
+  avgHoldingDays: number
+  totalReturn: number
+  totalReturnPercent: number
+  annualizedReturn: number
+  longestWinStreak: number
+  longestLoseStreak: number
+  expectancy: number  // (winRate * avgWin) - (lossRate * avgLoss)
+}
+
+export interface BacktestEquityPoint {
+  date: number
+  equity: number
+  drawdown: number
+}
+
+export interface BacktestResult {
+  id: string
+  config: BacktestConfig
+  trades: BacktestTrade[]
+  metrics: BacktestMetrics
+  equityCurve: BacktestEquityPoint[]
+  errors: string[]
+  completedAt: number
+  duration: number  // Time taken to run backtest in ms
+}
+
+export interface BacktestInsights {
+  bestPatterns: { pattern: string; winRate: number; count: number }[]
+  worstPatterns: { pattern: string; winRate: number; count: number }[]
+  bestDayOfWeek: { day: string; winRate: number; count: number }
+  performanceByRegime: { regime: string; winRate: number; count: number; avgReturn: number }[]
+  confidenceCorrelation: number
+  optimalConfidenceThreshold: number
+  suggestions: string[]
+}
+
+export type BacktestPhase = 'idle' | 'fetching_data' | 'running_simulation' | 'analyzing' | 'complete' | 'error' | 'cancelled'
 
 // Electron API types
 declare global {

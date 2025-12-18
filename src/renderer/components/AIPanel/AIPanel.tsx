@@ -1,8 +1,11 @@
 import { useEffect, useRef } from 'react'
+import { AnimatePresence } from 'framer-motion'
 import { Bot, Loader2, Trash2 } from 'lucide-react'
 import { ActivityLog } from './ActivityLog'
 import { ChatInput } from './ChatInput'
 import { AIPerformanceSummary } from './AIPerformanceSummary'
+import { AnalysisProgress } from './AnalysisProgress'
+import { MorningBriefingButton } from './MorningBriefingButton'
 import { useAIStore } from '../../stores/aiStore'
 import { useMarketStore } from '../../stores/marketStore'
 import { useSettingsStore } from '../../stores/settingsStore'
@@ -11,6 +14,7 @@ export function AIPanel() {
   const isAnalyzing = useAIStore(state => state.isAnalyzing)
   const messages = useAIStore(state => state.messages)
   const clearMessages = useAIStore(state => state.clearMessages)
+  const analysisProgress = useAIStore(state => state.analysisProgress)
   const selectedTicker = useMarketStore(state => state.selectedTicker)
   const aiPerformanceVisible = useSettingsStore(state => state.panelVisibility.aiPerformanceVisible)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -63,7 +67,14 @@ export function AIPanel() {
       </div>
 
       {/* Scrollable messages - takes remaining space */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-2">
+        {/* Analysis Progress - animated step-by-step display */}
+        <AnimatePresence>
+          {analysisProgress && (
+            <AnalysisProgress progress={analysisProgress} />
+          )}
+        </AnimatePresence>
+
         <ActivityLog />
         <div ref={messagesEndRef} />
       </div>
@@ -74,6 +85,11 @@ export function AIPanel() {
           <AIPerformanceSummary />
         </div>
       )}
+
+      {/* Morning Briefing Button */}
+      <div className="flex-shrink-0 px-2 pb-2">
+        <MorningBriefingButton />
+      </div>
 
       {/* Chat Input - fixed at bottom */}
       <div className="flex-shrink-0">

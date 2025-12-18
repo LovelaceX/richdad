@@ -3,7 +3,7 @@ import { generateQuote } from '../renderer/lib/mockData'
 import type { Quote } from '../renderer/types'
 import type { Timeframe } from '../renderer/lib/mockData'
 import { canUseAlphaVantageForMarket, canUseAlphaVantageForCharts, recordMarketCall, recordChartCall, getBudgetStatus } from './apiBudgetTracker'
-import { fetchPolygonQuotes, fetchPolygonHistorical } from './polygonService'
+import { fetchPolygonQuotes, fetchPolygonHistorical, fetchPolygonHistoricalRange } from './polygonService'
 import { fetchTwelveDataBatchQuotes, fetchTwelveDataCandles } from './twelveDataService'
 
 const ALPHA_VANTAGE_BASE_URL = 'https://www.alphavantage.co/query'
@@ -389,5 +389,136 @@ export async function fetchHistoricalData(
     // Fallback to mock data
     const { generateCandleData } = await import('../renderer/lib/mockData')
     return generateCandleData(symbol, interval as Timeframe)
+  }
+}
+
+/**
+ * Fetch historical data for a specific date range
+ * Used for backtesting to get extended historical data
+ *
+ * @param symbol - Stock ticker
+ * @param startDate - Start date (Unix timestamp in ms)
+ * @param endDate - End date (Unix timestamp in ms)
+ * @param timeframe - Timeframe (1d, 1h, 15m)
+ * @param includeIndicatorLookback - Add extra days for indicator calculation (default: 200)
+ */
+export async function fetchHistoricalDataRange(
+  symbol: string,
+  startDate: number,
+  endDate: number,
+  timeframe: '1d' | '1h' | '15m' = '1d',
+  includeIndicatorLookback: number = 200
+): Promise<any[]> {
+  const settings = await getSettings()
+
+  // Calculate adjusted start date to include lookback for indicators
+  // For daily timeframe, we need 200 extra trading days (~280 calendar days)
+  // For hourly, ~200 hours (~8.5 days)
+  // For 15min, ~200 candles (~50 hours)
+  let lookbackMs = 0
+  switch (timeframe) {
+    case '1d':
+      lookbackMs = includeIndicatorLookback * 1.4 * 24 * 60 * 60 * 1000 // ~280 calendar days
+      break
+    case '1h':
+      lookbackMs = includeIndicatorLookback * 60 * 60 * 1000 // 200 hours
+      break
+    case '15m':
+      lookbackMs = includeIndicatorLookback * 15 * 60 * 1000 // 200 * 15min
+      break
+  }
+
+  const adjustedStartDate = startDate - lookbackMs
+
+  console.log(`[Market Data] Fetching range for ${symbol}: ${new Date(adjustedStartDate).toISOString().split('T')[0]} to ${new Date(endDate).toISOString().split('T')[0]} (${timeframe})`)
+
+  // Only Polygon supports date range queries well
+  const polygonKey = settings.polygonApiKey
+  if (!polygonKey) {
+    console.warn('[Market Data] No Polygon API key for backtest data, using mock')
+    const { generateCandleData } = await import('../renderer/lib/mockData')
+    return generateCandleData(symbol, timeframe === '1d' ? 'daily' : timeframe as Timeframe)
+  }
+
+  try {
+    const candles = await fetchPolygonHistoricalRange(
+      symbol,
+      adjustedStartDate,
+      endDate,
+      timeframe,
+      polygonKey
+    )
+
+    if (candles.length > 0) {
+      console.log(`[Market Data] Fetched ${candles.length} candles for backtest`)
+      return candles
+    }
+  } catch (error) {
+    console.error('[Market Data] Range fetch failed:', error)
+  }
+
+  // Fallback to mock
+  console.warn('[Market Data] Using mock data for backtest')
+  const { generateCandleData } = await import('../renderer/lib/mockData')
+  return generateCandleData(symbol, timeframe === '1d' ? 'daily' : timeframe as Timeframe)
+}
+
+/**
+ * Validate candle data for backtest
+ * Checks for gaps, anomalies, and data quality issues
+ */
+export function validateCandleData(candles: any[]): {
+  valid: boolean
+  issues: string[]
+} {
+  const issues: string[] = []
+
+  if (!candles || candles.length === 0) {
+    return { valid: false, issues: ['No candle data'] }
+  }
+
+  // Check for chronological order
+  for (let i = 1; i < candles.length; i++) {
+    if (candles[i].time <= candles[i - 1].time) {
+      issues.push(`Out of order at index ${i}: ${candles[i].time} <= ${candles[i - 1].time}`)
+    }
+  }
+
+  // Check for negative prices
+  for (let i = 0; i < candles.length; i++) {
+    const c = candles[i]
+    if (c.open < 0 || c.high < 0 || c.low < 0 || c.close < 0) {
+      issues.push(`Negative price at index ${i}`)
+    }
+  }
+
+  // Check for OHLC consistency
+  for (let i = 0; i < candles.length; i++) {
+    const c = candles[i]
+    if (c.high < c.low) {
+      issues.push(`High < Low at index ${i}`)
+    }
+    if (c.high < c.open || c.high < c.close) {
+      issues.push(`High not highest at index ${i}`)
+    }
+    if (c.low > c.open || c.low > c.close) {
+      issues.push(`Low not lowest at index ${i}`)
+    }
+  }
+
+  // Check for large gaps (more than 3 expected intervals)
+  // This is a rough check for daily data
+  for (let i = 1; i < candles.length; i++) {
+    const gap = candles[i].time - candles[i - 1].time
+    const expectedGap = 86400 // 1 day in seconds
+    if (gap > expectedGap * 5) { // Allow up to 5 days (weekends + holidays)
+      const gapDays = Math.round(gap / 86400)
+      issues.push(`Large gap of ${gapDays} days at index ${i}`)
+    }
+  }
+
+  return {
+    valid: issues.length === 0,
+    issues
   }
 }

@@ -6,16 +6,18 @@
  */
 
 import { parseRSSFeed } from './rssParser'
-import { canUseAlphaVantageForNews, recordNewsCall } from './apiBudgetTracker'
+import { canUseAlphaVantageForNews, recordNewsCall, canUseFinnhub, recordFinnhubCall } from './apiBudgetTracker'
 import { getSettings, db } from '../renderer/lib/db'
 import type { NewsItem } from '../renderer/types'
 
 const ALPHA_VANTAGE_BASE_URL = 'https://www.alphavantage.co/query'
+const FINNHUB_BASE_URL = 'https://finnhub.io/api/v1'
 const RSS_FETCH_TIMEOUT_MS = 10000 // 10 seconds per feed
+const FINNHUB_FETCH_TIMEOUT_MS = 15000 // 15 seconds for Finnhub
 
 export interface NewsResponse {
   articles: NewsItem[]
-  source: 'rss' | 'alpha_vantage' | 'cache' | 'empty'
+  source: 'rss' | 'alpha_vantage' | 'finnhub' | 'cache' | 'empty'
   hasSentiment: boolean
   error?: string
 }
@@ -179,6 +181,93 @@ export async function fetchNewsFromAlphaVantage(): Promise<NewsItem[]> {
   } catch (error) {
     console.error('[News Service] Alpha Vantage fetch failed:', error)
     throw error // Re-throw so caller can handle fallback
+  }
+}
+
+/**
+ * Fetch ticker-specific news from Finnhub API
+ * Uses minute-based rate limiting (60 calls/min)
+ * @param symbol - Stock symbol (e.g., "AAPL") for company-specific news, or undefined for general market news
+ */
+export async function fetchNewsFromFinnhub(symbol?: string): Promise<NewsItem[]> {
+  try {
+    const settings = await getSettings()
+    const apiKey = settings.finnhubApiKey
+
+    if (!apiKey) {
+      throw new Error('No Finnhub API key configured')
+    }
+
+    if (!canUseFinnhub()) {
+      throw new Error('Finnhub rate limit reached (60 calls/min)')
+    }
+
+    console.log(`[News Service] Fetching from Finnhub${symbol ? ` for ${symbol}` : ' (general news)'}`)
+
+    // Build URL based on whether we want company-specific or general news
+    let url: string
+    if (symbol) {
+      // Company news endpoint - requires date range
+      const today = new Date()
+      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
+      const fromDate = weekAgo.toISOString().split('T')[0]
+      const toDate = today.toISOString().split('T')[0]
+      url = `${FINNHUB_BASE_URL}/company-news?symbol=${symbol}&from=${fromDate}&to=${toDate}&token=${apiKey}`
+    } else {
+      // General market news
+      url = `${FINNHUB_BASE_URL}/news?category=general&token=${apiKey}`
+    }
+
+    // Fetch with timeout
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), FINNHUB_FETCH_TIMEOUT_MS)
+
+    const response = await fetch(url, { signal: controller.signal })
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        throw new Error('Invalid Finnhub API key')
+      }
+      if (response.status === 429) {
+        throw new Error('Finnhub rate limit exceeded')
+      }
+      throw new Error(`Finnhub API error: ${response.status}`)
+    }
+
+    const data = await response.json()
+
+    // Check for API errors
+    if (data.error) {
+      throw new Error(`Finnhub error: ${data.error}`)
+    }
+
+    if (!Array.isArray(data)) {
+      throw new Error('Invalid response format from Finnhub')
+    }
+
+    // Record the API call
+    recordFinnhubCall()
+
+    // Parse Finnhub news items to our format
+    const newsItems: NewsItem[] = data.map((item: any) => ({
+      id: `fh-${item.id || Date.now()}-${Math.random().toString(36).slice(2)}`,
+      headline: item.headline || '',
+      source: item.source || 'Finnhub',
+      url: item.url || '#',
+      timestamp: item.datetime ? item.datetime * 1000 : Date.now(), // Finnhub uses Unix seconds
+      summary: item.summary || '',
+      tickers: item.related ? item.related.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
+      imageUrl: item.image || undefined
+      // Note: Finnhub doesn't provide sentiment - will be analyzed by FinBERT if needed
+    }))
+
+    console.log(`[News Service] Finnhub fetch complete: ${newsItems.length} headlines${symbol ? ` for ${symbol}` : ''}`)
+
+    return newsItems
+  } catch (error) {
+    console.error('[News Service] Finnhub fetch failed:', error)
+    throw error
   }
 }
 

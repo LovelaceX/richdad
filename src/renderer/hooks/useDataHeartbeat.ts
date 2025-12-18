@@ -16,6 +16,11 @@ export function useDataHeartbeat() {
   const setLoading = useNewsStore(state => state.setLoading)
   const setRecommendation = useAIStore(state => state.setRecommendation)
 
+  // AI analysis progress actions
+  const startAnalysis = useAIStore(state => state.startAnalysis)
+  const updatePhase = useAIStore(state => state.updatePhase)
+  const clearAnalysisProgress = useAIStore(state => state.clearAnalysisProgress)
+
   useEffect(() => {
     console.log('[useDataHeartbeat] Initializing heartbeat service')
 
@@ -71,6 +76,26 @@ export function useDataHeartbeat() {
         // New AI-generated recommendation
         console.log('[useDataHeartbeat] Received AI recommendation:', payload)
         setRecommendation(payload)
+        break
+
+      case 'ai_analysis_start':
+        // AI analysis starting - show progress animation
+        console.log('[useDataHeartbeat] AI analysis starting:', payload.ticker)
+        startAnalysis(payload.ticker)
+        break
+
+      case 'ai_phase_update':
+        // Update specific phase in progress animation
+        updatePhase(payload.phaseId, payload.status, payload.result)
+        break
+
+      case 'ai_analysis_end':
+        // AI analysis complete - clear progress after short delay
+        console.log('[useDataHeartbeat] AI analysis complete:', payload)
+        // Keep the progress visible briefly so user sees the final state
+        setTimeout(() => {
+          clearAnalysisProgress()
+        }, 1500)
         break
     }
   }

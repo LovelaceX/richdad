@@ -4,10 +4,10 @@ import { analyzeSentiment, initializeSentimentAnalysis } from './sentimentServic
 import { generateRecommendation, isMarketOpen } from './aiRecommendationEngine'
 import { outcomeTracker } from './outcomeTracker'
 import { db } from '../renderer/lib/db'
-import type { Quote, NewsItem } from '../renderer/types'
+import type { Quote, NewsItem, AnalysisPhase } from '../renderer/types'
 
 export type DataUpdateCallback = (data: {
-  type: 'market' | 'news' | 'sentiment' | 'ai_recommendation' | 'alert_triggered'
+  type: 'market' | 'news' | 'sentiment' | 'ai_recommendation' | 'alert_triggered' | 'ai_analysis_start' | 'ai_phase_update' | 'ai_analysis_end'
   payload: any
 }) => void
 
@@ -295,8 +295,10 @@ class DataHeartbeatService {
 
   /**
    * Manually trigger AI analysis for a symbol
+   * @param symbol - Stock ticker to analyze
+   * @param showProgress - Whether to emit phase update callbacks for UI animation
    */
-  async updateAIAnalysis(symbol: string = 'SPY'): Promise<void> {
+  async updateAIAnalysis(symbol: string = 'SPY', showProgress: boolean = true): Promise<void> {
     try {
       // Only run during market hours
       if (!isMarketOpen()) {
@@ -306,14 +308,41 @@ class DataHeartbeatService {
 
       console.log(`[Heartbeat] Running AI analysis for ${symbol}`)
 
+      // Notify UI that analysis is starting (for animation)
+      if (showProgress) {
+        this.notifyCallbacks({
+          type: 'ai_analysis_start',
+          payload: { ticker: symbol }
+        })
+      }
+
       // Load AI settings to get confidence threshold
       const { getAISettings } = await import('../renderer/lib/db')
       const aiSettings = await getAISettings()
 
+      // Create phase update callback to forward to UI
+      const onPhaseUpdate = showProgress
+        ? (phaseId: string, status: AnalysisPhase['status'], result?: string) => {
+            this.notifyCallbacks({
+              type: 'ai_phase_update',
+              payload: { phaseId, status, result }
+            })
+          }
+        : undefined
+
       const recommendation = await generateRecommendation(
         symbol,
-        aiSettings.confidenceThreshold
+        aiSettings.confidenceThreshold,
+        onPhaseUpdate
       )
+
+      // Notify UI that analysis is complete
+      if (showProgress) {
+        this.notifyCallbacks({
+          type: 'ai_analysis_end',
+          payload: { ticker: symbol, success: !!recommendation }
+        })
+      }
 
       if (recommendation) {
         console.log(`[Heartbeat] Generated ${recommendation.action} recommendation (${recommendation.confidence}% confidence)`)
@@ -328,6 +357,12 @@ class DataHeartbeatService {
 
     } catch (error) {
       console.error('[Heartbeat] AI analysis failed:', error)
+
+      // Notify UI of failure
+      this.notifyCallbacks({
+        type: 'ai_analysis_end',
+        payload: { ticker: symbol, success: false, error: String(error) }
+      })
     }
   }
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { TrendingUp, Calendar, Maximize2, Minimize2, Activity, Minus, TrendingUp as TrendlineIcon, Trash2 } from 'lucide-react'
+import { TrendingUp, Calendar, Maximize2, Minimize2, Activity, Minus, TrendingUp as TrendlineIcon, Trash2, RefreshCw } from 'lucide-react'
 import { TradingChart } from './TradingChart'
 import { ProactiveAlert } from './ProactiveAlert'
 import { TimeframeSelector } from './TimeframeSelector'
@@ -7,11 +7,22 @@ import { QuickTradeButtons } from './QuickTradeButtons'
 import { PositionSizeCalculator } from './PositionSizeCalculator'
 import { MarketRegimeIndicator } from './MarketRegimeIndicator'
 import { MarketContextPanel } from './MarketContextPanel'
+import { ChartSyncProvider } from './ChartSyncContext'
+import { IndicatorSelector } from './IndicatorSelector'
+import { IndicatorPanelGroup } from './IndicatorPanelGroup'
 import { useMarketStore } from '../../stores/marketStore'
 import { useAIStore } from '../../stores/aiStore'
 import { usePatternStore } from '../../stores/patternStore'
 import { useDrawingStore } from '../../stores/drawingStore'
 import { formatPrice, formatChange, formatPercent, getColorClass } from '../../lib/utils'
+
+// Helper to format cache age
+function formatCacheAge(ms: number): string {
+  const mins = Math.floor(ms / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins}m ago`
+  return `${Math.floor(mins / 60)}h ago`
+}
 
 export function ChartPanel() {
   const selectedTicker = useMarketStore(state => state.selectedTicker)
@@ -22,7 +33,12 @@ export function ChartPanel() {
   const setSelectedDate = useMarketStore(state => state.setSelectedDate)
   const isChartExpanded = useMarketStore(state => state.isChartExpanded)
   const toggleChartExpanded = useMarketStore(state => state.toggleChartExpanded)
+  const cacheStatus = useMarketStore(state => state.cacheStatus)
+  const loadChartData = useMarketStore(state => state.loadChartData)
   const currentRecommendation = useAIStore(state => state.currentRecommendation)
+
+  // Refresh state
+  const [isRefreshing, setIsRefreshing] = useState(false)
 
   // Pattern & News marker toggles
   const showPatterns = usePatternStore(state => state.showPatterns)
@@ -41,6 +57,16 @@ export function ChartPanel() {
 
   // Market Context Panel toggle
   const [showMarketContext, setShowMarketContext] = useState(false)
+
+  // Handle chart refresh
+  const handleRefreshChart = async () => {
+    setIsRefreshing(true)
+    try {
+      await loadChartData(selectedTicker, timeframe)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
 
   // Handle Escape key to close expanded chart
   useEffect(() => {
@@ -69,13 +95,14 @@ export function ChartPanel() {
   return (
     <div className={wrapperClasses}>
       {/* Header with ticker info */}
-      <div className="panel-header flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="panel-header flex items-center justify-between gap-4 overflow-x-auto [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-terminal-border/50 [&::-webkit-scrollbar-thumb]:rounded-full">
+        {/* Essential info - always visible, never shrink */}
+        <div className="flex items-center gap-3 flex-shrink-0">
           <div className="flex items-center gap-2">
             <TrendingUp size={14} />
             <span>{selectedTicker}</span>
             {selectedItem && (
-              <span className="text-gray-500 text-[10px] font-normal normal-case">
+              <span className="text-gray-500 text-[10px] font-normal normal-case truncate max-w-[120px]">
                 {selectedItem.name}
               </span>
             )}
@@ -87,7 +114,8 @@ export function ChartPanel() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        {/* Controls - can shrink/scroll */}
+        <div className="flex items-center gap-4 flex-shrink-0">
           {quote && (
             <div className="flex items-center gap-4 text-[11px] font-normal">
               <span className="text-white tabular-nums">
@@ -149,6 +177,9 @@ export function ChartPanel() {
             >
               <Activity size={12} />
             </button>
+
+            {/* Technical Indicators Selector */}
+            <IndicatorSelector />
           </div>
 
           {/* Drawing Tools */}
@@ -235,6 +266,25 @@ export function ChartPanel() {
             })} EST
           </div>
 
+          {/* Data Freshness Indicator */}
+          <div className="flex items-center gap-1.5 border-l border-terminal-border pl-3">
+            <div
+              className={`w-2 h-2 rounded-full ${cacheStatus?.isFresh ? 'bg-green-400' : 'bg-amber-400'}`}
+              title={cacheStatus?.isFresh ? 'Data is fresh' : 'Data may be stale'}
+            />
+            <span className="text-gray-500 text-[10px] tabular-nums">
+              {cacheStatus?.age ? formatCacheAge(cacheStatus.age) : 'Loading...'}
+            </span>
+            <button
+              onClick={handleRefreshChart}
+              disabled={isRefreshing}
+              className="p-1 hover:bg-terminal-border/50 rounded transition-colors disabled:opacity-50"
+              title="Refresh chart data"
+            >
+              <RefreshCw className={`w-3 h-3 text-gray-500 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+
           {/* Timeframe Selector */}
           <TimeframeSelector
             value={timeframe}
@@ -260,15 +310,23 @@ export function ChartPanel() {
         </div>
       )}
 
-      {/* Chart area */}
-      <div className="flex-1 relative min-h-0">
-        <TradingChart />
+      {/* Chart area with indicator panels */}
+      <ChartSyncProvider>
+        <div className="flex-1 relative min-h-0 flex flex-col">
+          {/* Main Chart */}
+          <div className="flex-1 relative min-h-0">
+            <TradingChart />
 
-        {/* Proactive Alert Overlay */}
-        {currentRecommendation && (
-          <ProactiveAlert recommendation={currentRecommendation} />
-        )}
-      </div>
+            {/* Proactive Alert Overlay */}
+            {currentRecommendation && (
+              <ProactiveAlert recommendation={currentRecommendation} />
+            )}
+          </div>
+
+          {/* Indicator Panels */}
+          <IndicatorPanelGroup />
+        </div>
+      </ChartSyncProvider>
 
       {/* Quick Timeframe Buttons */}
       {selectedTicker === 'SPY' && (

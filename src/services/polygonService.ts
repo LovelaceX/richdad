@@ -262,3 +262,127 @@ export function clearPolygonCache(): void {
   historicalCache.clear()
   console.log('[Polygon] Cache cleared')
 }
+
+/**
+ * Fetch historical candle data for a specific date range
+ * Used for backtesting to get extended historical data
+ *
+ * @param symbol - Stock ticker
+ * @param startDate - Start date (Unix timestamp in ms)
+ * @param endDate - End date (Unix timestamp in ms)
+ * @param timeframe - RichDad timeframe format
+ * @param apiKey - Polygon API key
+ */
+export async function fetchPolygonHistoricalRange(
+  symbol: string,
+  startDate: number,
+  endDate: number,
+  timeframe: string,
+  apiKey: string
+): Promise<CandleData[]> {
+  // Convert timestamps to YYYY-MM-DD
+  const from = new Date(startDate).toISOString().split('T')[0]
+  const to = new Date(endDate).toISOString().split('T')[0]
+
+  // Convert timeframe to Polygon format
+  let multiplier = 1
+  let timespan: 'minute' | 'hour' | 'day' | 'week' = 'day'
+
+  switch (timeframe) {
+    case '1min':
+      multiplier = 1
+      timespan = 'minute'
+      break
+    case '5min':
+      multiplier = 5
+      timespan = 'minute'
+      break
+    case '15min':
+    case '15m':
+      multiplier = 15
+      timespan = 'minute'
+      break
+    case '30min':
+      multiplier = 30
+      timespan = 'minute'
+      break
+    case '1h':
+    case '60min':
+      multiplier = 1
+      timespan = 'hour'
+      break
+    case '4h':
+    case '240min':
+      multiplier = 4
+      timespan = 'hour'
+      break
+    case '1d':
+    case 'daily':
+      multiplier = 1
+      timespan = 'day'
+      break
+    case 'weekly':
+      multiplier = 1
+      timespan = 'week'
+      break
+    default:
+      multiplier = 1
+      timespan = 'day'
+  }
+
+  const allCandles: CandleData[] = []
+  let currentFrom = from
+  const finalTo = to
+  const MAX_RESULTS = 50000 // Polygon max per request
+
+  console.log(`[Polygon] Fetching historical range for ${symbol}: ${from} to ${to} (${timeframe})`)
+
+  // Polygon limits results, may need multiple requests for large date ranges
+  while (currentFrom <= finalTo) {
+    await respectRateLimit()
+
+    const url = `${POLYGON_BASE_URL}/v2/aggs/ticker/${symbol}/range/${multiplier}/${timespan}/${currentFrom}/${finalTo}?adjusted=true&sort=asc&limit=${MAX_RESULTS}&apiKey=${apiKey}`
+
+    try {
+      const response = await fetch(url)
+
+      if (!response.ok) {
+        throw new Error(`Polygon API error: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      if (data.status !== 'OK' || !data.results || data.results.length === 0) {
+        console.log(`[Polygon] No more results from ${currentFrom}`)
+        break
+      }
+
+      const candles: CandleData[] = data.results.map((bar: any) => ({
+        time: Math.floor(bar.t / 1000), // Convert ms to seconds
+        open: bar.o,
+        high: bar.h,
+        low: bar.l,
+        close: bar.c,
+        volume: bar.v
+      }))
+
+      allCandles.push(...candles)
+
+      // If we got the max results, there might be more data
+      if (data.results.length >= MAX_RESULTS) {
+        // Move start date to after the last result
+        const lastTimestamp = data.results[data.results.length - 1].t
+        currentFrom = new Date(lastTimestamp + 86400000).toISOString().split('T')[0] // Next day
+        console.log(`[Polygon] Pagination: fetched ${candles.length}, continuing from ${currentFrom}`)
+      } else {
+        break
+      }
+    } catch (error) {
+      console.error('[Polygon] Historical range error:', error)
+      break
+    }
+  }
+
+  console.log(`[Polygon] Total candles fetched for range: ${allCandles.length}`)
+  return allCandles
+}
