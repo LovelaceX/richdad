@@ -1,7 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/version-4.3.0-gold?style=for-the-badge" alt="Version 4.3.0"/>
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License"/>
-  <img src="https://github.com/LovelaceX/richdad/actions/workflows/ci.yml/badge.svg" alt="CI"/>
   <img src="https://img.shields.io/badge/tauri-2.x-blue?style=for-the-badge&logo=tauri" alt="Tauri 2.x"/>
   <img src="https://img.shields.io/badge/react-18-61DAFB?style=for-the-badge&logo=react" alt="React 18"/>
   <img src="https://img.shields.io/badge/typescript-strict-3178C6?style=for-the-badge&logo=typescript" alt="TypeScript"/>
