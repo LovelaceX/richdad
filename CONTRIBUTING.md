@@ -11,10 +11,6 @@ Thank you for your interest in contributing to RichDad! This document provides g
 - [Pull Request Process](#pull-request-process)
 - [Reporting Issues](#reporting-issues)
 
-## Code of Conduct
-
-This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
-
 ## Getting Started
 
 1. Fork the repository
