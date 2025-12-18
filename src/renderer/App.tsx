@@ -6,6 +6,7 @@ import { useNavigationStore } from './stores/navigationStore'
 // Lazy load pages for better code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })))
 const News = lazy(() => import('./pages/News').then(m => ({ default: m.News })))
+const EconomicCalendar = lazy(() => import('./pages/EconomicCalendar').then(m => ({ default: m.EconomicCalendar })))
 const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })))
 import { useSettingsStore } from './stores/settingsStore'
 import { useMarketStore } from './stores/marketStore'
@@ -94,6 +95,8 @@ export default function App() {
         return <Dashboard />
       case 'news':
         return <News />
+      case 'economic-calendar':
+        return <EconomicCalendar />
       case 'settings':
         return <Settings />
       default:

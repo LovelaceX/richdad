@@ -75,7 +75,7 @@ export interface MarketIndex {
 }
 
 // Page types
-export type PageId = 'dashboard' | 'news' | 'settings'
+export type PageId = 'dashboard' | 'news' | 'economic-calendar' | 'settings'
 
 // Economic Calendar Event
 export interface EconomicEvent {

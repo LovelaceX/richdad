@@ -260,7 +260,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
           >
             <div className="bg-terminal-panel border border-terminal-border rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b border-terminal-border">
+              <div className="flex items-center justify-between p-6">
                 <div>
                   <h2 className="text-white text-xl font-semibold">
                     {currentStep === 'provider-choice' || currentStep === 'api-key' || currentStep === 'ai-provider'
@@ -290,7 +290,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-between p-6 border-t border-terminal-border">
+              <div className="flex items-center justify-between p-6">
                 {currentStep !== 'welcome' ? (
                   <button
                     onClick={() => {

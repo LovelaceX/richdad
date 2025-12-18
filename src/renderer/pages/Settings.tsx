@@ -26,7 +26,8 @@ import {
   LayoutGrid,
   Briefcase,
   Edit3,
-  Upload
+  Upload,
+  Calendar
 } from 'lucide-react'
 import { useSettingsStore } from '../stores/settingsStore'
 // Theme is now fixed to Bloomberg - no selector needed
@@ -126,6 +127,8 @@ export function Settings() {
   const toggleRightPanel = useSettingsStore(state => state.toggleRightPanel)
   const toggleChart = useSettingsStore(state => state.toggleChart)
   const toggleNewsTicker = useSettingsStore(state => state.toggleNewsTicker)
+  const toggleAIPerformance = useSettingsStore(state => state.toggleAIPerformance)
+  const toggleEconomicCalendarTicker = useSettingsStore(state => state.toggleEconomicCalendarTicker)
 
   // Pro Traders state
   const { traders, loadTraders, addTrader, removeTrader, toggleTrader } = useProTraderStore()
@@ -174,6 +177,12 @@ export function Settings() {
   const [twelvedataStatus, setTwelvedataStatus] = useState<'idle' | 'valid' | 'invalid'>('idle')
   const [twelvedataMessage, setTwelvedataMessage] = useState('')
 
+  // FRED (Federal Reserve) connection test state
+  const [pendingFredKey, setPendingFredKey] = useState<string>('')
+  const [testingFred, setTestingFred] = useState(false)
+  const [fredStatus, setFredStatus] = useState<'idle' | 'valid' | 'invalid'>('idle')
+  const [fredMessage, setFredMessage] = useState('')
+
   // Onboarding wizard state
   const [showOnboardingWizard, setShowOnboardingWizard] = useState(false)
 
@@ -189,6 +198,9 @@ export function Settings() {
   const [showRestoreModal, setShowRestoreModal] = useState(false)
   const [pendingBackup, setPendingBackup] = useState<BackupData | null>(null)
   const [isRestoring, setIsRestoring] = useState(false)
+
+  // Local volume state for immediate UI feedback
+  const [localVolume, setLocalVolume] = useState<number | null>(null)
 
   // Daily Budget editing state
   const [editingBudget, setEditingBudget] = useState('')
@@ -273,9 +285,10 @@ export function Settings() {
       setPendingPolygonKey(settings.polygonApiKey || '')
       setPendingFastTrackKey(settings.fasttrackApiKey || '')
       setPendingTwelveDataKey(settings.twelvedataApiKey || '')
+      setPendingFredKey(settings.fredApiKey || '')
       setHasApiKeyChanges(false)
     }
-  }, [settings?.alphaVantageApiKey, settings?.finnhubApiKey, settings?.polygonApiKey, settings?.fasttrackApiKey, settings?.twelvedataApiKey])
+  }, [settings?.alphaVantageApiKey, settings?.finnhubApiKey, settings?.polygonApiKey, settings?.fasttrackApiKey, settings?.twelvedataApiKey, settings?.fredApiKey])
 
   const saveSettings = async (updates: Partial<UserSettings>) => {
     if (!settings) return
@@ -314,7 +327,8 @@ export function Settings() {
       finnhubApiKey: pendingFinnhubKey,
       polygonApiKey: pendingPolygonKey,
       fasttrackApiKey: pendingFastTrackKey,
-      twelvedataApiKey: pendingTwelveDataKey
+      twelvedataApiKey: pendingTwelveDataKey,
+      fredApiKey: pendingFredKey
     })
     setHasApiKeyChanges(false)
     setSavingApiKeys(false)
@@ -329,6 +343,8 @@ export function Settings() {
     setFasttrackMessage('')
     setTwelvedataStatus('idle')
     setTwelvedataMessage('')
+    setFredStatus('idle')
+    setFredMessage('')
   }
 
   const handleDiscardApiKeys = () => {
@@ -337,6 +353,7 @@ export function Settings() {
     setPendingPolygonKey(settings?.polygonApiKey || '')
     setPendingFastTrackKey(settings?.fasttrackApiKey || '')
     setPendingTwelveDataKey(settings?.twelvedataApiKey || '')
+    setPendingFredKey(settings?.fredApiKey || '')
     setHasApiKeyChanges(false)
   }
 
@@ -547,6 +564,38 @@ export function Settings() {
     }
 
     setTestingTwelveData(false)
+  }
+
+  // FRED connection test handler
+  const handleTestFredConnection = async () => {
+    if (!settings?.fredApiKey) {
+      setFredStatus('invalid')
+      setFredMessage('No API key entered')
+      return
+    }
+
+    setTestingFred(true)
+    setFredStatus('idle')
+    setFredMessage('')
+
+    try {
+      const { testFredKey } = await import('../../services/fredValidator')
+      const result = await testFredKey(settings.fredApiKey)
+
+      if (result.valid) {
+        setFredStatus('valid')
+        setFredMessage(result.message)
+      } else {
+        setFredStatus('invalid')
+        setFredMessage(result.message)
+      }
+    } catch (error) {
+      setFredStatus('invalid')
+      setFredMessage('Connection test failed')
+      console.error('[Settings] FRED connection test error:', error)
+    }
+
+    setTestingFred(false)
   }
 
   const sections = [
@@ -1384,6 +1433,105 @@ export function Settings() {
                   )}
                 </div>
 
+                <div className="border-t border-terminal-border" />
+
+                {/* FRED (Federal Reserve Economic Data) */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Calendar className="w-4 h-4 text-terminal-amber" />
+                    <span className="text-white text-sm font-medium">FRED (Economic Calendar)</span>
+                  </div>
+
+                  <p className="text-gray-400 text-xs mb-4">
+                    Free API for US economic calendar data from the Federal Reserve. Get your key at{' '}
+                    <a href="https://fred.stlouisfed.org/docs/api/api_key.html" target="_blank" rel="noopener noreferrer" className="text-terminal-amber hover:underline">
+                      fred.stlouisfed.org
+                    </a>
+                  </p>
+
+                  {/* API Key Input */}
+                  <div className="mb-4">
+                    <label className="text-gray-400 text-xs mb-1 block">API Key</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        value={pendingFredKey}
+                        onChange={(e) => {
+                          setPendingFredKey(e.target.value)
+                          setHasApiKeyChanges(true)
+                          setFredStatus('idle')
+                          setFredMessage('')
+                        }}
+                        placeholder="Your FRED API key"
+                        className="flex-1 bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white placeholder:text-gray-600 font-mono focus:outline-none focus:border-terminal-amber/50"
+                      />
+                      <button
+                        onClick={handleTestFredConnection}
+                        disabled={!settings?.fredApiKey || testingFred}
+                        className="px-4 py-2 bg-terminal-panel border border-terminal-border rounded text-sm text-white hover:bg-terminal-border/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {testingFred ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Testing...
+                          </>
+                        ) : (
+                          <>
+                            <Wifi className="w-4 h-4" />
+                            Test
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-gray-600 text-xs mt-2">
+                      Free tier: 120 calls/min • US economic events • CPI, Jobs, Fed decisions
+                    </p>
+                    <p className="text-gray-500 text-xs mt-1">
+                      Setup: Visit fred.stlouisfed.org &rarr; Request API key &rarr; Create account &rarr; Copy key
+                    </p>
+                  </div>
+
+                  {/* Signup Link */}
+                  <a
+                    href="https://fred.stlouisfed.org/docs/api/api_key.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-terminal-amber hover:underline text-xs"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    Get free FRED API key (120 calls/min)
+                  </a>
+
+                  {/* Status Indicators */}
+                  {!settings?.fredApiKey && (
+                    <div className="mt-4 flex items-center gap-2 text-gray-500 text-xs">
+                      <AlertCircle className="w-3 h-3" />
+                      No API key configured
+                    </div>
+                  )}
+
+                  {settings?.fredApiKey && fredStatus === 'idle' && (
+                    <div className="mt-4 flex items-center gap-2 text-terminal-amber text-xs">
+                      <Check className="w-3 h-3" />
+                      API key saved (click "Test" to verify)
+                    </div>
+                  )}
+
+                  {fredStatus === 'valid' && (
+                    <div className="mt-4 flex items-center gap-2 text-terminal-up text-xs">
+                      <Check className="w-3 h-3" />
+                      {fredMessage}
+                    </div>
+                  )}
+
+                  {fredStatus === 'invalid' && (
+                    <div className="mt-4 flex items-center gap-2 text-terminal-down text-xs">
+                      <AlertCircle className="w-3 h-3" />
+                      {fredMessage}
+                    </div>
+                  )}
+                </div>
+
                 {/* Save/Discard Buttons for API Keys */}
                 {hasApiKeyChanges && (
                   <div className="flex gap-2 p-4 bg-terminal-bg border border-terminal-amber/30 rounded-lg">
@@ -2032,6 +2180,39 @@ export function Settings() {
                         }`} />
                       </button>
                     </div>
+
+                    {/* Economic Calendar Ticker */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-300 text-sm">Economic Calendar Ticker</span>
+                      <button
+                        onClick={toggleEconomicCalendarTicker}
+                        className={`w-12 h-6 rounded-full transition-colors ${
+                          panelVisibility.economicCalendarTickerVisible ? 'bg-terminal-amber' : 'bg-terminal-border'
+                        }`}
+                      >
+                        <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                          panelVisibility.economicCalendarTickerVisible ? 'translate-x-6' : 'translate-x-0.5'
+                        }`} />
+                      </button>
+                    </div>
+
+                    {/* AI Performance Summary */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-gray-300 text-sm">AI Performance Summary</span>
+                        <p className="text-gray-500 text-xs">Show W-L-P stats in AI Copilot panel</p>
+                      </div>
+                      <button
+                        onClick={toggleAIPerformance}
+                        className={`w-12 h-6 rounded-full transition-colors ${
+                          panelVisibility.aiPerformanceVisible ? 'bg-terminal-amber' : 'bg-terminal-border'
+                        }`}
+                      >
+                        <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                          panelVisibility.aiPerformanceVisible ? 'translate-x-6' : 'translate-x-0.5'
+                        }`} />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -2177,15 +2358,19 @@ export function Settings() {
               <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-white text-sm">Volume</span>
-                  <span className="text-terminal-amber font-mono">{settings.soundVolume}%</span>
+                  <span className="text-terminal-amber font-mono">{localVolume ?? settings.soundVolume}%</span>
                 </div>
                 <input
                   type="range"
                   min="0"
                   max="100"
                   step="5"
-                  value={settings.soundVolume}
-                  onChange={(e) => saveSettings({ soundVolume: parseInt(e.target.value) })}
+                  value={localVolume ?? settings.soundVolume}
+                  onChange={(e) => {
+                    const newVolume = parseInt(e.target.value)
+                    setLocalVolume(newVolume)
+                    saveSettings({ soundVolume: newVolume })
+                  }}
                   className="w-full accent-terminal-amber"
                   disabled={!settings.soundEnabled}
                 />
@@ -2216,7 +2401,7 @@ export function Settings() {
                         ))}
                       </select>
                       <button
-                        onClick={() => previewSound(settings.sounds.buy, settings.soundVolume)}
+                        onClick={() => previewSound(settings.sounds.buy, localVolume ?? settings.soundVolume)}
                         className="p-2 bg-terminal-border hover:bg-terminal-amber/20 rounded text-xs text-white transition-colors flex items-center gap-1"
                         disabled={!settings.soundEnabled}
                       >
@@ -2246,7 +2431,7 @@ export function Settings() {
                         ))}
                       </select>
                       <button
-                        onClick={() => previewSound(settings.sounds.sell, settings.soundVolume)}
+                        onClick={() => previewSound(settings.sounds.sell, localVolume ?? settings.soundVolume)}
                         className="p-2 bg-terminal-border hover:bg-terminal-amber/20 rounded text-xs text-white transition-colors flex items-center gap-1"
                         disabled={!settings.soundEnabled}
                       >
@@ -2276,7 +2461,7 @@ export function Settings() {
                         ))}
                       </select>
                       <button
-                        onClick={() => previewSound(settings.sounds.hold, settings.soundVolume)}
+                        onClick={() => previewSound(settings.sounds.hold, localVolume ?? settings.soundVolume)}
                         className="p-2 bg-terminal-border hover:bg-terminal-amber/20 rounded text-xs text-white transition-colors flex items-center gap-1"
                         disabled={!settings.soundEnabled}
                       >
@@ -2306,7 +2491,7 @@ export function Settings() {
                         ))}
                       </select>
                       <button
-                        onClick={() => previewSound(settings.sounds.alert, settings.soundVolume)}
+                        onClick={() => previewSound(settings.sounds.alert, localVolume ?? settings.soundVolume)}
                         className="p-2 bg-terminal-border hover:bg-terminal-amber/20 rounded text-xs text-white transition-colors flex items-center gap-1"
                         disabled={!settings.soundEnabled}
                       >
@@ -2336,7 +2521,7 @@ export function Settings() {
                         ))}
                       </select>
                       <button
-                        onClick={() => previewSound(settings.sounds.analysis, settings.soundVolume)}
+                        onClick={() => previewSound(settings.sounds.analysis, localVolume ?? settings.soundVolume)}
                         className="p-2 bg-terminal-border hover:bg-terminal-amber/20 rounded text-xs text-white transition-colors flex items-center gap-1"
                         disabled={!settings.soundEnabled}
                       >
@@ -2366,7 +2551,7 @@ export function Settings() {
                         ))}
                       </select>
                       <button
-                        onClick={() => previewSound(settings.sounds.tradeExecuted, settings.soundVolume)}
+                        onClick={() => previewSound(settings.sounds.tradeExecuted, localVolume ?? settings.soundVolume)}
                         className="p-2 bg-terminal-border hover:bg-terminal-amber/20 rounded text-xs text-white transition-colors flex items-center gap-1"
                         disabled={!settings.soundEnabled}
                       >
@@ -2396,7 +2581,7 @@ export function Settings() {
                         ))}
                       </select>
                       <button
-                        onClick={() => previewSound(settings.sounds.breakingNews, settings.soundVolume)}
+                        onClick={() => previewSound(settings.sounds.breakingNews, localVolume ?? settings.soundVolume)}
                         className="p-2 bg-terminal-border hover:bg-terminal-amber/20 rounded text-xs text-white transition-colors flex items-center gap-1"
                         disabled={!settings.soundEnabled}
                       >
@@ -2814,7 +2999,7 @@ export function Settings() {
                     </div>
                     <button
                       onClick={() => setShowResetConfirm('ai')}
-                      className="px-4 py-1.5 bg-yellow-600/20 border border-yellow-600 text-yellow-500 rounded text-sm hover:bg-yellow-600/30 transition-colors whitespace-nowrap flex-shrink-0"
+                      className="px-4 py-1.5 bg-terminal-border text-white rounded text-sm hover:bg-terminal-border/70 transition-colors whitespace-nowrap flex-shrink-0"
                     >
                       Clear
                     </button>
@@ -2830,7 +3015,7 @@ export function Settings() {
                     </div>
                     <button
                       onClick={() => setShowResetConfirm('pnl')}
-                      className="px-4 py-1.5 bg-yellow-600/20 border border-yellow-600 text-yellow-500 rounded text-sm hover:bg-yellow-600/30 transition-colors whitespace-nowrap flex-shrink-0"
+                      className="px-4 py-1.5 bg-terminal-border text-white rounded text-sm hover:bg-terminal-border/70 transition-colors whitespace-nowrap flex-shrink-0"
                     >
                       Clear
                     </button>
@@ -2846,7 +3031,7 @@ export function Settings() {
                     </div>
                     <button
                       onClick={() => setShowResetConfirm('alerts')}
-                      className="px-4 py-1.5 bg-yellow-600/20 border border-yellow-600 text-yellow-500 rounded text-sm hover:bg-yellow-600/30 transition-colors whitespace-nowrap flex-shrink-0"
+                      className="px-4 py-1.5 bg-terminal-border text-white rounded text-sm hover:bg-terminal-border/70 transition-colors whitespace-nowrap flex-shrink-0"
                     >
                       Clear
                     </button>

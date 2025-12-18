@@ -1,4 +1,4 @@
-import { LayoutDashboard, Newspaper, Settings } from 'lucide-react'
+import { LayoutDashboard, Newspaper, Calendar, Settings } from 'lucide-react'
 import { useNavigationStore } from '../../stores/navigationStore'
 import type { PageId } from '../../types'
 import { NotificationBell } from './NotificationBell'
@@ -61,10 +61,16 @@ export function NavBar() {
         shortcut="⌘2"
       />
       <NavItem
+        id="economic-calendar"
+        icon={<Calendar size={18} />}
+        label="Calendar"
+        shortcut="⌘3"
+      />
+      <NavItem
         id="settings"
         icon={<Settings size={18} />}
         label="Settings"
-        shortcut="⌘3"
+        shortcut="⌘4"
       />
 
       {/* Divider */}

@@ -19,6 +19,8 @@ interface SettingsState {
     rightPanelVisible: boolean   // AI Copilot
     chartVisible: boolean        // Live Chart
     newsTickerVisible: boolean   // News Ticker
+    aiPerformanceVisible: boolean // AI Performance Summary
+    economicCalendarTickerVisible: boolean // Economic Calendar Ticker
   }
 
   // Actions
@@ -37,6 +39,8 @@ interface SettingsState {
   toggleRightPanel: () => void
   toggleChart: () => void
   toggleNewsTicker: () => void
+  toggleAIPerformance: () => void
+  toggleEconomicCalendarTicker: () => void
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -58,6 +62,8 @@ export const useSettingsStore = create<SettingsState>()(
         rightPanelVisible: true,
         chartVisible: true,
         newsTickerVisible: true,
+        aiPerformanceVisible: true,
+        economicCalendarTickerVisible: true,
       },
 
       setTheme: (theme: ThemeId) => {
@@ -168,6 +174,24 @@ export const useSettingsStore = create<SettingsState>()(
           panelVisibility: {
             ...state.panelVisibility,
             newsTickerVisible: !state.panelVisibility.newsTickerVisible,
+          }
+        }))
+      },
+
+      toggleAIPerformance: () => {
+        set(state => ({
+          panelVisibility: {
+            ...state.panelVisibility,
+            aiPerformanceVisible: !state.panelVisibility.aiPerformanceVisible,
+          }
+        }))
+      },
+
+      toggleEconomicCalendarTicker: () => {
+        set(state => ({
+          panelVisibility: {
+            ...state.panelVisibility,
+            economicCalendarTickerVisible: !state.panelVisibility.economicCalendarTickerVisible,
           }
         }))
       },

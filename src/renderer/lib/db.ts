@@ -64,6 +64,7 @@ export interface UserSettings {
   finnhubApiKey?: string
   fasttrackApiKey?: string  // FastTrack.net Portfolio Analytics API
   twelvedataApiKey?: string  // TwelveData.com - 800 calls/day free, real-time
+  fredApiKey?: string  // FRED (Federal Reserve Economic Data) - free, 120 calls/min
 
   // Onboarding
   hasCompletedOnboarding?: boolean
@@ -371,6 +372,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   finnhubApiKey: undefined,
   fasttrackApiKey: undefined,
   twelvedataApiKey: undefined,
+  fredApiKey: undefined,
 
   // Onboarding
   hasCompletedOnboarding: undefined,

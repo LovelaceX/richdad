@@ -2,14 +2,17 @@ import { useEffect, useRef } from 'react'
 import { Bot, Loader2, Trash2 } from 'lucide-react'
 import { ActivityLog } from './ActivityLog'
 import { ChatInput } from './ChatInput'
+import { AIPerformanceSummary } from './AIPerformanceSummary'
 import { useAIStore } from '../../stores/aiStore'
 import { useMarketStore } from '../../stores/marketStore'
+import { useSettingsStore } from '../../stores/settingsStore'
 
 export function AIPanel() {
   const isAnalyzing = useAIStore(state => state.isAnalyzing)
   const messages = useAIStore(state => state.messages)
   const clearMessages = useAIStore(state => state.clearMessages)
   const selectedTicker = useMarketStore(state => state.selectedTicker)
+  const aiPerformanceVisible = useSettingsStore(state => state.panelVisibility.aiPerformanceVisible)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom when new messages arrive
@@ -64,6 +67,13 @@ export function AIPanel() {
         <ActivityLog />
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Performance Summary - collapsible */}
+      {aiPerformanceVisible && (
+        <div className="flex-shrink-0">
+          <AIPerformanceSummary />
+        </div>
+      )}
 
       {/* Chat Input - fixed at bottom */}
       <div className="flex-shrink-0">

@@ -2,8 +2,9 @@ import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, BookOpen, Zap, BarChart3, Keyboard, HelpCircle, Shield, FileText, Mail,
-  Search, Gauge, AlertTriangle, Database, TrendingUp, Bell, Eye, Check
+  Search, Gauge, AlertTriangle, Database, TrendingUp, Bell, Eye, Check, Calendar
 } from 'lucide-react'
+import { openUrl } from '@tauri-apps/plugin-opener'
 
 interface HelpModalProps {
   isOpen: boolean
@@ -16,6 +17,7 @@ type Section =
   | 'dashboard'
   | 'watchlist'
   | 'news'
+  | 'economic-calendar'
   | 'price-alerts'
   | 'chart-guide'
   | 'ai-copilot'
@@ -33,6 +35,7 @@ const sectionContent: Record<Section, { title: string; keywords: string[] }> = {
   'dashboard': { title: 'Dashboard', keywords: ['home', 'main', 'overview', 'layout', 'panels'] },
   'watchlist': { title: 'Watchlist', keywords: ['market watch', 'stocks', 'symbols', 'add', 'remove', 'track'] },
   'news': { title: 'Market News', keywords: ['headlines', 'feed', 'sentiment', 'filter', 'rss'] },
+  'economic-calendar': { title: 'Economic Calendar', keywords: ['fred', 'cpi', 'jobs', 'fed', 'gdp', 'fomc', 'economic events', 'calendar'] },
   'price-alerts': { title: 'Price Alerts', keywords: ['notification', 'alert', 'trigger', 'above', 'below'] },
   'chart-guide': { title: 'Chart Controls', keywords: ['candlestick', 'timeframe', 'zoom', 'pan', 'daily', 'intraday'] },
   'ai-copilot': { title: 'AI Copilot', keywords: ['openai', 'claude', 'gemini', 'grok', 'recommendation', 'chat', 'provider'] },
@@ -62,6 +65,7 @@ export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
     { id: 'dashboard', label: 'Dashboard', icon: Eye },
     { id: 'watchlist', label: 'Watchlist', icon: TrendingUp },
     { id: 'news', label: 'Market News', icon: FileText },
+    { id: 'economic-calendar', label: 'Economic Calendar', icon: Calendar },
     { id: 'price-alerts', label: 'Price Alerts', icon: Bell },
     { id: 'chart-guide', label: 'Chart Controls', icon: BarChart3 },
     { id: 'ai-copilot', label: 'AI Copilot', icon: Zap },
@@ -442,6 +446,66 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 <TrendingUp size={16} className="text-terminal-down rotate-180" />
                 <span className="text-gray-300">Negative - Bearish news, misses, downgrades</span>
               </div>
+            </div>
+          </div>
+        </div>
+      )
+
+    case 'economic-calendar':
+      return (
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Economic Calendar</h2>
+            <p className="text-gray-400">Track major US economic events that move markets</p>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">What It Shows</h3>
+            <div className="space-y-1">
+              <Step>CPI (Consumer Price Index) - Inflation data</Step>
+              <Step>Jobs Report - Employment numbers</Step>
+              <Step>Fed Interest Rate Decisions - FOMC meetings</Step>
+              <Step>GDP Releases - Economic growth data</Step>
+              <Step>Retail Sales, Housing Data, and more</Step>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Getting a FRED API Key</h3>
+            <p className="text-gray-300 mb-3">The calendar uses free data from the Federal Reserve:</p>
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+              <div className="space-y-1">
+                <Step>Visit <a href="https://fred.stlouisfed.org/docs/api/api_key.html" target="_blank" rel="noopener noreferrer" className="text-terminal-amber hover:underline">fred.stlouisfed.org</a></Step>
+                <Step>Click "Request or view your API keys"</Step>
+                <Step>Create account (describe use as "personal use")</Step>
+                <Step>Copy key to Settings &rarr; API Keys &rarr; FRED</Step>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Impact Levels</h3>
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-red-400"></div>
+                <span className="text-gray-300">High Impact - Major market movers (Fed decisions, CPI, Jobs)</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-yellow-400"></div>
+                <span className="text-gray-300">Medium Impact - Notable events (Retail Sales, Housing)</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+                <span className="text-gray-300">Low Impact - Minor releases</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Views</h3>
+            <div className="space-y-1">
+              <Step><span className="text-white font-medium">Calendar Page</span> (<kbd className="bg-terminal-border px-2 py-1 rounded text-xs mx-1">Cmd+3</kbd>) - Full table with filters</Step>
+              <Step><span className="text-white font-medium">Ticker</span> - Scrolling bar below news showing upcoming events</Step>
             </div>
           </div>
         </div>
@@ -954,6 +1018,10 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               a: 'AI provides data-driven insights but cannot predict the future. Check your AI\'s win rate in the Performance panel. Never invest money you can\'t afford to lose.'
             },
             {
+              q: 'How does the AI decide BUY/SELL/HOLD?',
+              a: 'The AI analyzes: (1) Technical indicators like RSI, MACD, and moving averages, (2) Candlestick patterns like Engulfing, Hammer, and Doji, (3) Market regime based on VIX levels and SPY trend, (4) Recent news sentiment. In volatile markets (VIX >25), it becomes more cautious. In choppy markets, it favors HOLD. Each recommendation includes a confidence % and rationale.'
+            },
+            {
               q: 'Can I use RichDad for day trading?',
               a: 'With the free Alpha Vantage tier (25 calls/day, cached data), it\'s better for swing trading. Premium data subscriptions would be needed for serious day trading.'
             },
@@ -1279,7 +1347,12 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           <div>
             <h3 className="text-white font-semibold mb-3">Developer</h3>
             <p className="text-gray-300">
-              <a href="https://github.com/LovelaceX" target="_blank" rel="noopener noreferrer" className="text-terminal-amber font-medium hover:underline">LovelaceX</a>
+              <button
+                onClick={() => openUrl('https://github.com/LovelaceX')}
+                className="text-terminal-amber font-medium hover:underline cursor-pointer"
+              >
+                LovelaceX
+              </button>
             </p>
             <p className="text-gray-400 text-sm">Building tools for traders at the intersection of AI and finance.</p>
           </div>
@@ -1288,9 +1361,12 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             <h3 className="text-white font-semibold mb-3">Contact</h3>
             <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4 flex items-center gap-3">
               <Mail size={20} className="text-terminal-amber" />
-              <a href="mailto:support@lovelacex.com" className="text-terminal-amber hover:underline">
+              <button
+                onClick={() => openUrl('mailto:support@lovelacex.com')}
+                className="text-terminal-amber hover:underline cursor-pointer"
+              >
                 support@lovelacex.com
-              </a>
+              </button>
             </div>
           </div>
 

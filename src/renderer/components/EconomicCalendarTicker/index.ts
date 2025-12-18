@@ -1,0 +1,1 @@
+export { EconomicCalendarTicker } from './EconomicCalendarTicker'

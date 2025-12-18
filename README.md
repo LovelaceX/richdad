@@ -10,124 +10,102 @@
 <h1 align="center">RichDad</h1>
 
 <p align="center">
-  <strong>Bloomberg Terminal-style AI-powered trading copilot for retail investors</strong>
+  <strong>Open-source trading research tool with AI analysis</strong>
 </p>
 
 <p align="center">
-  Professional desktop trading application combining real-time market data, multi-provider AI analysis, and intelligent alerts to help traders make informed decisions.
+  A free desktop app that combines market data, AI-assisted analysis, and trade journaling—stored locally on your machine.
 </p>
 
 ---
 
-## Why RichDad?
+## About
 
-### vs Bloomberg Terminal
+RichDad is an open-source trading research tool for individual investors who want AI-assisted analysis without subscription fees or cloud dependencies.
 
-| Category | Bloomberg Terminal | RichDad | Edge |
-|----------|-------------------|---------|------|
-| **Cost** | $24,000/year | Free | RichDad |
-| **Target User** | Institutions, hedge funds | Retail traders | — |
-| **AI Analysis** | None built-in | 6 providers + batting average | **RichDad** |
-| **Privacy** | Cloud-based, logged | 100% local, zero telemetry | **RichDad** |
-| **Trade Journaling** | Basic | Outcome tracking + AI comparison | **RichDad** |
-| **Position Sizing** | Manual calculation | Built-in calculator | **RichDad** |
-| **Data Latency** | Real-time | 15-min delayed (free tier) | Bloomberg |
-| **Asset Classes** | All (FX, bonds, derivatives) | US equities | Bloomberg |
-| **Historical Data** | Decades | 90 days (API limit) | Bloomberg |
-| **News Sources** | Bloomberg News + 1000s | RSS feeds | Bloomberg |
-| **Setup Time** | IT department required | 5 minutes | **RichDad** |
-| **Open Source** | No | Yes, auditable | **RichDad** |
+**What it does:**
+- Fetches market data from free APIs (Massive.com, Alpha Vantage)
+- Sends data to your AI provider of choice for analysis
+- Displays recommendations with confidence scores
+- Tracks trade decisions and outcomes over time
+- Stores everything locally—no accounts, no servers, no data collection
 
-### Our Moat
+**What it's not:**
+- A broker or trading platform (no order execution)
+- Financial advice (AI recommendations are for research only)
+- A replacement for professional tools or licensed advisors
 
-| Advantage | Why It Matters |
-|-----------|----------------|
-| **AI-First Architecture** | Bloomberg has data; we have intelligence. AI recommendations with confidence scores and performance tracking. |
-| **Privacy by Design** | Your strategy never leaves your machine. Bloomberg knows everything you look at. |
-| **Human vs AI Scorecard** | No platform tracks whether you're beating your AI copilot. We do. |
-| **Zero Cost** | Democratizes tools that were $24K/year. Retail traders get institutional-style analysis. |
-| **Outcome Accountability** | We track if recommendations actually worked. Bloomberg just gives you data. |
+### Limitations
 
+| Capability | Constraint |
+|------------|------------|
+| Market data | 15-min delayed quotes on free tier |
+| Coverage | US equities only |
+| API access | Requires your own API keys |
+| Data sync | Local only—no cloud sync across devices |
+| Historical data | Limited by API provider constraints |
 
 ---
 
-## Key Features
+## Features
 
-### AI Trading Copilot
-- **Multi-Provider Support**: OpenAI, Claude, Gemini, Grok, DeepSeek, and Llama
-- **Configurable Analysis**: Set recommendation intervals (5/10/15 min) and confidence thresholds (0-100%)
-- **Performance Analytics**: Track batting average, W-L-P records, export to CSV
-- **Smart Recommendations**: Technical indicators + news sentiment combined
+### AI Analysis
+- **Multi-Provider Support**: OpenAI, Claude, Gemini, Grok, DeepSeek, Llama
+- **Configurable Settings**: Recommendation intervals and confidence thresholds
+- **Performance Tracking**: W-L-P records and export to CSV
+- **Combined Signals**: Technical indicators + news sentiment
 
-### Notification Center (New in v3.0)
-- **Bell Icon in Navigation**: Never miss a recommendation
-- **Pending Queue**: Dismissed recommendations saved for later review
-- **Bulk Actions**: "Execute All" and "Skip All" for efficient decision-making
-- **Badge Counter**: Visual indicator for unactioned recommendations
-
-### Professional Charts
-- **Real-Time Candlesticks**: Powered by TradingView's Lightweight Charts
-- **Candlestick Pattern Recognition**: Auto-detect 18+ patterns (Engulfing, Hammer, Doji, Morning Star, etc.) with on-chart P markers
-- **News Markers**: N markers on chart showing when news broke, with click-to-view tooltips
-- **Pattern Tooltips**: Click markers to see pattern diagrams, descriptions, and reliability ratings
+### Charts
+- **Candlestick Charts**: Powered by TradingView's Lightweight Charts library
+- **Pattern Recognition**: Detects common candlestick patterns (Engulfing, Hammer, Doji, etc.)
+- **News Markers**: Visual indicators showing when news events occurred
 - **Multiple Timeframes**: 1M, 5M, 15M, 30M, 1H, Daily
-- **Live Price Updates**: Volume, change %, bid/ask spreads
-- **Resizable Panels**: Customize your workspace layout
 
-### Risk Management
-- **Price Alerts**: Custom triggers with sound notifications
-- **Position Sizing**: AI-powered recommendations based on portfolio
-- **Daily Loss Limits**: Configurable risk parameters
-- **Trade History**: Complete decision log with outcome tracking
+### Trade Management
+- **Price Alerts**: Custom triggers with notifications
+- **Position Sizing Calculator**: Based on risk parameters
+- **Trade History**: Decision log with outcome tracking
+- **Notification Center**: Queue for pending recommendations
+
+### Economic Calendar
+- **FRED Integration**: Free API from the Federal Reserve for US economic events
+- **Upcoming Events**: CPI, Jobs Report, Fed Decisions, GDP releases
+- **Countdown Display**: Days/hours until major market-moving events
+- **Ticker View**: Scrolling ticker below news for quick glance
+
+#### Getting a FRED API Key
+1. Visit [fred.stlouisfed.org/docs/api/api_key.html](https://fred.stlouisfed.org/docs/api/api_key.html)
+2. Click "Request or view your API keys"
+3. Create account and request key (describe as "personal use")
+4. Copy key to Settings > API Keys > FRED
 
 ### Accessibility
-- **CVD Mode**: Colorblind-friendly display option
-- **Keyboard Shortcuts**: Cmd+1 (Dashboard), Cmd+2 (News), Cmd+3 (Settings)
-- **Floating Help**: Quick access to all shortcuts and features
-- **Adjustable Ticker Speed**: Control news feed scroll rate
+- **CVD Mode**: Colorblind-friendly display
+- **Keyboard Shortcuts**: Navigate without a mouse
+- **Adjustable Settings**: Customize news feed speed and panel layouts
 
 ---
 
-## Privacy & Security
+## Privacy
 
-RichDad is built with privacy as a core principle, not an afterthought.
+RichDad stores all data locally. There are no user accounts, no cloud servers, and no analytics.
 
-| Promise | What It Means |
-|---------|---------------|
-| **No Ads, No Trackers** | Zero analytics, telemetry, or tracking pixels. Ever. |
-| **Your Trades Are Yours** | All data stored locally in IndexedDB on your machine |
-| **No Crowdsourcing** | We don't harvest your strategy to train models or sell insights |
-| **No Cloud Servers** | RichDad has no backend - your data can't leak because it's never collected |
-| **Open Source** | Every line of code is auditable. We have nothing to hide. |
-
-### Why Desktop?
-
-We built RichDad as a desktop app specifically for privacy. Unlike web apps that require servers:
-- Your trading data never leaves your machine
-- API keys are stored locally, never transmitted to us
-- Your strategy is your intellectual property - we're not interested in monetizing it
+| Aspect | Implementation |
+|--------|----------------|
+| **Data Storage** | IndexedDB in local app data |
+| **API Keys** | Stored locally, sent only to providers you configure |
+| **Telemetry** | None collected |
+| **Source Code** | Open source (MIT license) |
 
 ### Third-Party Services
 
 RichDad makes direct API calls to services you configure:
-- **Market Data**: Massive.com (formerly Polygon.io) or Alpha Vantage (your API key, your account)
-- **AI Analysis**: Your chosen provider (OpenAI, Claude, etc.)
+- **Market Data**: Massive.com or Alpha Vantage (your key, your account)
+- **AI Analysis**: Your chosen provider
 - **News**: Public RSS feeds
+- **Economic Calendar**: FRED API (Federal Reserve Economic Data)
 
-These calls go directly from your machine to the provider. RichDad never sees or proxies this traffic.
-
----
-
-## Screenshots
-
-<p align="center">
-  <em>Dashboard with AI recommendations and live charts</em>
-</p>
-
-<!-- Add your screenshots here -->
-<!-- ![Dashboard](./screenshots/dashboard.png) -->
-<!-- ![Themes](./screenshots/themes.png) -->
-<!-- ![Notification Center](./screenshots/notifications.png) -->
+These calls go directly from your machine to the provider.
 
 ---
 
@@ -149,176 +127,114 @@ open RichDad_x64.dmg
 
 ### Windows
 
-**Installer (recommended)**:
+**Installer**:
 ```powershell
 Invoke-WebRequest -Uri "https://github.com/LovelaceX/richdad/releases/latest/download/RichDad_x64_en-US.msi" -OutFile "RichDad.msi"
 Start-Process RichDad.msi
 ```
 
-**Portable**:
-Download `RichDad_x64-setup.exe` from [Releases](https://github.com/LovelaceX/richdad/releases)
+**Portable**: Download `RichDad_x64-setup.exe` from [Releases](https://github.com/LovelaceX/richdad/releases)
 
 ---
 
-## Quick Start
+## Getting Started
 
-### 1. Launch & Complete Setup Wizard
-RichDad includes a guided onboarding:
+### 1. Complete Setup
+The app includes guided onboarding:
 - Accept Terms & Conditions
 - Configure API keys
 - Select AI provider
 - Set risk parameters
 
-### 2. Get Your API Keys
+### 2. Get API Keys
 
-**Market Data (Choose one)**:
-| Provider | Free Tier | Best For | Link |
-|----------|-----------|----------|------|
-| **Massive.com** (Recommended) | Unlimited calls, 15-min delay | Charts, technical analysis | [Get API Key](https://massive.com/dashboard/signup) |
-| Alpha Vantage | 25 calls/day, real-time | Live quotes | [Get API Key](https://www.alphavantage.co/support/#api-key) |
+**Market Data (choose one)**:
+| Provider | Free Tier | Link |
+|----------|-----------|------|
+| Massive.com | Unlimited calls, 15-min delay | [Get Key](https://massive.com/dashboard/signup) |
+| Alpha Vantage | 25 calls/day | [Get Key](https://www.alphavantage.co/support/#api-key) |
 
-**AI Provider (Choose one)**:
+**AI Provider (choose one)**:
 | Provider | Link |
 |----------|------|
-| OpenAI (GPT-4) | [platform.openai.com](https://platform.openai.com/api-keys) |
+| OpenAI | [platform.openai.com](https://platform.openai.com/api-keys) |
 | Anthropic (Claude) | [console.anthropic.com](https://console.anthropic.com/) |
 | Google (Gemini) | [makersuite.google.com](https://makersuite.google.com/app/apikey) |
-| Grok (X.AI) | [console.x.ai](https://console.x.ai/) |
+| Grok | [console.x.ai](https://console.x.ai/) |
 | DeepSeek | [platform.deepseek.com](https://platform.deepseek.com/) |
 
-### 3. Start Trading
+### 3. Start Using
 - Dashboard opens to SPY by default
-- AI copilot begins analysis based on your interval
-- Click the **bell icon** to review pending recommendations
-- Add tickers via Settings > Watchlist
+- AI analysis runs based on your configured interval
+- Review recommendations via the notification bell
+- Add tickers in Settings > Watchlist
 
 ---
 
-## Technology Stack
+## How AI Analysis Works
 
-```
-Frontend                    Backend                     Data
-├── React 18               ├── Tauri 2.x (Rust)       ├── Massive.com API (default)
-├── TypeScript (strict)    ├── IndexedDB (Dexie.js)   ├── Alpha Vantage API (alt)
-├── Tailwind CSS           └── Native OS Integration  ├── RSS News Feeds
-├── Zustand (state)                                    └── AI Providers
-├── Framer Motion
-└── Lightweight Charts
-```
+RichDad uses LLM-based reasoning. Here's the process:
 
-### Why Tauri over Electron?
+1. Collects market data and news for the selected ticker
+2. Calculates technical indicators (RSI, MACD, moving averages)
+3. Detects candlestick patterns (Engulfing, Hammer, Doji, etc.)
+4. Determines market regime based on VIX and SPY trend
+5. Formats data into a structured prompt
+6. Sends to your AI provider
+7. AI returns: action, confidence %, rationale, price target, stop loss
+8. Recommendations meeting your confidence threshold are displayed
 
-| Metric | Electron | Tauri (RichDad) |
-|--------|----------|-----------------|
-| Bundle Size | ~150 MB | **~773 KB** |
-| RAM Usage | ~300 MB | **~150 MB** |
-| Startup Time | 5-10s | **<3s** |
-| Security | Chromium sandbox | **Rust + native webview** |
+### Technical Indicators
 
----
+| Indicator | Description |
+|-----------|-------------|
+| RSI(14) | Overbought (>70) / Oversold (<30) signals |
+| MACD | Bullish/bearish momentum via histogram |
+| MA(20/50/200) | Short, medium, and long-term trend |
 
-## How AI Recommendations Work
+### Market Regime
 
-RichDad uses **LLM-based reasoning**, not algorithmic trading rules. Here's how it decides BUY/SELL/HOLD:
+The AI adjusts its recommendations based on current market conditions:
 
-### Data Sources
+| Regime | VIX Level | Guidance |
+|--------|-----------|----------|
+| LOW_VOL_BULLISH | <15 | Full positions, momentum strategies favored |
+| ELEVATED_VOL_BULLISH | 15-25 | Be selective, tighten stops |
+| HIGH_VOL_BEARISH | >25 | Defensive positioning, avoid new longs |
+| CHOPPY | >25 + no trend | Avoid directional bets, favor HOLD |
 
-| Source | What It Provides |
-|--------|------------------|
-| **Massive.com** (Default) | Unlimited historical candles, 15-min delayed quotes |
-| Alpha Vantage API | Real-time quotes, 25 calls/day limit |
-| RSS News Feeds | Last 24 hours of headlines from 20+ financial sources |
-| Technical Indicators | Calculated from historical price data |
+### Output Format
 
-### Technical Indicators Calculated
+Each recommendation includes:
+- **Action**: BUY, SELL, or HOLD
+- **Confidence**: 0-100% (default threshold: 70%)
+- **Rationale**: 2-3 sentence explanation citing specific data
+- **Price Target**: Expected move (default 5%)
+- **Stop Loss**: Risk limit (default 3%)
 
-| Indicator | Meaning |
-|-----------|---------|
-| **RSI(14)** | Relative Strength Index - Overbought >70, Oversold <30 |
-| **MACD** | Moving Average Convergence Divergence - Bull/Bear momentum |
-| **MA(20)** | 20-day moving average - Short-term trend |
-| **MA(50)** | 50-day moving average - Medium-term trend |
-| **MA(200)** | 200-day moving average - Long-term trend ("Golden Cross/Death Cross") |
-
-### The Decision Process
-
-```
-IMPORTANT: This is NOT algorithmic trading with fixed weights!
-
-1. RichDad collects all market data + news for the selected ticker
-2. Data is formatted into a structured prompt
-3. Prompt is sent to your chosen AI (GPT-4, Claude, Gemini, etc.)
-4. AI uses its training on financial markets to reason through:
-   - Technical chart patterns
-   - Support/resistance levels
-   - Momentum indicators
-   - News sentiment
-   - Market context
-5. AI returns: action, confidence %, rationale, price target, stop loss
-6. Only recommendations ≥70% confidence (configurable) are displayed
-```
-
-**Key insight**: There are no hardcoded rules like "if RSI < 30, BUY". The AI interprets the full picture like a human analyst would - that's what makes it valuable.
-
-### What's NOT Used
-- Daily budget amount (that's for P&L tracking only)
-- Your actual portfolio positions
-- Real-time order book data
-- Insider trading information
+**Note**: There are no hardcoded trading rules. The AI interprets data contextually, which means results will vary based on market conditions and the AI provider used.
 
 ---
 
-## Data Storage & Uninstall
+## Technology
 
-### Where Data is Stored
-
-RichDad stores all user data locally in IndexedDB (browser database) at:
-
-| Platform | Location |
-|----------|----------|
-| **macOS** | `~/Library/Application Support/richdad/` |
-| **Windows** | `%APPDATA%/richdad/` |
-| **Linux** | `~/.config/richdad/` |
-
-**Stored data includes:**
-- API keys (Alpha Vantage, AI providers)
-- Watchlist customizations
-- AI recommendation history
-- Theme and panel preferences
-- Trade journal entries
-
-### Complete Uninstall
-
-**Important**: On macOS, deleting the app does NOT delete your data. To completely remove RichDad:
-
-**Option 1 - Factory Reset (In-App)**:
-1. Open Settings > Danger Zone
-2. Click "Factory Reset"
-3. Then delete the app
-
-**Option 2 - Manual Deletion**:
-```bash
-# macOS
-rm -rf ~/Library/Application\ Support/richdad/
-
-# Windows (PowerShell)
-Remove-Item -Recurse -Force "$env:APPDATA\richdad"
-
-# Linux
-rm -rf ~/.config/richdad/
-```
+| Layer | Stack |
+|-------|-------|
+| Frontend | React 18, TypeScript, Tailwind CSS, Zustand |
+| Desktop | Tauri 2.x (Rust) |
+| Storage | IndexedDB (Dexie.js) |
+| Charts | TradingView Lightweight Charts |
 
 ---
 
 ## Development
 
 ### Prerequisites
-- **Node.js** 20+
-- **Rust** 1.70+ ([rustup.rs](https://rustup.rs))
-- **Platform tools**:
+- Node.js 20+
+- Rust 1.70+ ([rustup.rs](https://rustup.rs))
+- Platform tools:
   - macOS: Xcode Command Line Tools
   - Windows: Microsoft C++ Build Tools
-  - Linux: `libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf`
 
 ### Setup
 ```bash
@@ -334,164 +250,52 @@ npm run tauri:build    # Production build
 richdad/
 ├── src/renderer/              # React frontend
 │   ├── components/
-│   │   ├── Chart/            # TradingChart, ProactiveAlert
-│   │   ├── Navigation/       # NavBar, NotificationBell, NotificationPanel
-│   │   ├── AIPanel/          # Chat, ActivityLog
-│   │   ├── Help/             # FloatingHelp, HelpModal
-│   │   └── Settings/         # MultiProviderManager, BudgetMeters
-│   ├── pages/                # Dashboard, News, Settings
-│   ├── stores/               # Zustand state (settings, notifications)
-│   └── lib/                  # themes, db, utils
+│   ├── pages/
+│   ├── stores/
+│   └── lib/
 ├── src/services/             # Business logic
-│   ├── marketData.ts
-│   ├── aiRecommendationEngine.ts
-│   └── technicalIndicators.ts
 └── src-tauri/                # Rust backend
-    └── tauri.conf.json
 ```
 
 ---
 
-## Changelog
+## Data Storage
 
-### v4.3.0 (Current)
-- **Smarter AI**: Candlestick patterns now included in AI recommendation prompts
-- **Drawing Tools**: Add horizontal lines (double-click) and trendlines (click two points)
-- **Pattern Insights**: Tooltip shows reliability score breakdown (volume, trend, location bonuses)
-- **Persistent Drawings**: Lines saved per-symbol and persist across sessions
+RichDad stores data locally at:
 
-### v4.1.0
-- **Portfolio Holdings**: Track your positions with live P&L calculation
-- **Auto-Update Holdings**: BUY/SELL from QuickTrade automatically adjusts holdings
-- **Full Backup/Restore**: Export all data (settings, trades, holdings, alerts) to JSON
-- **Import Backup**: Restore from any previous backup
-- **Offline Indicator**: See when using cached data due to network issues
+| Platform | Location |
+|----------|----------|
+| macOS | `~/Library/Application Support/richdad/` |
+| Windows | `%APPDATA%/richdad/` |
 
-### v4.0.0
-- **Investing.com-Style Intraday Charts**: Chart x-axis now shows proper intraday time labels (9:30, 10:00, 10:30...) when selecting 30M or other intraday intervals
-- **Timeframe-Aware Mock Data**: Mock data fallback now generates candles appropriate for selected timeframe instead of always daily
+### Complete Uninstall
 
-### v3.10.0
-- **Streamlined Onboarding**: Back button replaces Skip, cleaner icons (no boxes), improved layout
-- **Reference Guide Refresh**: Updated to v3.10.0, cleaner About section, linked developer GitHub
-- **Single Theme**: Bloomberg theme is now the default (removed theme selector for simplicity)
-- **Windows Support**: Data storage location instructions now show both macOS and Windows paths
-- **Corrected API Limits**: Massive.com free tier accurately shown as 5 calls/min, 2 years historical, EOD data
+**Option 1 - In-App**:
+Settings > Danger Zone > Factory Reset, then delete the app
 
-### v3.9.0
-- **Executor Tracking**: Performance History now shows "You" vs "AI Copilot" for each trade to compare human vs AI performance
-- **Massive.com (Polygon.io) API Key**: Added to Settings > API Keys with test connection button
-- **Market Data Provider Selector**: Choose between Massive.com, Alpha Vantage, or Finnhub as default provider
-- **Removed Duplicate AI Performance**: Performance History now only appears in Settings > My Profile (not AI Copilot)
-- **Enhanced CSV Export**: Executor column included in exported trade history
+**Option 2 - Manual**:
+```bash
+# macOS
+rm -rf ~/Library/Application\ Support/richdad/
 
-### v3.8.1
-- **Notification Panel Fix**: Panel now opens to the right of the bell icon (was cut off on left)
-- **Solid Buy/Sell Buttons**: Trading buttons are now solid green/red instead of outline style
-- **EST Timezone Display**: Shows current New York time in chart toolbar
-- **P/N Markers Default Off**: Pattern and news markers now disabled by default to reduce clutter
-- **Removed Clearview Theme**: Consolidated to 4 dark themes for better consistency
-
-### v3.8.0
-- **Candlestick Pattern Recognition**: Auto-detect 18+ patterns (Bullish/Bearish Engulfing, Hammer, Doji, Morning/Evening Star, Harami, Piercing Line, Dark Cloud Cover, Inside Bar, Outside Up/Down, Breakaway)
-- **On-Chart P Markers**: Green markers for bullish patterns, red for bearish - positioned above/below candles
-- **News N Markers**: Amber circle markers showing when news headlines matched candle timestamps
-- **Pattern Tooltips**: Click any marker to see pattern name, SVG diagram, description, reliability rating, and timestamp
-- **P/N Toggle Buttons**: New toolbar buttons to show/hide pattern and news markers
-
-### v3.7.0
-- **Onboarding Wizard Refresh**: Streamlined setup with Lucide icons (no emojis)
-- **Massive.com Integration**: Polygon.io rebranded to Massive.com with updated links
-- **AI Provider Selection**: Choose between OpenAI or Groq (free) during onboarding
-- **Cleaner UI**: Removed redundant containers and borders in wizard steps
-
-### v3.6.0
-- **Position Size Calculator**: Risk-based position sizing tool in chart toolbar - enter account size, risk %, entry & stop loss to calculate optimal share count
-
-### v3.5.0
-- **Top 10 Stocks**: Popular stocks (SPY, QQQ, AAPL, NVDA, TSLA, MSFT, AMZN, META, GOOGL, AMD) loaded on startup
-- **Watchlist Persistence**: Your custom watchlist saved across restarts via IndexedDB
-- **Quick Buy/Sell**: Manual trade logging via chart toolbar buttons with optional shares/dollar amounts
-- **Human vs AI Scorecard**: Compare your trading performance against AI Copilot with side-by-side batting averages
-- **Privacy Refresh**: Clearer messaging on local-only data storage throughout the app
-
-### v3.4.0
-- **Massive.com Integration**: Market data provider (formerly Polygon.io) with unlimited API calls (15-min delayed)
-- **Provider Choice**: Choose between Massive.com (recommended) or Alpha Vantage during onboarding
-- **CHOPPY Regime Detection**: New market regime for high volatility + sideways trend (SPY within 0.5% of MA50)
-- **Smarter Provider Routing**: Automatic fallback between providers if one fails
-
-### v3.3.0
-- **Market Regime Classifier**: Automatic detection of market conditions (Risk On, Caution, Fear Mode, etc.)
-- **Regime-Aware AI**: AI recommendations now factor in VIX level and SPY trend vs MA(50)
-- **VIX in Watchlist**: Volatility index added to default watchlist
-- **Regime Display**: Live regime indicator in MarketOverview bar with color-coded risk levels
-- **Smarter Prompts**: AI now receives market regime context for better recommendations
-
-### v3.2.0
-- **News Grid Layout**: Multi-column responsive grid (1-4 columns)
-- **Full-Screen Chart**: Expand icon to maximize chart view (Esc to exit)
-- **Extended Timeframes**: 45M, 2H, 4H, 5H, 1W added via aggregation
-- **Quick Timeframe Buttons**: Shortcut buttons below chart for SPY
-- **Collapsible Panels**: Hide Market Watch and AI Copilot with toggles
-- **Onboarding Fixes**: Solid backdrop, improved logo display
-- **Data Cleanup Info**: Danger Zone now shows manual deletion paths
-
-### v3.1.0
-- **Multi-Window Support**: Cmd+N/Ctrl+N opens new windows
-- **Panel Memory**: Collapse state persisted across sessions
-- **Theme Fixes**: Amber color consistency across all themes
-- **Keyboard Shortcut**: Cmd+N for new window
-
-### v3.0.0
-- **Notification Center**: Bell icon with pending recommendations queue
-- **Bulk Actions**: Execute All / Skip All for efficient workflow
-- **Wider Recommendation Modal**: Improved readability for alerts
-- **Settings Persistence**: All preferences saved across sessions
-
-### v2.4.6
-- **Ticker Speed Slider**: Adjustable news feed scroll rate
-
-### v2.4.5
-- **Floating Help Button**: Quick access to shortcuts
-- **AI Chat Clear All**: One-click conversation reset
-- **Theme Persistence Fix**: Settings properly saved
-
-### v2.4.0
-- Multi-provider AI support
-- API budget monitoring
-- CVD accessibility mode
-
----
-
-## Roadmap
-
-### v4.4.0 (Next)
-- [ ] Trade Tags/Categories (scalp, swing, earnings play)
-- [ ] Trader's Autopsy (session review dashboard)
-- [ ] Portfolio-aware AI (position sizing context)
-- [ ] News deduplication and clustering
-- [ ] Custom alert conditions builder
-
-### v5.0.0 (Future)
-- [ ] Broker integrations (Robinhood, TD Ameritrade)
-- [ ] Paper trading mode
-- [ ] Backtesting engine
-- [ ] Strategy sharing
-- [ ] Mobile companion app
+# Windows (PowerShell)
+Remove-Item -Recurse -Force "$env:APPDATA\richdad"
+```
 
 ---
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details.
+Contributions are welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
-**Quick Start:**
+```bash
+# Quick start
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+2. Create a feature branch
 3. Follow TypeScript strict mode
-4. Test thoroughly (`npm run build`)
+4. Test with `npm run build`
 5. Submit a pull request
+```
 
 ---
 
@@ -518,5 +322,5 @@ Built with [Tauri](https://tauri.app), [React](https://react.dev), [Lightweight 
 ---
 
 <p align="center">
-  <strong>Disclaimer</strong>: RichDad is a research and analysis tool. It does not provide financial advice. Always conduct your own research and consult with licensed financial advisors before making investment decisions. Past performance does not guarantee future results.
+  <strong>Disclaimer</strong>: RichDad is a research tool. It does not provide financial advice. Always do your own research and consult licensed professionals before making investment decisions.
 </p>
