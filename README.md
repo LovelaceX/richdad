@@ -5,7 +5,7 @@
   <img src="https://img.shields.io/badge/tauri-2.x-blue?style=for-the-badge&logo=tauri" alt="Tauri 2.x"/>
   <img src="https://img.shields.io/badge/react-18-61DAFB?style=for-the-badge&logo=react" alt="React 18"/>
   <img src="https://img.shields.io/badge/typescript-strict-3178C6?style=for-the-badge&logo=typescript" alt="TypeScript"/>
-  <img src="https://img.shields.io/badge/platforms-macOS%20|%20Windows%20|%20Linux-lightgrey?style=for-the-badge" alt="Platforms"/>
+  <img src="https://img.shields.io/badge/platforms-macOS%20|%20Windows-lightgrey?style=for-the-badge" alt="Platforms"/>
 </p>
 
 <h1 align="center">RichDad</h1>
@@ -158,21 +158,6 @@ Start-Process RichDad.msi
 
 **Portable**:
 Download `RichDad_x64-setup.exe` from [Releases](https://github.com/LovelaceX/richdad/releases)
-
-### Linux
-
-**Debian/Ubuntu**:
-```bash
-wget https://github.com/LovelaceX/richdad/releases/latest/download/RichDad_amd64.deb
-sudo dpkg -i RichDad_amd64.deb
-```
-
-**AppImage (Universal)**:
-```bash
-wget https://github.com/LovelaceX/richdad/releases/latest/download/RichDad_amd64.AppImage
-chmod +x RichDad_amd64.AppImage
-./RichDad_amd64.AppImage
-```
 
 ---
 
