@@ -6,9 +6,11 @@ import { ChatInput } from './ChatInput'
 import { AIPerformanceSummary } from './AIPerformanceSummary'
 import { AnalysisProgress } from './AnalysisProgress'
 import { MorningBriefingButton } from './MorningBriefingButton'
+import { IntelPanel } from '../Intel'
 import { useAIStore } from '../../stores/aiStore'
 import { useMarketStore } from '../../stores/marketStore'
 import { useSettingsStore } from '../../stores/settingsStore'
+import { useIntelStore } from '../../stores/intelStore'
 
 export function AIPanel() {
   const isAnalyzing = useAIStore(state => state.isAnalyzing)
@@ -17,6 +19,7 @@ export function AIPanel() {
   const analysisProgress = useAIStore(state => state.analysisProgress)
   const selectedTicker = useMarketStore(state => state.selectedTicker)
   const aiPerformanceVisible = useSettingsStore(state => state.panelVisibility.aiPerformanceVisible)
+  const intelPanelEnabled = useIntelStore(state => state.intelPanelEnabled)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom when new messages arrive
@@ -83,6 +86,13 @@ export function AIPanel() {
       {aiPerformanceVisible && (
         <div className="flex-shrink-0">
           <AIPerformanceSummary />
+        </div>
+      )}
+
+      {/* News Intel Panel - collapsible */}
+      {intelPanelEnabled && (
+        <div className="flex-shrink-0 px-2 py-1">
+          <IntelPanel />
         </div>
       )}
 

@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand'
-import type { NewsIntelReport, NewsAlert } from '../../services/agents/types'
+import type { NewsIntelReport, NewsAlert, PatternScanReport, PatternSetup } from '../../services/agents/types'
 
 interface IntelState {
   // News Intel
@@ -12,30 +12,45 @@ interface IntelState {
   lastNewsIntelUpdate: number | null
   newsIntelLoading: boolean
 
+  // Pattern Scanner
+  patternScan: PatternScanReport | null
+  lastPatternScanUpdate: number | null
+  patternScanLoading: boolean
+
   // Breaking alerts that haven't been dismissed
   activeBreakingAlerts: NewsAlert[]
 
   // UI state
   intelPanelExpanded: boolean
   intelPanelEnabled: boolean
+  activeIntelTab: 'news' | 'patterns'
 
   // Actions
   setNewsIntel: (report: NewsIntelReport) => void
   setNewsIntelLoading: (loading: boolean) => void
+  setPatternScan: (report: PatternScanReport) => void
+  setPatternScanLoading: (loading: boolean) => void
   dismissBreakingAlert: (alertId: string) => void
   clearBreakingAlerts: () => void
   toggleIntelPanel: () => void
   setIntelPanelEnabled: (enabled: boolean) => void
+  setActiveIntelTab: (tab: 'news' | 'patterns') => void
 }
 
 export const useIntelStore = create<IntelState>((set, get) => ({
-  // Initial state
+  // Initial state - News Intel
   newsIntel: null,
   lastNewsIntelUpdate: null,
   newsIntelLoading: false,
   activeBreakingAlerts: [],
   intelPanelExpanded: true,
   intelPanelEnabled: true,
+
+  // Initial state - Pattern Scanner
+  patternScan: null,
+  lastPatternScanUpdate: null,
+  patternScanLoading: false,
+  activeIntelTab: 'news',
 
   // Actions
   setNewsIntel: (report: NewsIntelReport) => {
@@ -58,6 +73,22 @@ export const useIntelStore = create<IntelState>((set, get) => ({
 
   setNewsIntelLoading: (loading: boolean) => {
     set({ newsIntelLoading: loading })
+  },
+
+  setPatternScan: (report: PatternScanReport) => {
+    set({
+      patternScan: report,
+      lastPatternScanUpdate: Date.now(),
+      patternScanLoading: false
+    })
+  },
+
+  setPatternScanLoading: (loading: boolean) => {
+    set({ patternScanLoading: loading })
+  },
+
+  setActiveIntelTab: (tab: 'news' | 'patterns') => {
+    set({ activeIntelTab: tab })
   },
 
   dismissBreakingAlert: (alertId: string) => {
@@ -113,4 +144,33 @@ export const selectUrgencyLevel = (state: IntelState): 'low' | 'medium' | 'high'
   if (alertCount > 2 || spikeCount > 2) return 'high'
   if (alertCount > 0 || spikeCount > 0) return 'medium'
   return 'low'
+}
+
+// Pattern Scanner Selectors
+export const selectTopBullishSetups = (state: IntelState): PatternSetup[] => {
+  return state.patternScan?.topBullishSetups || []
+}
+
+export const selectTopBearishSetups = (state: IntelState): PatternSetup[] => {
+  return state.patternScan?.topBearishSetups || []
+}
+
+export const selectPatternSummary = (state: IntelState) => {
+  if (!state.patternScan) return null
+  return state.patternScan.summary
+}
+
+export const selectSetupsForSymbol = (symbol: string) => (state: IntelState): PatternSetup[] => {
+  if (!state.patternScan) return []
+  return state.patternScan.setupsFound.filter(s => s.symbol === symbol)
+}
+
+export const selectHighReliabilitySetups = (state: IntelState): PatternSetup[] => {
+  if (!state.patternScan) return []
+  return state.patternScan.setupsFound.filter(s => s.reliability === 'High')
+}
+
+export const selectHasPatternAlerts = (state: IntelState): boolean => {
+  if (!state.patternScan) return false
+  return state.patternScan.setupsFound.some(s => s.reliability === 'High' && s.regimeAligned)
 }

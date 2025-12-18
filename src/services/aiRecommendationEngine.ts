@@ -9,6 +9,7 @@ import { calculateIndicators } from './technicalIndicators'
 import { calculateMarketRegime, formatRegimeForPrompt, type MarketRegime } from './marketRegime'
 import { detectPatterns, type DetectedPattern } from './candlestickPatterns'
 import type { AIRecommendation, Quote, AnalysisPhase } from '../renderer/types'
+import type { CandleData } from './technicalIndicators'
 import { generateId } from '../renderer/lib/utils'
 import { canMakeAICall, recordAICall, getAIBudgetStatus } from './aiBudgetTracker'
 
@@ -512,18 +513,28 @@ export async function generateRecommendationForBacktest(
       timestamp: currentCandle.time * 1000
     }
 
-    // 5. Calculate technical indicators from historical candles
-    const indicators = calculateIndicators(historicalCandles)
+    // 5. Convert to CandleData (ensure volume has default value)
+    const candleData: CandleData[] = historicalCandles.map(c => ({
+      time: c.time,
+      open: c.open,
+      high: c.high,
+      low: c.low,
+      close: c.close,
+      volume: c.volume ?? 0
+    }))
 
-    // 6. Detect candlestick patterns from recent candles
-    const allPatterns = detectPatterns(historicalCandles)
+    // 6. Calculate technical indicators from historical candles
+    const indicators = calculateIndicators(candleData)
+
+    // 7. Detect candlestick patterns from recent candles
+    const allPatterns = detectPatterns(candleData)
     const recentPatterns = allPatterns
       .filter(p => p.reliabilityScore >= 50)
       .slice(-5)
 
     console.log(`[AI Engine Backtest] Detected ${allPatterns.length} patterns, ${recentPatterns.length} significant`)
 
-    // 7. Get market regime (use override if provided, otherwise calculate)
+    // 8. Get market regime (use override if provided, otherwise calculate)
     let marketRegime = marketRegimeOverride
     if (!marketRegime) {
       // For backtest, we should ideally calculate regime from historical SPY/VIX
@@ -532,7 +543,7 @@ export async function generateRecommendationForBacktest(
       marketRegime = null
     }
 
-    // 8. Build prompt with historical context
+    // 9. Build prompt with historical context
     const prompt = buildBacktestAnalysisPrompt(
       symbol,
       mockQuote,
@@ -543,7 +554,7 @@ export async function generateRecommendationForBacktest(
       currentCandle.time
     )
 
-    // 9. Send to AI
+    // 10. Send to AI
     const aiResponse = await sendAnalysisToAI(
       prompt,
       aiSettings.provider,

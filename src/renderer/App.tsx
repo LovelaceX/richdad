@@ -7,6 +7,7 @@ import { useNavigationStore } from './stores/navigationStore'
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })))
 const News = lazy(() => import('./pages/News').then(m => ({ default: m.News })))
 const EconomicCalendar = lazy(() => import('./pages/EconomicCalendar').then(m => ({ default: m.EconomicCalendar })))
+const Backtest = lazy(() => import('./pages/Backtest').then(m => ({ default: m.Backtest })))
 const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })))
 import { useSettingsStore } from './stores/settingsStore'
 import { useMarketStore } from './stores/marketStore'
@@ -97,6 +98,8 @@ export default function App() {
         return <News />
       case 'economic-calendar':
         return <EconomicCalendar />
+      case 'backtest':
+        return <Backtest />
       case 'settings':
         return <Settings />
       default:

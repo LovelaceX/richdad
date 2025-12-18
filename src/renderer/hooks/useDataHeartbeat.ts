@@ -1,9 +1,12 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { dataHeartbeat } from '../../services/DataHeartbeatService'
 import { useMarketStore } from '../stores/marketStore'
 import { useNewsStore } from '../stores/newsStore'
 import { useAIStore } from '../stores/aiStore'
+import { useIntelStore } from '../stores/intelStore'
+import { playSound } from '../lib/sounds'
 import type { DataUpdateCallback } from '../../services/DataHeartbeatService'
+import type { NewsIntelReport } from '../../services/agents/types'
 
 /**
  * Hook to initialize and manage the data heartbeat service
@@ -20,6 +23,13 @@ export function useDataHeartbeat() {
   const startAnalysis = useAIStore(state => state.startAnalysis)
   const updatePhase = useAIStore(state => state.updatePhase)
   const clearAnalysisProgress = useAIStore(state => state.clearAnalysisProgress)
+
+  // Intel store actions
+  const setNewsIntel = useIntelStore(state => state.setNewsIntel)
+  const activeBreakingAlerts = useIntelStore(state => state.activeBreakingAlerts)
+
+  // Track previous alert count to detect new alerts
+  const prevAlertCountRef = useRef(0)
 
   useEffect(() => {
     console.log('[useDataHeartbeat] Initializing heartbeat service')
@@ -97,6 +107,23 @@ export function useDataHeartbeat() {
           clearAnalysisProgress()
         }, 1500)
         break
+
+      case 'news_intel': {
+        // News intelligence report generated
+        const report = payload as NewsIntelReport
+        console.log('[useDataHeartbeat] News intel report received:', report)
+
+        // Check for new breaking alerts and play sound
+        const newAlertCount = report.breakingAlerts.length
+        if (newAlertCount > prevAlertCountRef.current && newAlertCount > 0) {
+          console.log(`[useDataHeartbeat] New breaking alerts detected: ${newAlertCount - prevAlertCountRef.current}`)
+          playSound('breakingNews').catch(console.error)
+        }
+        prevAlertCountRef.current = activeBreakingAlerts.length
+
+        setNewsIntel(report)
+        break
+      }
     }
   }
 }

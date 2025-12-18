@@ -1,0 +1,408 @@
+/**
+ * Intel Panel
+ * Displays intelligence from background agents
+ */
+
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Brain,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle,
+  TrendingUp,
+  TrendingDown,
+  Zap,
+  X,
+  ExternalLink,
+  Loader2
+} from 'lucide-react'
+import { useIntelStore, selectSentimentRatio, selectUrgencyLevel } from '../../stores/intelStore'
+import type { NewsAlert } from '../../../services/agents/types'
+
+export function IntelPanel() {
+  const newsIntel = useIntelStore(state => state.newsIntel)
+  const loading = useIntelStore(state => state.newsIntelLoading)
+  const lastUpdate = useIntelStore(state => state.lastNewsIntelUpdate)
+  const expanded = useIntelStore(state => state.intelPanelExpanded)
+  const togglePanel = useIntelStore(state => state.toggleIntelPanel)
+  const activeAlerts = useIntelStore(state => state.activeBreakingAlerts)
+  const dismissAlert = useIntelStore(state => state.dismissBreakingAlert)
+
+  const sentimentRatio = useIntelStore(selectSentimentRatio)
+  const urgencyLevel = useIntelStore(selectUrgencyLevel)
+
+  const [selectedTab, setSelectedTab] = useState<'overview' | 'symbols' | 'alerts'>('overview')
+
+  // Format last update time
+  const formatLastUpdate = () => {
+    if (!lastUpdate) return 'Never'
+    const diff = Date.now() - lastUpdate
+    const minutes = Math.floor(diff / 60000)
+    if (minutes < 1) return 'Just now'
+    if (minutes < 60) return `${minutes}m ago`
+    return `${Math.floor(minutes / 60)}h ago`
+  }
+
+  // Get urgency indicator color
+  const getUrgencyColor = () => {
+    switch (urgencyLevel) {
+      case 'high': return 'text-red-400 bg-red-900/30'
+      case 'medium': return 'text-yellow-400 bg-yellow-900/30'
+      default: return 'text-green-400 bg-green-900/30'
+    }
+  }
+
+  return (
+    <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
+      {/* Header */}
+      <button
+        onClick={togglePanel}
+        className="w-full px-3 py-2 flex items-center justify-between hover:bg-terminal-bg transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <Brain size={14} className="text-purple-400" />
+          <span className="text-xs font-medium text-white">News Intel</span>
+
+          {/* Urgency indicator */}
+          {newsIntel && (
+            <span className={`text-[10px] px-1.5 py-0.5 rounded ${getUrgencyColor()}`}>
+              {urgencyLevel === 'high' ? 'ALERT' : urgencyLevel === 'medium' ? 'Active' : 'Quiet'}
+            </span>
+          )}
+
+          {loading && <Loader2 size={12} className="animate-spin text-gray-400" />}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-gray-500">{formatLastUpdate()}</span>
+          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </div>
+      </button>
+
+      {/* Content */}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            {/* Breaking Alerts Banner */}
+            {activeAlerts.length > 0 && (
+              <div className="border-t border-terminal-border bg-red-900/20 px-3 py-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle size={12} className="text-red-400" />
+                  <span className="text-[10px] font-medium text-red-400">
+                    {activeAlerts.length} Breaking Alert{activeAlerts.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+                {activeAlerts.slice(0, 2).map(alert => (
+                  <BreakingAlertItem
+                    key={alert.id}
+                    alert={alert}
+                    onDismiss={() => dismissAlert(alert.id)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Tabs */}
+            <div className="border-t border-terminal-border flex">
+              {(['overview', 'symbols', 'alerts'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setSelectedTab(tab)}
+                  className={`flex-1 text-[10px] py-1.5 transition-colors ${
+                    selectedTab === tab
+                      ? 'bg-terminal-bg text-white border-b border-terminal-amber'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {tab === 'overview' ? 'Overview' : tab === 'symbols' ? 'By Symbol' : 'Alerts'}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab Content */}
+            <div className="p-3 border-t border-terminal-border">
+              {!newsIntel ? (
+                <div className="text-center text-gray-500 text-xs py-4">
+                  No intel yet. Analyzing news...
+                </div>
+              ) : selectedTab === 'overview' ? (
+                <OverviewTab newsIntel={newsIntel} sentimentRatio={sentimentRatio} />
+              ) : selectedTab === 'symbols' ? (
+                <SymbolsTab newsIntel={newsIntel} />
+              ) : (
+                <AlertsTab newsIntel={newsIntel} />
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// Breaking Alert Item
+function BreakingAlertItem({
+  alert,
+  onDismiss
+}: {
+  alert: NewsAlert
+  onDismiss: () => void
+}) {
+  return (
+    <div className="flex items-start gap-2 text-[10px] mb-1 last:mb-0">
+      <Zap size={10} className="text-yellow-400 flex-shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <p className="text-white truncate">{alert.headline}</p>
+        <div className="flex items-center gap-2 text-gray-500">
+          <span>{alert.source}</span>
+          {alert.symbol && <span className="text-terminal-amber">${alert.symbol}</span>}
+        </div>
+      </div>
+      <div className="flex items-center gap-1 flex-shrink-0">
+        {alert.url && (
+          <a
+            href={alert.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="p-1 hover:bg-terminal-border rounded"
+          >
+            <ExternalLink size={10} className="text-gray-400" />
+          </a>
+        )}
+        <button
+          onClick={onDismiss}
+          className="p-1 hover:bg-terminal-border rounded"
+        >
+          <X size={10} className="text-gray-400" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// Overview Tab
+function OverviewTab({
+  newsIntel,
+  sentimentRatio
+}: {
+  newsIntel: NonNullable<ReturnType<typeof useIntelStore.getState>['newsIntel']>
+  sentimentRatio: { bullish: number; bearish: number; neutral: number } | null
+}) {
+  return (
+    <div className="space-y-3">
+      {/* Sentiment Gauge */}
+      <div>
+        <div className="text-[10px] text-gray-400 mb-1">Market Sentiment</div>
+        {sentimentRatio && (
+          <div className="space-y-1">
+            <div className="flex h-2 rounded-full overflow-hidden bg-terminal-bg">
+              <div
+                className="bg-green-500 transition-all"
+                style={{ width: `${sentimentRatio.bullish}%` }}
+              />
+              <div
+                className="bg-gray-500 transition-all"
+                style={{ width: `${sentimentRatio.neutral}%` }}
+              />
+              <div
+                className="bg-red-500 transition-all"
+                style={{ width: `${sentimentRatio.bearish}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-[10px]">
+              <span className="text-green-400">{sentimentRatio.bullish}% Bull</span>
+              <span className="text-gray-400">{sentimentRatio.neutral}% Neutral</span>
+              <span className="text-red-400">{sentimentRatio.bearish}% Bear</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-terminal-bg rounded p-2 text-center">
+          <div className="text-lg font-mono text-white">{newsIntel.totalAnalyzed}</div>
+          <div className="text-[9px] text-gray-400">Articles</div>
+        </div>
+        <div className="bg-terminal-bg rounded p-2 text-center">
+          <div className="text-lg font-mono text-yellow-400">{newsIntel.breakingAlerts.length}</div>
+          <div className="text-[9px] text-gray-400">Breaking</div>
+        </div>
+        <div className="bg-terminal-bg rounded p-2 text-center">
+          <div className="text-lg font-mono text-purple-400">{newsIntel.velocitySpikes.length}</div>
+          <div className="text-[9px] text-gray-400">Spikes</div>
+        </div>
+      </div>
+
+      {/* Top Movers */}
+      {(newsIntel.topBullish.length > 0 || newsIntel.topBearish.length > 0) && (
+        <div className="grid grid-cols-2 gap-2">
+          {newsIntel.topBullish.length > 0 && (
+            <div className="bg-green-900/20 rounded p-2">
+              <div className="flex items-center gap-1 text-[10px] text-green-400 mb-1">
+                <TrendingUp size={10} />
+                Top Bullish
+              </div>
+              <div className="text-xs text-white font-mono">
+                {newsIntel.topBullish.slice(0, 3).join(', ')}
+              </div>
+            </div>
+          )}
+          {newsIntel.topBearish.length > 0 && (
+            <div className="bg-red-900/20 rounded p-2">
+              <div className="flex items-center gap-1 text-[10px] text-red-400 mb-1">
+                <TrendingDown size={10} />
+                Top Bearish
+              </div>
+              <div className="text-xs text-white font-mono">
+                {newsIntel.topBearish.slice(0, 3).join(', ')}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Velocity Spikes */}
+      {newsIntel.velocitySpikes.length > 0 && (
+        <div>
+          <div className="text-[10px] text-gray-400 mb-1">News Velocity Spikes</div>
+          {newsIntel.velocitySpikes.map(spike => (
+            <div
+              key={spike.symbol}
+              className="flex items-center justify-between text-[10px] py-1"
+            >
+              <span className="text-terminal-amber font-mono">${spike.symbol}</span>
+              <span className="text-white">
+                {spike.articleCount} articles
+                <span className="text-purple-400 ml-1">(+{spike.percentAboveNormal}%)</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Symbols Tab
+function SymbolsTab({
+  newsIntel
+}: {
+  newsIntel: NonNullable<ReturnType<typeof useIntelStore.getState>['newsIntel']>
+}) {
+  const symbols = Object.entries(newsIntel.symbolSentiment)
+    .filter(([_, data]) => data.bullishCount + data.bearishCount + data.neutralCount > 0)
+    .sort((a, b) => {
+      const totalA = a[1].bullishCount + a[1].bearishCount + a[1].neutralCount
+      const totalB = b[1].bullishCount + b[1].bearishCount + b[1].neutralCount
+      return totalB - totalA
+    })
+
+  if (symbols.length === 0) {
+    return (
+      <div className="text-center text-gray-500 text-xs py-4">
+        No symbol-specific news found
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2 max-h-48 overflow-y-auto">
+      {symbols.map(([symbol, data]) => (
+        <div key={symbol} className="bg-terminal-bg rounded p-2">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-terminal-amber font-mono text-xs">${symbol}</span>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+              data.sentiment === 'bullish' ? 'bg-green-900/30 text-green-400' :
+              data.sentiment === 'bearish' ? 'bg-red-900/30 text-red-400' :
+              data.sentiment === 'mixed' ? 'bg-yellow-900/30 text-yellow-400' :
+              'bg-gray-900/30 text-gray-400'
+            }`}>
+              {data.sentiment}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-[10px]">
+            <span className="text-green-400">{data.bullishCount} bull</span>
+            <span className="text-gray-400">{data.neutralCount} neutral</span>
+            <span className="text-red-400">{data.bearishCount} bear</span>
+          </div>
+          {data.headlines.length > 0 && (
+            <div className="mt-1 text-[9px] text-gray-500 truncate">
+              "{data.headlines[0]}"
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// Alerts Tab
+function AlertsTab({
+  newsIntel
+}: {
+  newsIntel: NonNullable<ReturnType<typeof useIntelStore.getState>['newsIntel']>
+}) {
+  const allAlerts = newsIntel.breakingAlerts
+
+  if (allAlerts.length === 0) {
+    return (
+      <div className="text-center text-gray-500 text-xs py-4">
+        No breaking alerts in the last hour
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2 max-h-48 overflow-y-auto">
+      {allAlerts.map(alert => (
+        <div key={alert.id} className="bg-terminal-bg rounded p-2">
+          <div className="flex items-start gap-2">
+            <div className={`w-2 h-2 rounded-full mt-1 flex-shrink-0 ${
+              alert.sentiment === 'positive' ? 'bg-green-400' :
+              alert.sentiment === 'negative' ? 'bg-red-400' :
+              'bg-gray-400'
+            }`} />
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] text-white">{alert.headline}</p>
+              <div className="flex items-center gap-2 mt-1 text-[9px] text-gray-500">
+                <span>{alert.source}</span>
+                {alert.symbol && <span className="text-terminal-amber">${alert.symbol}</span>}
+                <span>{new Date(alert.timestamp).toLocaleTimeString()}</span>
+              </div>
+              {alert.impactKeywords.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {alert.impactKeywords.slice(0, 3).map(kw => (
+                    <span
+                      key={kw}
+                      className="text-[8px] bg-purple-900/30 text-purple-400 px-1 rounded"
+                    >
+                      {kw}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+            {alert.url && (
+              <a
+                href={alert.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-1 hover:bg-terminal-border rounded flex-shrink-0"
+              >
+                <ExternalLink size={12} className="text-gray-400" />
+              </a>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}

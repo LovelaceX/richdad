@@ -1,4 +1,4 @@
-import { LayoutDashboard, Newspaper, Calendar, Settings } from 'lucide-react'
+import { LayoutDashboard, Newspaper, Calendar, FlaskConical, Settings } from 'lucide-react'
 import { useNavigationStore } from '../../stores/navigationStore'
 import type { PageId } from '../../types'
 import { NotificationBell } from './NotificationBell'
@@ -67,10 +67,16 @@ export function NavBar() {
         shortcut="⌘3"
       />
       <NavItem
+        id="backtest"
+        icon={<FlaskConical size={18} />}
+        label="Backtest"
+        shortcut="⌘4"
+      />
+      <NavItem
         id="settings"
         icon={<Settings size={18} />}
         label="Settings"
-        shortcut="⌘4"
+        shortcut="⌘5"
       />
 
       {/* Divider */}

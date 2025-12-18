@@ -45,20 +45,35 @@ export interface NewsIntelReport {
   topBearish: string[]
 }
 
-// Pattern Scanner Report (for future use)
+// Pattern Setup (detected pattern with context)
+export interface PatternSetup {
+  symbol: string
+  pattern: string
+  type: 'bullish' | 'bearish' | 'neutral'
+  reliability: 'Low' | 'Medium' | 'High'
+  reliabilityScore: number
+  volumeConfirmed: boolean
+  regimeAligned: boolean
+  trendContext: 'with_trend' | 'against_trend' | 'neutral'
+  priceAtDetection: number
+  detectedAt: number
+  notes: string
+}
+
+// Pattern Scanner Report
 export interface PatternScanReport {
   timestamp: number
   scannedSymbols: number
-  setupsFound: {
-    symbol: string
-    pattern: string
-    type: 'bullish' | 'bearish'
-    reliability: number
-    volumeConfirmed: boolean
-    regimeAligned: boolean
-    notes: string
-  }[]
-  topSetups: string[]
+  failedSymbols: string[]
+  setupsFound: PatternSetup[]
+  topBullishSetups: PatternSetup[]
+  topBearishSetups: PatternSetup[]
+  summary: {
+    bullishCount: number
+    bearishCount: number
+    neutralCount: number
+    highReliabilityCount: number
+  }
 }
 
 // Earnings Watch Report (for future use)

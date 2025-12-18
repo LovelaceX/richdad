@@ -3,11 +3,13 @@ import { fetchNews } from './newsService'
 import { analyzeSentiment, initializeSentimentAnalysis } from './sentimentService'
 import { generateRecommendation, isMarketOpen } from './aiRecommendationEngine'
 import { outcomeTracker } from './outcomeTracker'
+import { generateNewsIntelReport } from './agents/newsIntelAgent'
 import { db } from '../renderer/lib/db'
 import type { Quote, NewsItem, AnalysisPhase } from '../renderer/types'
+import type { NewsIntelReport } from './agents/types'
 
 export type DataUpdateCallback = (data: {
-  type: 'market' | 'news' | 'sentiment' | 'ai_recommendation' | 'alert_triggered' | 'ai_analysis_start' | 'ai_phase_update' | 'ai_analysis_end'
+  type: 'market' | 'news' | 'sentiment' | 'ai_recommendation' | 'alert_triggered' | 'ai_analysis_start' | 'ai_phase_update' | 'ai_analysis_end' | 'news_intel'
   payload: any
 }) => void
 
@@ -244,11 +246,50 @@ class DataHeartbeatService {
         payload: newsResponse.articles
       })
 
+      // Run news intel analysis after news update
+      this.updateNewsIntel().catch(err => {
+        console.error('[Heartbeat] News intel update failed:', err)
+      })
+
       return newsResponse.articles
 
     } catch (error) {
       console.error('[Heartbeat] News update failed:', error)
       return []
+    }
+  }
+
+  /**
+   * Generate news intelligence report
+   */
+  async updateNewsIntel(): Promise<NewsIntelReport | null> {
+    if (this.cachedNews.length === 0) {
+      console.log('[Heartbeat] No news to analyze for intel')
+      return null
+    }
+
+    try {
+      // Get watchlist symbols from market store
+      const { useMarketStore } = await import('../renderer/stores/marketStore')
+      const watchlist = useMarketStore.getState().watchlist
+      const symbols = watchlist.map(item => item.symbol)
+
+      console.log(`[Heartbeat] Generating news intel for ${symbols.length} watchlist symbols`)
+
+      const report = await generateNewsIntelReport(this.cachedNews, symbols)
+
+      console.log(`[Heartbeat] News intel generated: ${report.totalAnalyzed} articles, ${report.breakingAlerts.length} breaking alerts, ${report.velocitySpikes.length} velocity spikes`)
+
+      this.notifyCallbacks({
+        type: 'news_intel',
+        payload: report
+      })
+
+      return report
+
+    } catch (error) {
+      console.error('[Heartbeat] News intel generation failed:', error)
+      return null
     }
   }
 
