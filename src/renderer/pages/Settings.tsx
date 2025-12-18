@@ -22,7 +22,11 @@ import {
   Monitor,
   TrendingUp,
   ExternalLink,
-  Newspaper
+  Newspaper,
+  LayoutGrid,
+  Briefcase,
+  Edit3,
+  Upload
 } from 'lucide-react'
 import { useSettingsStore } from '../stores/settingsStore'
 // Theme is now fixed to Bloomberg - no selector needed
@@ -46,18 +50,24 @@ import {
   clearPnLHistory,
   clearPriceAlerts,
   factoryReset,
+  getHoldings,
+  addHolding,
+  updateHolding,
+  deleteHolding,
   type UserSettings,
   type AISettings,
   type AIProviderConfig,
   type UserProfile,
   type TradeDecision,
-  type RecommendationFormat
+  type RecommendationFormat,
+  type Holding
 } from '../lib/db'
 import { exportDecisions } from '../lib/export'
+import { createFullBackup, restoreFromBackup, downloadBackup, validateBackup, getBackupSummary, type BackupData } from '../lib/backup'
 import { previewSound, SOUND_DISPLAY_NAMES } from '../lib/sounds'
 import type { ToneType } from '../types'
 
-type SettingsSection = 'risk' | 'ai-copilot' | 'data-sources' | 'sounds' | 'style' | 'traders' | 'alerts' | 'display' | 'danger'
+type SettingsSection = 'risk' | 'ai-copilot' | 'data-sources' | 'sounds' | 'style' | 'portfolio' | 'traders' | 'alerts' | 'display' | 'danger'
 
 const TONE_DESCRIPTIONS: Record<ToneType, { label: string; example: string }> = {
   conservative: {
@@ -111,6 +121,11 @@ export function Settings() {
   const setZoomLevel = useSettingsStore(state => state.setZoomLevel)
   const tickerSpeed = useSettingsStore(state => state.tickerSpeed)
   const setTickerSpeed = useSettingsStore(state => state.setTickerSpeed)
+  const panelVisibility = useSettingsStore(state => state.panelVisibility)
+  const toggleLeftPanel = useSettingsStore(state => state.toggleLeftPanel)
+  const toggleRightPanel = useSettingsStore(state => state.toggleRightPanel)
+  const toggleChart = useSettingsStore(state => state.toggleChart)
+  const toggleNewsTicker = useSettingsStore(state => state.toggleNewsTicker)
 
   // Pro Traders state
   const { traders, loadTraders, addTrader, removeTrader, toggleTrader } = useProTraderStore()
@@ -147,6 +162,18 @@ export function Settings() {
   const [polygonStatus, setPolygonStatus] = useState<'idle' | 'valid' | 'invalid'>('idle')
   const [polygonMessage, setPolygonMessage] = useState('')
 
+  // FastTrack connection test state
+  const [pendingFastTrackKey, setPendingFastTrackKey] = useState<string>('')
+  const [testingFastTrack, setTestingFastTrack] = useState(false)
+  const [fasttrackStatus, setFasttrackStatus] = useState<'idle' | 'valid' | 'invalid'>('idle')
+  const [fasttrackMessage, setFasttrackMessage] = useState('')
+
+  // TwelveData connection test state
+  const [pendingTwelveDataKey, setPendingTwelveDataKey] = useState<string>('')
+  const [testingTwelveData, setTestingTwelveData] = useState(false)
+  const [twelvedataStatus, setTwelvedataStatus] = useState<'idle' | 'valid' | 'invalid'>('idle')
+  const [twelvedataMessage, setTwelvedataMessage] = useState('')
+
   // Onboarding wizard state
   const [showOnboardingWizard, setShowOnboardingWizard] = useState(false)
 
@@ -157,9 +184,33 @@ export function Settings() {
   const [showResetConfirm, setShowResetConfirm] = useState<'cache' | 'ai' | 'pnl' | 'alerts' | 'factory' | null>(null)
   const [isResetting, setIsResetting] = useState(false)
 
+  // Backup/Restore state
+  const [isCreatingBackup, setIsCreatingBackup] = useState(false)
+  const [showRestoreModal, setShowRestoreModal] = useState(false)
+  const [pendingBackup, setPendingBackup] = useState<BackupData | null>(null)
+  const [isRestoring, setIsRestoring] = useState(false)
+
   // Daily Budget editing state
   const [editingBudget, setEditingBudget] = useState('')
   const [isEditingBudget, setIsEditingBudget] = useState(false)
+
+  // Portfolio Holdings state
+  const [holdings, setHoldings] = useState<Holding[]>([])
+  const [showAddHoldingModal, setShowAddHoldingModal] = useState(false)
+  const [editingHolding, setEditingHolding] = useState<Holding | null>(null)
+  const [holdingForm, setHoldingForm] = useState({
+    symbol: '',
+    shares: '',
+    avgCostBasis: '',
+    notes: ''
+  })
+  const [holdingSearchResults, setHoldingSearchResults] = useState<StockInfo[]>([])
+
+  // Load holdings
+  const loadHoldings = async () => {
+    const data = await getHoldings()
+    setHoldings(data)
+  }
 
   useEffect(() => {
     getSettings().then(setSettings)
@@ -173,6 +224,7 @@ export function Settings() {
     })
     loadTraders()
     loadAlerts()
+    loadHoldings()
   }, [loadTraders, loadAlerts])
 
   // Load export preview data when dates change
@@ -219,9 +271,11 @@ export function Settings() {
       setPendingAlphaVantageKey(settings.alphaVantageApiKey || '')
       setPendingFinnhubKey(settings.finnhubApiKey || '')
       setPendingPolygonKey(settings.polygonApiKey || '')
+      setPendingFastTrackKey(settings.fasttrackApiKey || '')
+      setPendingTwelveDataKey(settings.twelvedataApiKey || '')
       setHasApiKeyChanges(false)
     }
-  }, [settings?.alphaVantageApiKey, settings?.finnhubApiKey, settings?.polygonApiKey])
+  }, [settings?.alphaVantageApiKey, settings?.finnhubApiKey, settings?.polygonApiKey, settings?.fasttrackApiKey, settings?.twelvedataApiKey])
 
   const saveSettings = async (updates: Partial<UserSettings>) => {
     if (!settings) return
@@ -258,7 +312,9 @@ export function Settings() {
     await saveSettings({
       alphaVantageApiKey: pendingAlphaVantageKey,
       finnhubApiKey: pendingFinnhubKey,
-      polygonApiKey: pendingPolygonKey
+      polygonApiKey: pendingPolygonKey,
+      fasttrackApiKey: pendingFastTrackKey,
+      twelvedataApiKey: pendingTwelveDataKey
     })
     setHasApiKeyChanges(false)
     setSavingApiKeys(false)
@@ -269,13 +325,44 @@ export function Settings() {
     setFinnhubMessage('')
     setPolygonStatus('idle')
     setPolygonMessage('')
+    setFasttrackStatus('idle')
+    setFasttrackMessage('')
+    setTwelvedataStatus('idle')
+    setTwelvedataMessage('')
   }
 
   const handleDiscardApiKeys = () => {
     setPendingAlphaVantageKey(settings?.alphaVantageApiKey || '')
     setPendingFinnhubKey(settings?.finnhubApiKey || '')
     setPendingPolygonKey(settings?.polygonApiKey || '')
+    setPendingFastTrackKey(settings?.fasttrackApiKey || '')
+    setPendingTwelveDataKey(settings?.twelvedataApiKey || '')
     setHasApiKeyChanges(false)
+  }
+
+  // FastTrack connection test handler
+  const handleTestFastTrackConnection = async () => {
+    setTestingFastTrack(true)
+    setFasttrackStatus('idle')
+    setFasttrackMessage('')
+
+    try {
+      const { testFastTrackConnection } = await import('../../services/fasttrackService')
+      const result = await testFastTrackConnection(settings?.fasttrackApiKey || '')
+
+      if (result.success) {
+        setFasttrackStatus('valid')
+        setFasttrackMessage(result.message)
+      } else {
+        setFasttrackStatus('invalid')
+        setFasttrackMessage(result.message)
+      }
+    } catch (error) {
+      setFasttrackStatus('invalid')
+      setFasttrackMessage('Connection test failed')
+    }
+
+    setTestingFastTrack(false)
   }
 
   const handleExport = async (format: 'txt' | 'csv') => {
@@ -431,8 +518,40 @@ export function Settings() {
     }
   }
 
+  // TwelveData connection test handler
+  const handleTestTwelveDataConnection = async () => {
+    if (!settings?.twelvedataApiKey) {
+      setTwelvedataStatus('invalid')
+      setTwelvedataMessage('No API key entered')
+      return
+    }
+
+    setTestingTwelveData(true)
+    setTwelvedataStatus('idle')
+    setTwelvedataMessage('')
+
+    try {
+      const { testTwelveDataConnection } = await import('../../services/twelveDataService')
+      const result = await testTwelveDataConnection(settings.twelvedataApiKey)
+
+      if (result.success) {
+        setTwelvedataStatus('valid')
+        setTwelvedataMessage(result.message)
+      } else {
+        setTwelvedataStatus('invalid')
+        setTwelvedataMessage(result.message)
+      }
+    } catch (error) {
+      setTwelvedataStatus('invalid')
+      setTwelvedataMessage('Connection test failed')
+    }
+
+    setTestingTwelveData(false)
+  }
+
   const sections = [
     { id: 'style' as const, label: 'My Profile', icon: User },
+    { id: 'portfolio' as const, label: 'Portfolio', icon: Briefcase },
     { id: 'display' as const, label: 'Display', icon: Monitor },
     { id: 'risk' as const, label: 'Risk Management', icon: Shield },
     { id: 'ai-copilot' as const, label: 'AI Copilot', icon: Brain },
@@ -754,6 +873,129 @@ export function Settings() {
               </button>
 
               <div className="space-y-6">
+                {/* Default Market Data Provider */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <TrendingUp className="w-4 h-4 text-terminal-amber" />
+                    <span className="text-white text-sm font-medium">Default Market Data Provider</span>
+                  </div>
+
+                  <p className="text-gray-400 text-xs mb-4">
+                    Choose which provider to use for market data. Others will be used as fallbacks.
+                  </p>
+
+                  <select
+                    value={settings?.marketDataProvider || 'polygon'}
+                    onChange={(e) => saveSettings({ marketDataProvider: e.target.value as 'polygon' | 'alphavantage' | 'finnhub' | 'fasttrack' | 'twelvedata' })}
+                    className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-terminal-amber/50"
+                  >
+                    <option value="polygon">Massive.com (Recommended - 5/min, EOD data)</option>
+                    <option value="twelvedata">TwelveData (800/day, real-time, all US markets)</option>
+                    <option value="alphavantage">Alpha Vantage (25 calls/day, real-time)</option>
+                    <option value="finnhub">Finnhub (60 calls/min)</option>
+                    <option value="fasttrack">FastTrack.net (2K/month, 37yr history, analytics)</option>
+                  </select>
+                </div>
+
+                <div className="border-t border-terminal-border" />
+
+                {/* Massive.com (Polygon.io) */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <BarChart3 className="w-4 h-4 text-terminal-amber" />
+                    <span className="text-white text-sm font-medium">Massive.com (Polygon.io)</span>
+                    <span className="text-xs text-terminal-amber bg-terminal-amber/10 px-2 py-0.5 rounded">Recommended</span>
+                  </div>
+
+                  <p className="text-gray-400 text-xs mb-4">
+                    5 API calls/min, 2 years historical, EOD data. Get your key at{' '}
+                    <a href="https://massive.com/dashboard/signup" target="_blank" rel="noopener noreferrer" className="text-terminal-amber hover:underline">
+                      massive.com
+                    </a>
+                  </p>
+
+                  {/* API Key Input */}
+                  <div className="mb-4">
+                    <label className="text-gray-400 text-xs mb-1 block">API Key</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        value={pendingPolygonKey}
+                        onChange={(e) => {
+                          setPendingPolygonKey(e.target.value)
+                          setHasApiKeyChanges(true)
+                          setPolygonStatus('idle')
+                          setPolygonMessage('')
+                        }}
+                        placeholder="e.g., abc123xyz456"
+                        className="flex-1 bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white placeholder:text-gray-600 font-mono focus:outline-none focus:border-terminal-amber/50"
+                      />
+                      <button
+                        onClick={handleTestPolygonConnection}
+                        disabled={!settings?.polygonApiKey || testingPolygon}
+                        className="px-4 py-2 bg-terminal-panel border border-terminal-border rounded text-sm text-white hover:bg-terminal-border/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {testingPolygon ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Testing...
+                          </>
+                        ) : (
+                          <>
+                            <Wifi className="w-4 h-4" />
+                            Test
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-gray-600 text-xs mt-2">
+                      Free tier: 5 calls/min • 2 years historical • EOD data • Best for charts
+                    </p>
+                  </div>
+
+                  {/* Signup Link */}
+                  <a
+                    href="https://massive.com/dashboard/signup"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-terminal-amber hover:underline text-xs"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    Get free Massive.com API key
+                  </a>
+
+                  {/* Status Indicators */}
+                  {!settings?.polygonApiKey && (
+                    <div className="mt-4 flex items-center gap-2 text-gray-500 text-xs">
+                      <AlertCircle className="w-3 h-3" />
+                      No API key configured
+                    </div>
+                  )}
+
+                  {settings?.polygonApiKey && polygonStatus === 'idle' && (
+                    <div className="mt-4 flex items-center gap-2 text-terminal-amber text-xs">
+                      <Check className="w-3 h-3" />
+                      API key saved (click "Test" to verify)
+                    </div>
+                  )}
+
+                  {polygonStatus === 'valid' && (
+                    <div className="mt-4 flex items-center gap-2 text-terminal-up text-xs">
+                      <Check className="w-3 h-3" />
+                      {polygonMessage}
+                    </div>
+                  )}
+
+                  {polygonStatus === 'invalid' && (
+                    <div className="mt-4 flex items-center gap-2 text-terminal-down text-xs">
+                      <AlertCircle className="w-3 h-3" />
+                      {polygonMessage}
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-terminal-border" />
+
                 {/* Alpha Vantage API */}
                 <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-3">
@@ -932,19 +1174,16 @@ export function Settings() {
 
                 <div className="border-t border-terminal-border" />
 
-                {/* Massive.com (Polygon.io) */}
+                {/* FastTrack.net */}
                 <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-3">
-                    <BarChart3 className="w-4 h-4 text-terminal-amber" />
-                    <span className="text-white text-sm font-medium">Massive.com (Polygon.io)</span>
-                    <span className="text-xs text-terminal-amber bg-terminal-amber/10 px-2 py-0.5 rounded">Recommended</span>
+                    <TrendingUp className="w-4 h-4 text-terminal-amber" />
+                    <span className="text-white text-sm font-medium">FastTrack.net</span>
+                    <span className="text-xs text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded">Portfolio Analytics</span>
                   </div>
 
                   <p className="text-gray-400 text-xs mb-4">
-                    5 API calls/min, 2 years historical, EOD data. Get your key at{' '}
-                    <a href="https://massive.com/dashboard/signup" target="_blank" rel="noopener noreferrer" className="text-terminal-amber hover:underline">
-                      massive.com
-                    </a>
+                    40,000+ securities with 37 years of history. Risk metrics: Sharpe, Sortino, Alpha, Beta.
                   </p>
 
                   {/* API Key Input */}
@@ -953,22 +1192,22 @@ export function Settings() {
                     <div className="flex gap-2">
                       <input
                         type="password"
-                        value={pendingPolygonKey}
+                        value={pendingFastTrackKey}
                         onChange={(e) => {
-                          setPendingPolygonKey(e.target.value)
+                          setPendingFastTrackKey(e.target.value)
                           setHasApiKeyChanges(true)
-                          setPolygonStatus('idle')
-                          setPolygonMessage('')
+                          setFasttrackStatus('idle')
+                          setFasttrackMessage('')
                         }}
-                        placeholder="e.g., abc123xyz456"
+                        placeholder="Your FastTrack API key"
                         className="flex-1 bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white placeholder:text-gray-600 font-mono focus:outline-none focus:border-terminal-amber/50"
                       />
                       <button
-                        onClick={handleTestPolygonConnection}
-                        disabled={!settings?.polygonApiKey || testingPolygon}
+                        onClick={handleTestFastTrackConnection}
+                        disabled={!settings?.fasttrackApiKey || testingFastTrack}
                         className="px-4 py-2 bg-terminal-panel border border-terminal-border rounded text-sm text-white hover:bg-terminal-border/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                       >
-                        {testingPolygon ? (
+                        {testingFastTrack ? (
                           <>
                             <Loader2 className="w-4 h-4 animate-spin" />
                             Testing...
@@ -982,73 +1221,167 @@ export function Settings() {
                       </button>
                     </div>
                     <p className="text-gray-600 text-xs mt-2">
-                      Free tier: 5 calls/min • 2 years historical • EOD data • Best for charts
+                      Free tier: 2,000 API calls/month • 37 years historical data • Risk analytics
                     </p>
+                  </div>
+
+                  {/* Signup Instructions */}
+                  <div className="bg-terminal-bg rounded p-3 mb-4">
+                    <p className="text-gray-400 text-xs mb-2">To get your API key:</p>
+                    <ol className="text-gray-400 text-xs space-y-1 list-decimal list-inside">
+                      <li>Sign up at <a href="https://app.fasttrack.net/" target="_blank" rel="noopener noreferrer" className="text-terminal-amber hover:underline">app.fasttrack.net</a></li>
+                      <li>Navigate to API Keys section in your dashboard</li>
+                      <li>Generate a new API key</li>
+                    </ol>
                   </div>
 
                   {/* Signup Link */}
                   <a
-                    href="https://massive.com/dashboard/signup"
+                    href="https://app.fasttrack.net/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-terminal-amber hover:underline text-xs"
                   >
                     <ExternalLink className="w-3 h-3" />
-                    Get free Massive.com API key
+                    Get free FastTrack API key (2,000 credits/month)
                   </a>
 
                   {/* Status Indicators */}
-                  {!settings?.polygonApiKey && (
+                  {!settings?.fasttrackApiKey && (
                     <div className="mt-4 flex items-center gap-2 text-gray-500 text-xs">
                       <AlertCircle className="w-3 h-3" />
                       No API key configured
                     </div>
                   )}
 
-                  {settings?.polygonApiKey && polygonStatus === 'idle' && (
+                  {settings?.fasttrackApiKey && fasttrackStatus === 'idle' && (
                     <div className="mt-4 flex items-center gap-2 text-terminal-amber text-xs">
                       <Check className="w-3 h-3" />
                       API key saved (click "Test" to verify)
                     </div>
                   )}
 
-                  {polygonStatus === 'valid' && (
+                  {fasttrackStatus === 'valid' && (
                     <div className="mt-4 flex items-center gap-2 text-terminal-up text-xs">
                       <Check className="w-3 h-3" />
-                      {polygonMessage}
+                      {fasttrackMessage}
                     </div>
                   )}
 
-                  {polygonStatus === 'invalid' && (
+                  {fasttrackStatus === 'invalid' && (
                     <div className="mt-4 flex items-center gap-2 text-terminal-down text-xs">
                       <AlertCircle className="w-3 h-3" />
-                      {polygonMessage}
+                      {fasttrackMessage}
                     </div>
                   )}
                 </div>
 
                 <div className="border-t border-terminal-border" />
 
-                {/* Default Market Data Provider */}
+                {/* TwelveData */}
                 <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <TrendingUp className="w-4 h-4 text-terminal-amber" />
-                    <span className="text-white text-sm font-medium">Default Market Data Provider</span>
+                    <span className="text-white text-sm font-medium">TwelveData</span>
+                    <span className="text-xs text-terminal-amber bg-terminal-amber/10 px-2 py-0.5 rounded">Recommended</span>
                   </div>
 
                   <p className="text-gray-400 text-xs mb-4">
-                    Choose which provider to use for market data. Others will be used as fallbacks.
+                    800 API calls/day, real-time data, all US markets. Get your key at{' '}
+                    <a href="https://twelvedata.com/register" target="_blank" rel="noopener noreferrer" className="text-terminal-amber hover:underline">
+                      twelvedata.com
+                    </a>
                   </p>
 
-                  <select
-                    value={settings?.marketDataProvider || 'polygon'}
-                    onChange={(e) => saveSettings({ marketDataProvider: e.target.value as 'polygon' | 'alphavantage' | 'finnhub' })}
-                    className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-terminal-amber/50"
+                  {/* API Key Input */}
+                  <div className="mb-4">
+                    <label className="text-gray-400 text-xs mb-1 block">API Key</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="password"
+                        value={pendingTwelveDataKey}
+                        onChange={(e) => {
+                          setPendingTwelveDataKey(e.target.value)
+                          setHasApiKeyChanges(true)
+                          setTwelvedataStatus('idle')
+                          setTwelvedataMessage('')
+                        }}
+                        placeholder="Your TwelveData API key"
+                        className="flex-1 bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white placeholder:text-gray-600 font-mono focus:outline-none focus:border-terminal-amber/50"
+                      />
+                      <button
+                        onClick={handleTestTwelveDataConnection}
+                        disabled={!settings?.twelvedataApiKey || testingTwelveData}
+                        className="px-4 py-2 bg-terminal-panel border border-terminal-border rounded text-sm text-white hover:bg-terminal-border/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {testingTwelveData ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Testing...
+                          </>
+                        ) : (
+                          <>
+                            <Wifi className="w-4 h-4" />
+                            Test
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-gray-600 text-xs mt-2">
+                      Free tier: 800 calls/day • Real-time data • All US markets
+                    </p>
+                  </div>
+
+                  {/* Signup Instructions */}
+                  <div className="bg-terminal-bg rounded p-3 mb-4">
+                    <p className="text-gray-400 text-xs mb-2">To get your API key:</p>
+                    <ol className="text-gray-400 text-xs space-y-1 list-decimal list-inside">
+                      <li>Go to <a href="https://twelvedata.com/register" target="_blank" rel="noopener noreferrer" className="text-terminal-amber hover:underline">twelvedata.com/register</a></li>
+                      <li>Enter your details or sign up with Google/Apple</li>
+                      <li>Under "Current plan", click "API keys"</li>
+                      <li>Click "Reveal" and copy your key</li>
+                    </ol>
+                  </div>
+
+                  {/* Signup Link */}
+                  <a
+                    href="https://twelvedata.com/register"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-terminal-amber hover:underline text-xs"
                   >
-                    <option value="polygon">Massive.com (Recommended - 5/min, EOD data)</option>
-                    <option value="alphavantage">Alpha Vantage (25 calls/day, real-time)</option>
-                    <option value="finnhub">Finnhub (60 calls/min)</option>
-                  </select>
+                    <ExternalLink className="w-3 h-3" />
+                    Get free TwelveData API key (800 calls/day)
+                  </a>
+
+                  {/* Status Indicators */}
+                  {!settings?.twelvedataApiKey && (
+                    <div className="mt-4 flex items-center gap-2 text-gray-500 text-xs">
+                      <AlertCircle className="w-3 h-3" />
+                      No API key configured
+                    </div>
+                  )}
+
+                  {settings?.twelvedataApiKey && twelvedataStatus === 'idle' && (
+                    <div className="mt-4 flex items-center gap-2 text-terminal-amber text-xs">
+                      <Check className="w-3 h-3" />
+                      API key saved (click "Test" to verify)
+                    </div>
+                  )}
+
+                  {twelvedataStatus === 'valid' && (
+                    <div className="mt-4 flex items-center gap-2 text-terminal-up text-xs">
+                      <Check className="w-3 h-3" />
+                      {twelvedataMessage}
+                    </div>
+                  )}
+
+                  {twelvedataStatus === 'invalid' && (
+                    <div className="mt-4 flex items-center gap-2 text-terminal-down text-xs">
+                      <AlertCircle className="w-3 h-3" />
+                      {twelvedataMessage}
+                    </div>
+                  )}
                 </div>
 
                 {/* Save/Discard Buttons for API Keys */}
@@ -1109,15 +1442,9 @@ export function Settings() {
                   {/* Status Text */}
                   <div className="text-xs text-gray-400">
                     {settings.useAlphaVantageForNews ? (
-                      <div className="flex items-center gap-2">
-                        <span>⚡</span>
-                        <span>Alpha Vantage priority mode - fetches news with built-in sentiment, falls back to RSS if unavailable</span>
-                      </div>
+                      <span>Alpha Vantage priority mode - fetches news with built-in sentiment, falls back to RSS if unavailable</span>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <span>📡</span>
-                        <span>RSS priority mode - free and unlimited, uses FinBERT for sentiment analysis</span>
-                      </div>
+                      <span>RSS priority mode - free and unlimited, uses FinBERT for sentiment analysis</span>
                     )}
                   </div>
                 </div>
@@ -1305,6 +1632,278 @@ export function Settings() {
             </div>
           )}
 
+          {/* Portfolio */}
+          {activeSection === 'portfolio' && (
+            <div>
+              <h2 className="text-white text-lg font-medium mb-1">Portfolio Holdings</h2>
+              <p className="text-gray-500 text-sm mb-6">Track your positions and unrealized P&L</p>
+
+              {/* Portfolio Summary Card */}
+              {(() => {
+                const totalCost = holdings.reduce((sum, h) => sum + h.totalCost, 0)
+                const totalShares = holdings.reduce((sum, h) => sum + h.shares, 0)
+                return (
+                  <div className="bg-terminal-panel border border-terminal-border rounded-lg p-6 mb-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Briefcase className="w-5 h-5 text-terminal-amber" />
+                      <span className="text-white font-medium">Portfolio Summary</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <div className="text-gray-400 text-xs mb-1">Total Cost Basis</div>
+                        <div className="text-white text-lg font-mono">${totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-400 text-xs mb-1">Positions</div>
+                        <div className="text-white text-lg font-mono">{holdings.length}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-400 text-xs mb-1">Total Shares</div>
+                        <div className="text-white text-lg font-mono">{totalShares.toLocaleString()}</div>
+                      </div>
+                    </div>
+                    <p className="text-gray-500 text-xs mt-4">
+                      Live P&L requires current market prices. Holdings auto-update when you BUY/SELL from the chart.
+                    </p>
+                  </div>
+                )
+              })()}
+
+              {/* Holdings Table */}
+              <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden mb-4">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-terminal-border bg-terminal-bg/50">
+                        <th className="text-left text-gray-400 font-medium px-4 py-3">Symbol</th>
+                        <th className="text-right text-gray-400 font-medium px-4 py-3">Shares</th>
+                        <th className="text-right text-gray-400 font-medium px-4 py-3">Avg Cost</th>
+                        <th className="text-right text-gray-400 font-medium px-4 py-3">Total Cost</th>
+                        <th className="text-right text-gray-400 font-medium px-4 py-3">Entry Date</th>
+                        <th className="text-center text-gray-400 font-medium px-4 py-3">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {holdings.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="text-center text-gray-500 py-8">
+                            No holdings yet. Add manually or use BUY from the chart.
+                          </td>
+                        </tr>
+                      ) : (
+                        holdings.map(holding => (
+                          <tr key={holding.id} className="border-b border-terminal-border/50 hover:bg-terminal-bg/30">
+                            <td className="px-4 py-3">
+                              <span className="text-terminal-amber font-mono font-medium">{holding.symbol}</span>
+                            </td>
+                            <td className="text-right px-4 py-3 text-white font-mono">{holding.shares.toLocaleString()}</td>
+                            <td className="text-right px-4 py-3 text-white font-mono">${holding.avgCostBasis.toFixed(2)}</td>
+                            <td className="text-right px-4 py-3 text-white font-mono">${holding.totalCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td className="text-right px-4 py-3 text-gray-400 text-xs">
+                              {new Date(holding.entryDate).toLocaleDateString()}
+                            </td>
+                            <td className="text-center px-4 py-3">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    setEditingHolding(holding)
+                                    setHoldingForm({
+                                      symbol: holding.symbol,
+                                      shares: holding.shares.toString(),
+                                      avgCostBasis: holding.avgCostBasis.toString(),
+                                      notes: holding.notes || ''
+                                    })
+                                    setShowAddHoldingModal(true)
+                                  }}
+                                  className="p-1.5 hover:bg-terminal-border rounded transition-colors"
+                                  title="Edit holding"
+                                >
+                                  <Edit3 size={14} className="text-gray-400 hover:text-white" />
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    if (holding.id && confirm(`Delete ${holding.symbol} holding?`)) {
+                                      await deleteHolding(holding.id)
+                                      loadHoldings()
+                                    }
+                                  }}
+                                  className="p-1.5 hover:bg-red-500/20 rounded transition-colors"
+                                  title="Delete holding"
+                                >
+                                  <Trash2 size={14} className="text-gray-400 hover:text-red-400" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Add Holding Button */}
+              <button
+                onClick={() => {
+                  setEditingHolding(null)
+                  setHoldingForm({ symbol: '', shares: '', avgCostBasis: '', notes: '' })
+                  setShowAddHoldingModal(true)
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-terminal-amber text-black rounded hover:bg-terminal-amber/90 transition-colors font-medium"
+              >
+                <Plus size={16} />
+                Add Holding
+              </button>
+
+              {/* Add/Edit Holding Modal */}
+              {showAddHoldingModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                  <div className="bg-terminal-panel border border-terminal-border rounded-lg p-6 w-full max-w-md">
+                    <h3 className="text-white font-medium mb-4">
+                      {editingHolding ? 'Edit Holding' : 'Add New Holding'}
+                    </h3>
+
+                    <div className="space-y-4">
+                      {/* Symbol Input with Autocomplete */}
+                      <div className="relative">
+                        <label className="text-gray-400 text-xs mb-1 block">Symbol</label>
+                        <input
+                          type="text"
+                          value={holdingForm.symbol}
+                          onChange={(e) => {
+                            const value = e.target.value.toUpperCase()
+                            setHoldingForm({ ...holdingForm, symbol: value })
+                            if (value.length >= 1) {
+                              const results = searchStocks(value).slice(0, 5)
+                              setHoldingSearchResults(results)
+                            } else {
+                              setHoldingSearchResults([])
+                            }
+                          }}
+                          placeholder="AAPL"
+                          className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-white font-mono"
+                          disabled={!!editingHolding}
+                        />
+                        {holdingSearchResults.length > 0 && !editingHolding && (
+                          <div className="absolute top-full left-0 right-0 mt-1 bg-terminal-panel border border-terminal-border rounded shadow-lg z-10 max-h-40 overflow-y-auto">
+                            {holdingSearchResults.map(stock => (
+                              <button
+                                key={stock.symbol}
+                                onClick={() => {
+                                  setHoldingForm({ ...holdingForm, symbol: stock.symbol })
+                                  setHoldingSearchResults([])
+                                }}
+                                className="w-full px-3 py-2 text-left hover:bg-terminal-border/50 flex items-center justify-between"
+                              >
+                                <span className="text-terminal-amber font-mono">{stock.symbol}</span>
+                                <span className="text-gray-400 text-xs truncate ml-2">{stock.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Shares */}
+                      <div>
+                        <label className="text-gray-400 text-xs mb-1 block">Shares</label>
+                        <input
+                          type="number"
+                          value={holdingForm.shares}
+                          onChange={(e) => setHoldingForm({ ...holdingForm, shares: e.target.value })}
+                          placeholder="100"
+                          min="0"
+                          step="1"
+                          className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-white font-mono"
+                        />
+                      </div>
+
+                      {/* Average Cost Basis */}
+                      <div>
+                        <label className="text-gray-400 text-xs mb-1 block">Average Cost Basis ($)</label>
+                        <input
+                          type="number"
+                          value={holdingForm.avgCostBasis}
+                          onChange={(e) => setHoldingForm({ ...holdingForm, avgCostBasis: e.target.value })}
+                          placeholder="150.00"
+                          min="0"
+                          step="0.01"
+                          className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-white font-mono"
+                        />
+                      </div>
+
+                      {/* Notes (optional) */}
+                      <div>
+                        <label className="text-gray-400 text-xs mb-1 block">Notes (optional)</label>
+                        <textarea
+                          value={holdingForm.notes}
+                          onChange={(e) => setHoldingForm({ ...holdingForm, notes: e.target.value })}
+                          placeholder="Position notes..."
+                          rows={2}
+                          className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-white resize-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Modal Actions */}
+                    <div className="flex justify-end gap-3 mt-6">
+                      <button
+                        onClick={() => {
+                          setShowAddHoldingModal(false)
+                          setEditingHolding(null)
+                          setHoldingSearchResults([])
+                        }}
+                        className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={async () => {
+                          const shares = parseFloat(holdingForm.shares)
+                          const avgCost = parseFloat(holdingForm.avgCostBasis)
+
+                          if (!holdingForm.symbol || isNaN(shares) || isNaN(avgCost) || shares <= 0 || avgCost <= 0) {
+                            alert('Please fill in all required fields with valid values')
+                            return
+                          }
+
+                          if (editingHolding && editingHolding.id) {
+                            // Update existing
+                            await updateHolding(editingHolding.id, {
+                              shares,
+                              avgCostBasis: avgCost,
+                              totalCost: shares * avgCost,
+                              notes: holdingForm.notes || undefined,
+                              lastUpdated: Date.now()
+                            })
+                          } else {
+                            // Add new
+                            await addHolding({
+                              symbol: holdingForm.symbol.toUpperCase(),
+                              shares,
+                              avgCostBasis: avgCost,
+                              totalCost: shares * avgCost,
+                              entryDate: Date.now(),
+                              lastUpdated: Date.now(),
+                              notes: holdingForm.notes || undefined
+                            })
+                          }
+
+                          setShowAddHoldingModal(false)
+                          setEditingHolding(null)
+                          setHoldingSearchResults([])
+                          loadHoldings()
+                        }}
+                        className="px-4 py-2 bg-terminal-amber text-black rounded hover:bg-terminal-amber/90 transition-colors font-medium"
+                      >
+                        {editingHolding ? 'Save Changes' : 'Add Holding'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Display */}
           {activeSection === 'display' && (
             <div>
@@ -1325,7 +1924,7 @@ export function Settings() {
 
                   {/* Zoom Level Buttons */}
                   <div className="flex gap-2 mb-4">
-                    {[90, 100, 110, 125, 150].map(level => (
+                    {[90, 100, 110, 125].map(level => (
                       <button
                         key={level}
                         onClick={() => setZoomLevel(level)}
@@ -1356,6 +1955,82 @@ export function Settings() {
                         <span className="text-gray-400">Reset to 100%</span>
                         <span className="text-terminal-amber">Cmd/Ctrl 0</span>
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-terminal-border" />
+
+                {/* Panel Visibility */}
+                <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <LayoutGrid className="w-4 h-4 text-terminal-amber" />
+                    <span className="text-white text-sm font-medium">Panel Visibility</span>
+                  </div>
+
+                  <p className="text-gray-400 text-xs mb-4">
+                    Choose which panels to display on the dashboard.
+                  </p>
+
+                  <div className="space-y-3">
+                    {/* Market Watch */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-300 text-sm">Market Watch</span>
+                      <button
+                        onClick={toggleLeftPanel}
+                        className={`w-12 h-6 rounded-full transition-colors ${
+                          panelVisibility.leftPanelVisible ? 'bg-terminal-amber' : 'bg-terminal-border'
+                        }`}
+                      >
+                        <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                          panelVisibility.leftPanelVisible ? 'translate-x-6' : 'translate-x-0.5'
+                        }`} />
+                      </button>
+                    </div>
+
+                    {/* Live Chart */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-300 text-sm">Live Chart</span>
+                      <button
+                        onClick={toggleChart}
+                        className={`w-12 h-6 rounded-full transition-colors ${
+                          panelVisibility.chartVisible ? 'bg-terminal-amber' : 'bg-terminal-border'
+                        }`}
+                      >
+                        <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                          panelVisibility.chartVisible ? 'translate-x-6' : 'translate-x-0.5'
+                        }`} />
+                      </button>
+                    </div>
+
+                    {/* AI Copilot */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-300 text-sm">AI Copilot</span>
+                      <button
+                        onClick={toggleRightPanel}
+                        className={`w-12 h-6 rounded-full transition-colors ${
+                          panelVisibility.rightPanelVisible ? 'bg-terminal-amber' : 'bg-terminal-border'
+                        }`}
+                      >
+                        <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                          panelVisibility.rightPanelVisible ? 'translate-x-6' : 'translate-x-0.5'
+                        }`} />
+                      </button>
+                    </div>
+
+                    {/* News Ticker */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-300 text-sm">News Ticker</span>
+                      <button
+                        onClick={toggleNewsTicker}
+                        className={`w-12 h-6 rounded-full transition-colors ${
+                          panelVisibility.newsTickerVisible ? 'bg-terminal-amber' : 'bg-terminal-border'
+                        }`}
+                      >
+                        <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                          panelVisibility.newsTickerVisible ? 'translate-x-6' : 'translate-x-0.5'
+                        }`} />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -2196,6 +2871,96 @@ export function Settings() {
                   </div>
                 </div>
 
+                {/* Backup & Restore Section */}
+                <div className="border-t border-terminal-border my-4 pt-4">
+                  <h3 className="text-white font-medium mb-3 flex items-center gap-2">
+                    <Download size={16} className="text-terminal-amber" />
+                    Backup & Restore
+                  </h3>
+
+                  <div className="space-y-3">
+                    {/* Create Backup */}
+                    <div className="bg-terminal-panel border border-terminal-border rounded-lg p-3">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <span className="text-white text-sm font-medium">Create Full Backup</span>
+                          <span className="text-gray-500 text-xs ml-3">Export all settings, trades, holdings, and alerts</span>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            setIsCreatingBackup(true)
+                            try {
+                              const backup = await createFullBackup()
+                              downloadBackup(backup)
+                            } catch (error) {
+                              console.error('[Settings] Backup failed:', error)
+                              alert('Failed to create backup')
+                            } finally {
+                              setIsCreatingBackup(false)
+                            }
+                          }}
+                          disabled={isCreatingBackup}
+                          className="flex items-center gap-2 px-4 py-1.5 bg-terminal-amber text-black rounded text-sm hover:bg-terminal-amber/90 transition-colors whitespace-nowrap flex-shrink-0 disabled:opacity-50"
+                        >
+                          {isCreatingBackup ? (
+                            <>
+                              <Loader2 size={14} className="animate-spin" />
+                              Exporting...
+                            </>
+                          ) : (
+                            <>
+                              <Download size={14} />
+                              Export Backup
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Restore Backup */}
+                    <div className="bg-terminal-panel border border-terminal-border rounded-lg p-3">
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <span className="text-white text-sm font-medium">Restore from Backup</span>
+                          <span className="text-gray-500 text-xs ml-3">Import a previously exported backup file</span>
+                        </div>
+                        <label className="flex items-center gap-2 px-4 py-1.5 bg-terminal-border text-white rounded text-sm hover:bg-terminal-border/70 transition-colors whitespace-nowrap flex-shrink-0 cursor-pointer">
+                          <Upload size={14} />
+                          Import Backup
+                          <input
+                            type="file"
+                            accept=".json"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0]
+                              if (!file) return
+
+                              try {
+                                const text = await file.text()
+                                const data = JSON.parse(text)
+
+                                if (!validateBackup(data)) {
+                                  alert('Invalid backup file format')
+                                  return
+                                }
+
+                                setPendingBackup(data)
+                                setShowRestoreModal(true)
+                              } catch (error) {
+                                console.error('[Settings] Failed to read backup file:', error)
+                                alert('Failed to read backup file. Please ensure it is a valid JSON file.')
+                              }
+
+                              // Reset input
+                              e.target.value = ''
+                            }}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Data Location Info */}
                 <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4 mt-4">
                   <h4 className="text-white text-sm font-medium mb-2">📁 Data Storage Location</h4>
@@ -2283,6 +3048,91 @@ export function Settings() {
                     }`}
                   >
                     {isResetting ? 'Processing...' : showResetConfirm === 'factory' ? 'Yes, Reset Everything' : 'Confirm'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Restore Backup Confirmation Modal */}
+          {showRestoreModal && pendingBackup && (
+            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+              <div className="bg-terminal-panel border border-terminal-border rounded-lg p-6 max-w-lg w-full mx-4">
+                <h3 className="text-yellow-400 text-lg font-medium mb-2 flex items-center gap-2">
+                  <AlertCircle size={18} />
+                  Restore Backup?
+                </h3>
+                <p className="text-gray-400 text-sm mb-4">
+                  This will replace ALL current data with the backup contents. This action cannot be undone.
+                </p>
+
+                {/* Backup Summary */}
+                {(() => {
+                  const summary = getBackupSummary(pendingBackup)
+                  return (
+                    <div className="bg-terminal-bg rounded p-4 mb-4 text-sm">
+                      <div className="grid grid-cols-2 gap-2 text-gray-400">
+                        <div>Exported:</div>
+                        <div className="text-white">{summary.exportedAt}</div>
+                        <div>App Version:</div>
+                        <div className="text-white">{summary.appVersion}</div>
+                        <div>Trade Decisions:</div>
+                        <div className="text-white">{summary.counts.tradeDecisions}</div>
+                        <div>Holdings:</div>
+                        <div className="text-white">{summary.counts.holdings}</div>
+                        <div>Price Alerts:</div>
+                        <div className="text-white">{summary.counts.priceAlerts}</div>
+                        <div>RSS Feeds:</div>
+                        <div className="text-white">{summary.counts.newsSources}</div>
+                        <div>Watchlist:</div>
+                        <div className="text-white">{summary.counts.watchlist}</div>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowRestoreModal(false)
+                      setPendingBackup(null)
+                    }}
+                    disabled={isRestoring}
+                    className="flex-1 px-4 py-2 bg-terminal-border text-white rounded text-sm hover:bg-terminal-border/70 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setIsRestoring(true)
+                      try {
+                        const result = await restoreFromBackup(pendingBackup)
+                        if (result.success) {
+                          alert('Backup restored successfully! The page will reload.')
+                          window.location.reload()
+                        } else {
+                          alert(`Restore failed: ${result.errors.join(', ')}`)
+                        }
+                      } catch (error) {
+                        console.error('[Settings] Restore failed:', error)
+                        alert('Failed to restore backup')
+                      } finally {
+                        setIsRestoring(false)
+                        setShowRestoreModal(false)
+                        setPendingBackup(null)
+                      }
+                    }}
+                    disabled={isRestoring}
+                    className="flex-1 px-4 py-2 bg-yellow-600 text-black rounded text-sm hover:bg-yellow-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isRestoring ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin" />
+                        Restoring...
+                      </>
+                    ) : (
+                      'Restore Backup'
+                    )}
                   </button>
                 </div>
               </div>

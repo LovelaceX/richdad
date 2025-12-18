@@ -4,39 +4,39 @@ import { ApiKeyInput } from './ApiKeyInput'
 interface WizardStepProps {
   stepNumber: number
   totalSteps: number
-  provider: 'alpha-vantage' | 'polygon'
+  provider: 'twelvedata' | 'polygon'
   apiKey: string
   onApiKeyChange: (value: string) => void
 }
 
 const PROVIDER_CONFIG = {
   'polygon': {
-    name: 'Massive.com (formerly Polygon.io)',
+    name: 'Massive.com (Polygon.io)',
     icon: Database,
-    description: 'Professional market data with unlimited API calls',
+    description: 'Professional market data with 2 years of history',
     signupUrl: 'https://massive.com/dashboard/signup',
     instructions: [
-      'Visit massive.com and click "Get your free API Key"',
-      'Create an account (email verification required)',
-      'Copy your API key from the dashboard',
-      'Free tier: Unlimited calls, 15-min delayed data',
-    ],
-    freeTier: 'Unlimited calls (rate limited), 15-min delay',
-    budgetNote: 'Best for charts and technical analysis. No daily limit to worry about!',
-  },
-  'alpha-vantage': {
-    name: 'Alpha Vantage',
-    icon: BarChart3,
-    description: 'Free API for real-time stock quotes and market data',
-    signupUrl: 'https://www.alphavantage.co/support/#api-key',
-    instructions: [
-      'Visit alphavantage.co and click "Get Free API Key"',
-      'Fill out the simple registration form',
+      'Visit massive.com/dashboard/signup',
+      'Create an account or sign in with Google',
+      'Click "API Keys" in your dashboard',
       'Copy your API key and paste it below',
-      'Free tier: 25 calls/day (we cache data efficiently)',
     ],
-    freeTier: '25 calls/day, 5 calls/minute',
-    budgetNote: 'Real-time data but limited daily calls. Best for live quotes.',
+    freeTier: '5 calls/min, EOD data, 2 years history',
+    budgetNote: 'Best for charts and historical analysis. Reliable EOD data.',
+  },
+  'twelvedata': {
+    name: 'TwelveData',
+    icon: BarChart3,
+    description: 'Real-time data for all US markets with generous free tier',
+    signupUrl: 'https://twelvedata.com/register',
+    instructions: [
+      'Visit twelvedata.com/register',
+      'Enter your details or sign up with Google/Apple',
+      'Under "Current plan", click "API keys"',
+      'Click "Reveal" and copy your key',
+    ],
+    freeTier: '800 calls/day, real-time data',
+    budgetNote: 'Best free tier for real-time data. Great for live trading.',
   },
 }
 
@@ -51,7 +51,7 @@ export function WizardStep({
   const Icon = config.icon
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Step Progress */}
       <div className="flex items-center gap-2 text-sm">
         <span className="text-terminal-amber font-medium">
@@ -62,9 +62,7 @@ export function WizardStep({
 
       {/* Provider Info */}
       <div className="flex items-start gap-3">
-        <div className="p-3 bg-terminal-bg border border-terminal-border rounded">
-          <Icon className="w-6 h-6 text-terminal-amber" />
-        </div>
+        <Icon className="w-6 h-6 text-terminal-amber flex-shrink-0 mt-0.5" />
         <div>
           <h3 className="text-white text-lg font-medium">{config.name}</h3>
           <p className="text-gray-400 text-sm mt-1">{config.description}</p>

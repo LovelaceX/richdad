@@ -7,6 +7,7 @@ import { getAISettings } from '../renderer/lib/db'
 import { fetchHistoricalData, fetchLivePrices } from './marketData'
 import { calculateIndicators } from './technicalIndicators'
 import { calculateMarketRegime, formatRegimeForPrompt, type MarketRegime } from './marketRegime'
+import { detectPatterns, type DetectedPattern } from './candlestickPatterns'
 import type { AIRecommendation, Quote } from '../renderer/types'
 import { generateId } from '../renderer/lib/utils'
 import { canMakeAICall, recordAICall, getAIBudgetStatus } from './aiBudgetTracker'
@@ -65,14 +66,22 @@ export async function generateRecommendation(
     // 4. Calculate technical indicators
     const indicators = calculateIndicators(candles)
 
+    // 4b. Detect candlestick patterns
+    const allPatterns = detectPatterns(candles)
+    // Filter to meaningful patterns (score >= 50) and take last 5
+    const recentPatterns = allPatterns
+      .filter(p => p.reliabilityScore >= 50)
+      .slice(-5)
+    console.log(`[AI Engine] Detected ${allPatterns.length} patterns, ${recentPatterns.length} significant`)
+
     // 5. Get recent news headlines (from news store if available)
     const newsHeadlines = await getRecentNews(symbol)
 
     // 6. Get market regime context
     const marketRegime = await calculateMarketRegime()
 
-    // 7. Build analysis prompt
-    const prompt = buildAnalysisPrompt(symbol, quote, indicators, newsHeadlines, marketRegime)
+    // 7. Build analysis prompt (now includes patterns)
+    const prompt = buildAnalysisPrompt(symbol, quote, indicators, newsHeadlines, marketRegime, recentPatterns)
 
     // 8. Send to AI for analysis
     const aiResponse = await sendAnalysisToAI(prompt, aiSettings.provider, aiSettings.apiKey, aiSettings.model)
@@ -133,11 +142,19 @@ function buildAnalysisPrompt(
   quote: Quote,
   indicators: any,
   newsHeadlines: string[],
-  marketRegime: MarketRegime | null
+  marketRegime: MarketRegime | null,
+  patterns: DetectedPattern[]
 ): string {
   const regimeSection = marketRegime
     ? formatRegimeForPrompt(marketRegime)
     : '**MARKET REGIME:** Unable to calculate (insufficient data)'
+
+  // Format candlestick patterns for the prompt
+  const patternSection = patterns.length > 0
+    ? patterns.map(p =>
+        `- ${p.pattern} (${p.type}, ${p.reliability} reliability, score: ${p.reliabilityScore})`
+      ).join('\n')
+    : 'No significant patterns detected'
 
   const prompt = `You are a professional trading analyst. Analyze the following data for ${symbol} and provide a trading recommendation.
 
@@ -158,6 +175,15 @@ ${indicators.ma200 ? `- MA(200): $${indicators.ma200}` : ''}
 - Trend: ${indicators.trend}
 - Momentum: ${indicators.momentum}
 
+**RECENT CANDLESTICK PATTERNS:**
+${patternSection}
+
+Pattern guidance:
+- High reliability patterns (score 70+) are strong signals
+- Volume-confirmed patterns carry more weight
+- Patterns aligned with market regime trend are stronger signals
+- Bullish patterns in bearish regime (or vice versa) may indicate reversal
+
 **RECENT NEWS (Last 24 hours):**
 ${newsHeadlines.length > 0 ? newsHeadlines.map((h, i) => `${i + 1}. ${h}`).join('\n') : 'No recent news available'}
 
@@ -174,7 +200,7 @@ Respond ONLY with valid JSON in this exact format:
 {
   "action": "BUY" | "SELL" | "HOLD",
   "confidence": 0-100,
-  "rationale": "Brief 2-3 sentence explanation referencing market regime and specific data points",
+  "rationale": "Brief 2-3 sentence explanation referencing market regime, candlestick patterns, and specific data points",
   "priceTarget": number or null,
   "stopLoss": number or null
 }
@@ -182,7 +208,7 @@ Respond ONLY with valid JSON in this exact format:
 Rules:
 - confidence should be 0-100 (whole number)
 - priceTarget and stopLoss are optional but recommended for BUY/SELL
-- rationale MUST reference the market regime AND specific technical data (RSI, MACD, news, etc.)
+- rationale MUST reference the market regime, any significant candlestick patterns, AND specific technical data (RSI, MACD, news, etc.)
 - In high volatility regimes, recommend tighter stops and lower position sizes
 - Be honest about uncertainty - lower confidence if data is mixed or regime is risky
 

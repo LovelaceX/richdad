@@ -1,17 +1,20 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
-import { createChart, ColorType, IChartApi, ISeriesApi, CandlestickData, Time, SeriesMarker } from 'lightweight-charts'
+import { createChart, ColorType, IChartApi, ISeriesApi, CandlestickData, Time, SeriesMarker, IPriceLine } from 'lightweight-charts'
 import { useMarketStore } from '../../stores/marketStore'
 import { usePatternStore } from '../../stores/patternStore'
 import { useNewsStore } from '../../stores/newsStore'
+import { useDrawingStore } from '../../stores/drawingStore'
 import { detectPatterns } from '../../../services/candlestickPatterns'
 import { PatternTooltipContainer } from './PatternTooltip'
 import { NewsTooltip, matchNewsToCandles, NewsMarker } from './NewsTooltip'
+import { TrendlinePrimitive } from './TrendlinePrimitive'
 import type { NewsItem } from '../../types'
 
 export function TradingChart() {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null)
+  const priceLinesRef = useRef<IPriceLine[]>([])
 
   const chartData = useMarketStore(state => state.chartData)
   const selectedTicker = useMarketStore(state => state.selectedTicker)
@@ -21,6 +24,17 @@ export function TradingChart() {
 
   // News store
   const headlines = useNewsStore(state => state.headlines)
+
+  // Drawing store
+  const horizontalLines = useDrawingStore(state => state.horizontalLines)
+  const trendlines = useDrawingStore(state => state.trendlines)
+  const drawingMode = useDrawingStore(state => state.drawingMode)
+  const addHorizontalLine = useDrawingStore(state => state.addHorizontalLine)
+  const addTrendline = useDrawingStore(state => state.addTrendline)
+
+  // Trendline drawing state
+  const [trendlineStart, setTrendlineStart] = useState<{ time: number; price: number } | null>(null)
+  const trendlinePrimitivesRef = useRef<TrendlinePrimitive[]>([])
 
   // Local state for news tooltip
   const [selectedNews, setSelectedNews] = useState<NewsItem | null>(null)
@@ -178,16 +192,145 @@ export function TradingChart() {
     seriesRef.current.setMarkers(markers)
   }, [patterns, showPatterns, showNews])
 
-  // Handle marker clicks
+  // Update horizontal price lines
+  useEffect(() => {
+    if (!seriesRef.current) return
+
+    // Remove old price lines
+    priceLinesRef.current.forEach(line => {
+      try {
+        seriesRef.current?.removePriceLine(line)
+      } catch {
+        // Line may have already been removed
+      }
+    })
+    priceLinesRef.current = []
+
+    // Create new price lines for current symbol
+    const symbolLines = horizontalLines.filter(l => l.symbol === selectedTicker)
+    symbolLines.forEach(line => {
+      try {
+        const priceLine = seriesRef.current!.createPriceLine({
+          price: line.price,
+          color: line.color,
+          lineWidth: 2,
+          lineStyle: 0, // Solid
+          axisLabelVisible: true,
+          title: line.label || `$${line.price.toFixed(2)}`
+        })
+        priceLinesRef.current.push(priceLine)
+      } catch (err) {
+        console.warn('[Chart] Failed to create price line:', err)
+      }
+    })
+  }, [horizontalLines, selectedTicker])
+
+  // Update trendlines
+  useEffect(() => {
+    if (!seriesRef.current || !chartRef.current) return
+
+    // Remove old trendline primitives
+    trendlinePrimitivesRef.current.forEach(primitive => {
+      try {
+        seriesRef.current?.detachPrimitive(primitive)
+      } catch {
+        // Primitive may have already been removed
+      }
+    })
+    trendlinePrimitivesRef.current = []
+
+    // Create new trendlines for current symbol
+    const symbolTrendlines = trendlines.filter(l => l.symbol === selectedTicker)
+    symbolTrendlines.forEach(line => {
+      try {
+        const primitive = new TrendlinePrimitive(
+          chartRef.current!,
+          seriesRef.current!,
+          {
+            startTime: line.startTime,
+            startPrice: line.startPrice,
+            endTime: line.endTime,
+            endPrice: line.endPrice,
+            color: line.color,
+            id: line.id
+          }
+        )
+        seriesRef.current!.attachPrimitive(primitive)
+        trendlinePrimitivesRef.current.push(primitive)
+      } catch (err) {
+        console.warn('[Chart] Failed to create trendline:', err)
+      }
+    })
+  }, [trendlines, selectedTicker])
+
+  // Reset trendline start point when drawing mode changes
+  useEffect(() => {
+    if (drawingMode !== 'trendline') {
+      setTrendlineStart(null)
+    }
+  }, [drawingMode])
+
+  // Handle double-click for drawing horizontal lines
+  const handleDblClick = useCallback((event: MouseEvent) => {
+    if (drawingMode !== 'horizontal' || !seriesRef.current || !containerRef.current) return
+
+    const rect = containerRef.current.getBoundingClientRect()
+    const y = event.clientY - rect.top
+
+    // Convert Y coordinate to price
+    const price = seriesRef.current.coordinateToPrice(y)
+    if (price !== null && price !== undefined) {
+      addHorizontalLine(selectedTicker, price as number)
+      console.log(`[Chart] Added horizontal line at $${(price as number).toFixed(2)} for ${selectedTicker}`)
+    }
+  }, [drawingMode, selectedTicker, addHorizontalLine])
+
+  // Add double-click listener for drawing
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    container.addEventListener('dblclick', handleDblClick)
+
+    return () => {
+      container.removeEventListener('dblclick', handleDblClick)
+    }
+  }, [handleDblClick])
+
+  // Handle marker clicks and trendline drawing
   const handleChartClick = useCallback((event: MouseEvent) => {
-    if (!chartRef.current || !containerRef.current) return
+    if (!chartRef.current || !containerRef.current || !seriesRef.current) return
 
     const rect = containerRef.current.getBoundingClientRect()
     const x = event.clientX - rect.left
+    const y = event.clientY - rect.top
 
     // Get logical point from chart coordinates
     const timeScale = chartRef.current.timeScale()
     const time = timeScale.coordinateToTime(x)
+    const price = seriesRef.current.coordinateToPrice(y)
+
+    // Handle trendline drawing (two-click)
+    if (drawingMode === 'trendline' && time !== null && price !== null) {
+      if (!trendlineStart) {
+        // First click - set start point
+        setTrendlineStart({ time: time as number, price: price as number })
+        console.log(`[Chart] Trendline start: time=${time}, price=$${(price as number).toFixed(2)}`)
+      } else {
+        // Second click - complete trendline
+        addTrendline({
+          startTime: trendlineStart.time,
+          startPrice: trendlineStart.price,
+          endTime: time as number,
+          endPrice: price as number,
+          color: '#FFB000',
+          symbol: selectedTicker
+        })
+        setTrendlineStart(null)
+        console.log(`[Chart] Trendline complete for ${selectedTicker}`)
+      }
+      return
+    }
 
     if (time === null) return
 
@@ -218,7 +361,7 @@ export function TradingChart() {
         return
       }
     }
-  }, [patterns, showPatterns, showNews, selectPattern])
+  }, [patterns, showPatterns, showNews, selectPattern, drawingMode, trendlineStart, selectedTicker, addTrendline])
 
   // Add click listener to chart
   useEffect(() => {

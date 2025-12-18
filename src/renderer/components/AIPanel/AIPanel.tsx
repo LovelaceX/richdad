@@ -18,7 +18,7 @@ export function AIPanel() {
   }, [messages])
 
   const handleClear = () => {
-    if (messages.length > 0 && confirm('Clear all chat messages?')) {
+    if (messages.length > 0) {
       clearMessages()
     }
   }

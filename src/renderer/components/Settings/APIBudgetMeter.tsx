@@ -1,9 +1,17 @@
 import { useState, useEffect } from 'react'
 import { BarChart3 } from 'lucide-react'
 import { getBudgetStatus } from '../../../services/apiBudgetTracker'
+import { getSettings } from '../../lib/db'
+
+interface TwelveDataUsage {
+  used: number
+  limit: number
+  remaining: number
+}
 
 export function APIBudgetMeter() {
   const [budget, setBudget] = useState<any>(null)
+  const [twelveDataUsage, setTwelveDataUsage] = useState<TwelveDataUsage | null>(null)
 
   useEffect(() => {
     const updateBudget = () => {
@@ -13,6 +21,32 @@ export function APIBudgetMeter() {
 
     updateBudget()
     const interval = setInterval(updateBudget, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Fetch TwelveData usage
+  useEffect(() => {
+    const fetchTwelveDataUsage = async () => {
+      try {
+        const settings = await getSettings()
+        if (settings?.twelvedataApiKey) {
+          const { getTwelveDataUsage } = await import('../../../services/twelveDataService')
+          const usage = await getTwelveDataUsage(settings.twelvedataApiKey)
+          if (usage) {
+            setTwelveDataUsage({
+              used: usage.dailyUsage,
+              limit: usage.dailyLimit,
+              remaining: usage.remaining
+            })
+          }
+        }
+      } catch (error) {
+        console.error('[APIBudgetMeter] Failed to fetch TwelveData usage:', error)
+      }
+    }
+
+    fetchTwelveDataUsage()
+    const interval = setInterval(fetchTwelveDataUsage, 60000) // Every minute
     return () => clearInterval(interval)
   }, [])
 
@@ -62,6 +96,27 @@ export function APIBudgetMeter() {
       <div className="text-xs text-gray-400 mt-3">
         Resets at: {new Date(budget.resetsAt).toLocaleTimeString()}
       </div>
+
+      {/* TwelveData Budget (if configured) */}
+      {twelveDataUsage && (
+        <div className="mt-4 pt-4 border-t border-terminal-border">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-gray-400 text-xs">TwelveData</span>
+            <span className="text-xs text-gray-400">
+              {twelveDataUsage.used}/{twelveDataUsage.limit} calls
+            </span>
+          </div>
+          <div className="w-full h-2 bg-terminal-bg rounded-full overflow-hidden">
+            <div
+              className={`h-full transition-all ${getColor((twelveDataUsage.used / twelveDataUsage.limit) * 100)}`}
+              style={{ width: `${Math.min(100, (twelveDataUsage.used / twelveDataUsage.limit) * 100)}%` }}
+            />
+          </div>
+          <p className="text-gray-500 text-xs mt-1">
+            {twelveDataUsage.remaining} calls remaining today
+          </p>
+        </div>
+      )}
     </div>
   )
 }

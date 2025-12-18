@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Loader2, CheckCircle2, XCircle, Wifi } from 'lucide-react'
-import { testAlphaVantageKey } from '../../../services/alphaVantageValidator'
 import { testPolygonKey } from '../../../services/polygonValidator'
+import { testTwelveDataConnection } from '../../../services/twelveDataService'
 
 interface ApiKeyInputProps {
-  provider: 'alpha-vantage' | 'polygon'
+  provider: 'twelvedata' | 'polygon'
   value: string
   onChange: (value: string) => void
   placeholder?: string
@@ -32,9 +32,15 @@ export function ApiKeyInput({
     setErrorMessage('')
 
     try {
-      const validator = provider === 'polygon' ? testPolygonKey : testAlphaVantageKey
+      let result: { valid?: boolean; success?: boolean; message: string }
 
-      const result = await validator(value)
+      if (provider === 'polygon') {
+        result = await testPolygonKey(value)
+      } else {
+        // TwelveData returns { success, message } instead of { valid, message }
+        const twelveResult = await testTwelveDataConnection(value)
+        result = { valid: twelveResult.success, message: twelveResult.message }
+      }
 
       if (result.valid) {
         setStatus('valid')

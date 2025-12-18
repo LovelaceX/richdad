@@ -57,11 +57,13 @@ export interface UserSettings {
   lastSoundPlayed: number          // Timestamp of last sound
 
   // Data Sources
-  marketDataProvider: 'alphavantage' | 'polygon' | 'finnhub'
+  marketDataProvider: 'alphavantage' | 'polygon' | 'finnhub' | 'fasttrack' | 'twelvedata'
   alphaVantageApiKey?: string
   polygonApiKey?: string
   useAlphaVantageForNews?: boolean
   finnhubApiKey?: string
+  fasttrackApiKey?: string  // FastTrack.net Portfolio Analytics API
+  twelvedataApiKey?: string  // TwelveData.com - 800 calls/day free, real-time
 
   // Onboarding
   hasCompletedOnboarding?: boolean
@@ -117,6 +119,20 @@ export interface WatchlistEntry {
   name?: string
   sector?: string
   addedAt: number
+}
+
+// Portfolio holding for tracking positions with live P&L
+export interface Holding {
+  id?: number
+  symbol: string
+  shares: number
+  avgCostBasis: number      // Average price per share
+  totalCost: number         // shares * avgCostBasis
+  entryDate: number         // Timestamp of first purchase
+  lastUpdated: number       // Last time position was modified
+  notes?: string
+  // Calculated fields (not stored, computed at render time):
+  // currentPrice, currentValue, unrealizedPnL, unrealizedPnLPercent
 }
 
 export interface UserProfile {
@@ -228,6 +244,7 @@ class DadAppDatabase extends Dexie {
   userProfile!: EntityTable<UserProfile, 'id'>
   aiSettings!: EntityTable<AISettings, 'id'>
   watchlist!: EntityTable<WatchlistEntry, 'id'>
+  holdings!: EntityTable<Holding, 'id'>
 
   constructor() {
     super('dadapp')
@@ -297,6 +314,20 @@ class DadAppDatabase extends Dexie {
       aiSettings: '++id, provider',
       watchlist: '++id, symbol, addedAt'
     })
+
+    // v6: Add holdings table for portfolio tracking with live P&L
+    this.version(6).stores({
+      tradeDecisions: '++id, timestamp, symbol, action, decision, source, outcome',
+      userSettings: '++id',
+      newsSources: '++id, name, type, enabled, category',
+      proTraders: '++id, handle, source, enabled',
+      priceAlerts: '++id, symbol, triggered, createdAt',
+      pnlEntries: '++id, date',
+      userProfile: '++id',
+      aiSettings: '++id, provider',
+      watchlist: '++id, symbol, addedAt',
+      holdings: '++id, symbol, entryDate'
+    })
   }
 }
 
@@ -338,6 +369,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   polygonApiKey: undefined,
   useAlphaVantageForNews: false,
   finnhubApiKey: undefined,
+  fasttrackApiKey: undefined,
+  twelvedataApiKey: undefined,
 
   // Onboarding
   hasCompletedOnboarding: undefined,
@@ -844,4 +877,121 @@ export async function isInUserWatchlist(symbol: string): Promise<boolean> {
 export async function clearUserWatchlist(): Promise<void> {
   await db.watchlist.clear()
   console.log('[DB] User watchlist cleared')
+}
+
+// ==========================================
+// PORTFOLIO HOLDINGS MANAGEMENT
+// ==========================================
+
+/**
+ * Get all holdings
+ */
+export async function getHoldings(): Promise<Holding[]> {
+  return await db.holdings.orderBy('symbol').toArray()
+}
+
+/**
+ * Get a holding by symbol
+ */
+export async function getHoldingBySymbol(symbol: string): Promise<Holding | undefined> {
+  return await db.holdings.where('symbol').equals(symbol.toUpperCase()).first()
+}
+
+/**
+ * Add a new holding
+ */
+export async function addHolding(holding: Omit<Holding, 'id'>): Promise<number> {
+  const id = await db.holdings.add({
+    ...holding,
+    symbol: holding.symbol.toUpperCase()
+  } as Holding)
+  console.log(`[DB] Added holding: ${holding.symbol} (${holding.shares} shares @ $${holding.avgCostBasis})`)
+  return id as number
+}
+
+/**
+ * Update an existing holding
+ */
+export async function updateHolding(id: number, updates: Partial<Holding>): Promise<void> {
+  await db.holdings.update(id, updates)
+  console.log(`[DB] Updated holding ID ${id}`)
+}
+
+/**
+ * Delete a holding
+ */
+export async function deleteHolding(id: number): Promise<void> {
+  await db.holdings.delete(id)
+  console.log(`[DB] Deleted holding ID ${id}`)
+}
+
+/**
+ * Adjust holding based on BUY/SELL action
+ * - BUY: Add to position (average up/down)
+ * - SELL: Reduce position (delete if fully sold)
+ */
+export async function adjustHolding(
+  symbol: string,
+  shares: number,
+  price: number,
+  action: 'BUY' | 'SELL'
+): Promise<void> {
+  const upperSymbol = symbol.toUpperCase()
+  const existing = await getHoldingBySymbol(upperSymbol)
+
+  if (action === 'BUY') {
+    if (existing) {
+      // Average down/up calculation
+      const newTotalShares = existing.shares + shares
+      const newTotalCost = existing.totalCost + (shares * price)
+      const newAvgCost = newTotalCost / newTotalShares
+
+      await updateHolding(existing.id!, {
+        shares: newTotalShares,
+        avgCostBasis: Math.round(newAvgCost * 100) / 100,
+        totalCost: Math.round(newTotalCost * 100) / 100,
+        lastUpdated: Date.now()
+      })
+      console.log(`[DB] Increased ${upperSymbol} position: +${shares} shares @ $${price} (new avg: $${newAvgCost.toFixed(2)})`)
+    } else {
+      // New position
+      await addHolding({
+        symbol: upperSymbol,
+        shares,
+        avgCostBasis: price,
+        totalCost: shares * price,
+        entryDate: Date.now(),
+        lastUpdated: Date.now()
+      })
+    }
+  } else {
+    // SELL
+    if (existing) {
+      const newShares = existing.shares - shares
+
+      if (newShares <= 0) {
+        // Fully sold - remove holding
+        await deleteHolding(existing.id!)
+        console.log(`[DB] Closed ${upperSymbol} position (sold all ${existing.shares} shares)`)
+      } else {
+        // Partial sell - reduce position (keep same avg cost)
+        await updateHolding(existing.id!, {
+          shares: newShares,
+          totalCost: Math.round(newShares * existing.avgCostBasis * 100) / 100,
+          lastUpdated: Date.now()
+        })
+        console.log(`[DB] Reduced ${upperSymbol} position: -${shares} shares (${newShares} remaining)`)
+      }
+    } else {
+      console.warn(`[DB] Cannot sell ${upperSymbol} - no existing position`)
+    }
+  }
+}
+
+/**
+ * Clear all holdings
+ */
+export async function clearHoldings(): Promise<void> {
+  await db.holdings.clear()
+  console.log('[DB] All holdings cleared')
 }

@@ -126,8 +126,13 @@ export function AIPerformanceDetail() {
       </div>
 
       {/* Trade History Table */}
-      <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-terminal-panel border border-terminal-border rounded-lg overflow-x-auto
+        [&::-webkit-scrollbar]:h-2
+        [&::-webkit-scrollbar-track]:bg-terminal-bg
+        [&::-webkit-scrollbar-thumb]:bg-terminal-border
+        [&::-webkit-scrollbar-thumb]:rounded-full
+        [&::-webkit-scrollbar-thumb]:hover:bg-gray-600">
+        <table className="w-full text-sm min-w-max">
           <thead className="bg-terminal-bg border-b border-terminal-border">
             <tr>
               <th className="text-left text-gray-400 px-4 py-3">Date</th>

@@ -15,8 +15,10 @@ interface SettingsState {
     bottomPanel: number  // percentage (default 5)
   }
   panelVisibility: {
-    leftPanelVisible: boolean   // Market Watch
-    rightPanelVisible: boolean  // AI Copilot
+    leftPanelVisible: boolean    // Market Watch
+    rightPanelVisible: boolean   // AI Copilot
+    chartVisible: boolean        // Live Chart
+    newsTickerVisible: boolean   // News Ticker
   }
 
   // Actions
@@ -33,6 +35,8 @@ interface SettingsState {
   resetPanelSizes: () => void
   toggleLeftPanel: () => void
   toggleRightPanel: () => void
+  toggleChart: () => void
+  toggleNewsTicker: () => void
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -52,6 +56,8 @@ export const useSettingsStore = create<SettingsState>()(
       panelVisibility: {
         leftPanelVisible: true,
         rightPanelVisible: true,
+        chartVisible: true,
+        newsTickerVisible: true,
       },
 
       setTheme: (theme: ThemeId) => {
@@ -144,6 +150,24 @@ export const useSettingsStore = create<SettingsState>()(
           panelVisibility: {
             ...state.panelVisibility,
             rightPanelVisible: !state.panelVisibility.rightPanelVisible,
+          }
+        }))
+      },
+
+      toggleChart: () => {
+        set(state => ({
+          panelVisibility: {
+            ...state.panelVisibility,
+            chartVisible: !state.panelVisibility.chartVisible,
+          }
+        }))
+      },
+
+      toggleNewsTicker: () => {
+        set(state => ({
+          panelVisibility: {
+            ...state.panelVisibility,
+            newsTickerVisible: !state.panelVisibility.newsTickerVisible,
           }
         }))
       },

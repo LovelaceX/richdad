@@ -13,7 +13,26 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
-    emptyOutDir: true
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // React core
+          'vendor-react': ['react', 'react-dom'],
+          // State management
+          'vendor-zustand': ['zustand'],
+          // Charting library
+          'vendor-charts': ['lightweight-charts'],
+          // UI animations
+          'vendor-framer': ['framer-motion'],
+          // Database
+          'vendor-dexie': ['dexie'],
+          // ML/AI (largest chunk)
+          'vendor-ml': ['@xenova/transformers']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 600
   },
   server: {
     port: 5174

@@ -4,6 +4,7 @@ import type { Quote } from '../renderer/types'
 import type { Timeframe } from '../renderer/lib/mockData'
 import { canUseAlphaVantageForMarket, canUseAlphaVantageForCharts, recordMarketCall, recordChartCall, getBudgetStatus } from './apiBudgetTracker'
 import { fetchPolygonQuotes, fetchPolygonHistorical } from './polygonService'
+import { fetchTwelveDataBatchQuotes, fetchTwelveDataCandles } from './twelveDataService'
 
 const ALPHA_VANTAGE_BASE_URL = 'https://www.alphavantage.co/query'
 const CACHE_DURATION_MS = 3600000 // 1 hour (3600 seconds)
@@ -41,6 +42,41 @@ export async function fetchLivePrices(symbols: string[]): Promise<Quote[]> {
       console.error('[Market Data] Polygon fetch failed:', error)
     }
     // Fallback to mock if Polygon fails
+    return symbols.map(symbol => generateQuote(symbol))
+  }
+
+  // Route to TwelveData if configured
+  if (provider === 'twelvedata') {
+    const twelveDataKey = settings.twelvedataApiKey
+    if (!twelveDataKey) {
+      console.warn('[Market Data] No TwelveData API key configured, using mock data')
+      return symbols.map(symbol => generateQuote(symbol))
+    }
+    try {
+      const quotesMap = await fetchTwelveDataBatchQuotes(symbols, twelveDataKey)
+      const quotes: Quote[] = symbols.map(symbol => {
+        const data = quotesMap.get(symbol)
+        if (data) {
+          return {
+            symbol,
+            price: data.price,
+            change: data.change,
+            changePercent: data.changePercent,
+            volume: data.volume,
+            high: data.price * 1.01, // Approximate if not available
+            low: data.price * 0.99,
+            open: data.price - data.change,
+            previousClose: data.price - data.change,
+            timestamp: Date.now()
+          }
+        }
+        return generateQuote(symbol)
+      })
+      return quotes
+    } catch (error) {
+      console.error('[Market Data] TwelveData fetch failed:', error)
+    }
+    // Fallback to mock if TwelveData fails
     return symbols.map(symbol => generateQuote(symbol))
   }
 
@@ -219,6 +255,25 @@ export async function fetchHistoricalData(
       console.error('[Market Data] Polygon historical fetch failed:', error)
     }
     // Fallback to mock if Polygon fails
+    const { generateCandleData } = await import('../renderer/lib/mockData')
+    return generateCandleData(symbol, interval as Timeframe)
+  }
+
+  // Route to TwelveData if configured
+  if (provider === 'twelvedata') {
+    const twelveDataKey = settings.twelvedataApiKey
+    if (!twelveDataKey) {
+      console.warn('[Market Data] No TwelveData API key configured, falling back to mock data')
+      const { generateCandleData } = await import('../renderer/lib/mockData')
+      return generateCandleData(symbol, interval as Timeframe)
+    }
+    try {
+      const candles = await fetchTwelveDataCandles(symbol, interval, twelveDataKey)
+      if (candles.length > 0) return candles
+    } catch (error) {
+      console.error('[Market Data] TwelveData historical fetch failed:', error)
+    }
+    // Fallback to mock if TwelveData fails
     const { generateCandleData } = await import('../renderer/lib/mockData')
     return generateCandleData(symbol, interval as Timeframe)
   }

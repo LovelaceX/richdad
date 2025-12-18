@@ -7,7 +7,7 @@ interface WelcomeStepProps {
 
 export function WelcomeStep({ stepNumber, totalSteps }: WelcomeStepProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Step Progress */}
       <div className="flex items-center gap-2 text-sm">
         <span className="text-terminal-amber font-medium">
@@ -17,7 +17,7 @@ export function WelcomeStep({ stepNumber, totalSteps }: WelcomeStepProps) {
       </div>
 
       {/* Welcome Header */}
-      <div className="text-center py-4">
+      <div className="text-center py-2">
         <div className="inline-flex items-center justify-center mb-4">
           <img src="/richdad-logo.png" alt="RichDad" className="w-20 h-20 object-contain" />
         </div>
@@ -63,7 +63,7 @@ export function WelcomeStep({ stepNumber, totalSteps }: WelcomeStepProps) {
       </div>
 
       {/* Note */}
-      <div className="text-center py-4">
+      <div className="text-center">
         <p className="text-gray-400 text-sm">
           Let's get started by reviewing our terms and setting up your API keys
         </p>

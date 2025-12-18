@@ -13,6 +13,7 @@ export function MarketWatch() {
   const [newSymbol, setNewSymbol] = useState('')
   const [searchResults, setSearchResults] = useState<StockInfo[]>([])
   const [selectedIndex, setSelectedIndex] = useState(-1)
+  const [selectedStock, setSelectedStock] = useState<StockInfo | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Auto-refresh quotes
@@ -30,33 +31,45 @@ export function MarketWatch() {
       const results = searchStocks(newSymbol)
       setSearchResults(results)
       setSelectedIndex(-1)
+      setSelectedStock(null) // Clear selection when typing
     } else {
       setSearchResults([])
       setSelectedIndex(-1)
+      setSelectedStock(null)
     }
   }, [newSymbol])
 
-  const handleAddSymbol = (symbol?: string) => {
-    const symbolToAdd = symbol || newSymbol.trim().toUpperCase()
+  const handleAddSymbol = () => {
+    const symbolToAdd = selectedStock?.symbol || newSymbol.trim().toUpperCase()
     if (symbolToAdd) {
       addToWatchlist(symbolToAdd)
       setNewSymbol('')
       setSearchResults([])
+      setSelectedStock(null)
       setShowAddModal(false)
     }
+  }
+
+  const handleSelectStock = (stock: StockInfo) => {
+    setSelectedStock(stock)
+    setNewSymbol(stock.symbol)
+    setSearchResults([]) // Hide dropdown after selection
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       if (selectedIndex >= 0 && searchResults[selectedIndex]) {
-        handleAddSymbol(searchResults[selectedIndex].symbol)
-      } else {
+        // Arrow key selection: select the stock (don't add yet)
+        handleSelectStock(searchResults[selectedIndex])
+      } else if (selectedStock || newSymbol.trim()) {
+        // If stock is selected or typed, add it
         handleAddSymbol()
       }
     } else if (e.key === 'Escape') {
       setShowAddModal(false)
       setNewSymbol('')
       setSearchResults([])
+      setSelectedStock(null)
     } else if (e.key === 'ArrowDown') {
       e.preventDefault()
       setSelectedIndex(prev =>
@@ -73,6 +86,7 @@ export function MarketWatch() {
     setNewSymbol('')
     setSearchResults([])
     setSelectedIndex(-1)
+    setSelectedStock(null)
   }
 
   return (
@@ -127,7 +141,7 @@ export function MarketWatch() {
                 {searchResults.map((stock, index) => (
                   <button
                     key={stock.symbol}
-                    onClick={() => handleAddSymbol(stock.symbol)}
+                    onClick={() => handleSelectStock(stock)}
                     className={`w-full px-3 py-2 text-left hover:bg-terminal-border/50 transition-colors ${
                       index === selectedIndex ? 'bg-terminal-amber/20' : ''
                     }`}

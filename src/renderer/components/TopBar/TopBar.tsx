@@ -1,10 +1,11 @@
-import { Minus, Plus } from 'lucide-react'
+import { Minus, Plus, WifiOff } from 'lucide-react'
 import { CommandInput } from './CommandInput'
 // import { WindowControls } from './WindowControls' - Disabled: Using native OS window controls
 import { NavBar } from '../Navigation/NavBar'
 import { APIBudgetAlert } from './APIBudgetAlert'
 import { AIBudgetAlert } from './AIBudgetAlert'
 import { useSettingsStore } from '../../stores/settingsStore'
+import { useNetworkStatus } from '../../hooks/useNetworkStatus'
 
 function ZoomControls() {
   const zoomLevel = useSettingsStore(state => state.zoomLevel)
@@ -39,6 +40,8 @@ function ZoomControls() {
 }
 
 export function TopBar() {
+  const isOnline = useNetworkStatus()
+
   return (
     <>
       <div className="h-12 bg-terminal-panel border-b border-terminal-border flex items-center px-2 drag-region">
@@ -63,6 +66,14 @@ export function TopBar() {
           {/* <WindowControls /> - Disabled: Using native OS window controls */}
         </div>
       </div>
+
+      {/* Offline Indicator */}
+      {!isOnline && (
+        <div className="w-full px-4 py-2 bg-yellow-900/30 border-b border-yellow-500/50 flex items-center gap-2">
+          <WifiOff size={14} className="text-yellow-400" />
+          <span className="text-yellow-400 text-xs">Offline - using cached data</span>
+        </div>
+      )}
 
       {/* API Budget Alert */}
       <APIBudgetAlert />

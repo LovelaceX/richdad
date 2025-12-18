@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ArrowUpCircle, ArrowDownCircle, X, Check } from 'lucide-react'
 import { useMarketStore } from '../../stores/marketStore'
-import { logTradeDecision } from '../../lib/db'
+import { logTradeDecision, adjustHolding } from '../../lib/db'
 import { playSound } from '../../lib/sounds'
 
 type TradeAction = 'BUY' | 'SELL' | null
@@ -62,6 +62,12 @@ export function QuickTradeButtons() {
         dollarAmount: calculatedDollar
       })
 
+      // Auto-update holdings if shares were specified
+      if (sharesNum && sharesNum > 0 && currentPrice > 0) {
+        await adjustHolding(selectedTicker, sharesNum, currentPrice, expandedAction)
+        console.log(`[Quick Trade] Holdings updated: ${expandedAction} ${sharesNum} shares of ${selectedTicker} @ $${currentPrice}`)
+      }
+
       // Play sound
       playSound(expandedAction.toLowerCase() as 'buy' | 'sell')
 
@@ -113,7 +119,7 @@ export function QuickTradeButtons() {
           flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all
           ${expandedAction === 'BUY'
             ? 'bg-semantic-up text-black'
-            : 'bg-semantic-up text-white hover:bg-semantic-up/90'
+            : 'bg-semantic-up text-black hover:bg-semantic-up/90'
           }
         `}
         title="Log a buy trade"
@@ -129,7 +135,7 @@ export function QuickTradeButtons() {
           flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all
           ${expandedAction === 'SELL'
             ? 'bg-semantic-down text-black'
-            : 'bg-semantic-down text-white hover:bg-semantic-down/90'
+            : 'bg-semantic-down text-black hover:bg-semantic-down/90'
           }
         `}
         title="Log a sell trade"

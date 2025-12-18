@@ -1,13 +1,16 @@
-import { useEffect } from 'react'
-import { TrendingUp, Calendar, Maximize2, Minimize2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { TrendingUp, Calendar, Maximize2, Minimize2, Activity, Minus, TrendingUp as TrendlineIcon, Trash2 } from 'lucide-react'
 import { TradingChart } from './TradingChart'
 import { ProactiveAlert } from './ProactiveAlert'
 import { TimeframeSelector } from './TimeframeSelector'
 import { QuickTradeButtons } from './QuickTradeButtons'
 import { PositionSizeCalculator } from './PositionSizeCalculator'
+import { MarketRegimeIndicator } from './MarketRegimeIndicator'
+import { MarketContextPanel } from './MarketContextPanel'
 import { useMarketStore } from '../../stores/marketStore'
 import { useAIStore } from '../../stores/aiStore'
 import { usePatternStore } from '../../stores/patternStore'
+import { useDrawingStore } from '../../stores/drawingStore'
 import { formatPrice, formatChange, formatPercent, getColorClass } from '../../lib/utils'
 
 export function ChartPanel() {
@@ -26,6 +29,18 @@ export function ChartPanel() {
   const showNews = usePatternStore(state => state.showNews)
   const togglePatterns = usePatternStore(state => state.togglePatterns)
   const toggleNews = usePatternStore(state => state.toggleNews)
+
+  // Drawing tools
+  const drawingMode = useDrawingStore(state => state.drawingMode)
+  const setDrawingMode = useDrawingStore(state => state.setDrawingMode)
+  const clearDrawings = useDrawingStore(state => state.clearDrawings)
+  const horizontalLines = useDrawingStore(state => state.horizontalLines)
+  const trendlines = useDrawingStore(state => state.trendlines)
+  const hasDrawings = horizontalLines.some(l => l.symbol === selectedTicker) ||
+                      trendlines.some(l => l.symbol === selectedTicker)
+
+  // Market Context Panel toggle
+  const [showMarketContext, setShowMarketContext] = useState(false)
 
   // Handle Escape key to close expanded chart
   useEffect(() => {
@@ -55,14 +70,21 @@ export function ChartPanel() {
     <div className={wrapperClasses}>
       {/* Header with ticker info */}
       <div className="panel-header flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <TrendingUp size={14} />
-          <span>{selectedTicker}</span>
-          {selectedItem && (
-            <span className="text-gray-500 text-[10px] font-normal normal-case">
-              {selectedItem.name}
-            </span>
-          )}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <TrendingUp size={14} />
+            <span>{selectedTicker}</span>
+            {selectedItem && (
+              <span className="text-gray-500 text-[10px] font-normal normal-case">
+                {selectedItem.name}
+              </span>
+            )}
+          </div>
+
+          {/* Market Regime Indicator */}
+          <div className="border-l border-terminal-border pl-3">
+            <MarketRegimeIndicator compact />
+          </div>
         </div>
 
         <div className="flex items-center gap-4">
@@ -86,7 +108,7 @@ export function ChartPanel() {
           {/* Position Size Calculator */}
           <PositionSizeCalculator />
 
-          {/* Pattern / News Marker Toggles */}
+          {/* Pattern / News / Market Context Toggles */}
           <div className="flex items-center gap-1 border-l border-terminal-border pl-3">
             <button
               onClick={togglePatterns}
@@ -114,6 +136,64 @@ export function ChartPanel() {
             >
               N
             </button>
+            <button
+              onClick={() => setShowMarketContext(!showMarketContext)}
+              title="Toggle market context panel"
+              className={`
+                w-6 h-6 flex items-center justify-center rounded transition-all
+                ${showMarketContext
+                  ? 'bg-terminal-amber/20 text-terminal-amber border border-terminal-amber/50'
+                  : 'text-gray-500 hover:text-white border border-transparent hover:border-terminal-border'
+                }
+              `}
+            >
+              <Activity size={12} />
+            </button>
+          </div>
+
+          {/* Drawing Tools */}
+          <div className="flex items-center gap-1 border-l border-terminal-border pl-3">
+            <button
+              onClick={() => setDrawingMode(drawingMode === 'horizontal' ? null : 'horizontal')}
+              title="Draw Horizontal Line (double-click chart)"
+              className={`
+                w-6 h-6 flex items-center justify-center rounded transition-all
+                ${drawingMode === 'horizontal'
+                  ? 'bg-terminal-amber text-black'
+                  : 'text-gray-500 hover:text-white border border-transparent hover:border-terminal-border'
+                }
+              `}
+            >
+              <Minus size={14} />
+            </button>
+            <button
+              onClick={() => setDrawingMode(drawingMode === 'trendline' ? null : 'trendline')}
+              title="Draw Trendline (click two points)"
+              className={`
+                w-6 h-6 flex items-center justify-center rounded transition-all
+                ${drawingMode === 'trendline'
+                  ? 'bg-terminal-amber text-black'
+                  : 'text-gray-500 hover:text-white border border-transparent hover:border-terminal-border'
+                }
+              `}
+            >
+              <TrendlineIcon size={14} />
+            </button>
+            {hasDrawings && (
+              <button
+                onClick={() => clearDrawings(selectedTicker)}
+                title="Clear all drawings"
+                className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-red-400 rounded transition-all hover:border-terminal-border border border-transparent"
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+            {/* Drawing mode indicator */}
+            {drawingMode && (
+              <span className="text-terminal-amber text-[10px] ml-1">
+                {drawingMode === 'horizontal' ? 'Dbl-click to place' : 'Click 2 pts'}
+              </span>
+            )}
           </div>
 
           {/* Date Picker */}
@@ -172,6 +252,13 @@ export function ChartPanel() {
           </button>
         </div>
       </div>
+
+      {/* Market Context Panel (collapsible) */}
+      {showMarketContext && (
+        <div className="px-3 py-2 border-b border-terminal-border">
+          <MarketContextPanel />
+        </div>
+      )}
 
       {/* Chart area */}
       <div className="flex-1 relative min-h-0">

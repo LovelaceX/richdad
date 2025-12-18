@@ -9,7 +9,7 @@ interface TermsStepProps {
 
 export function TermsStep({ stepNumber, totalSteps, accepted, onAcceptChange }: TermsStepProps) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Step Progress */}
       <div className="flex items-center gap-2 text-sm">
         <span className="text-terminal-amber font-medium">
@@ -20,9 +20,7 @@ export function TermsStep({ stepNumber, totalSteps, accepted, onAcceptChange }: 
 
       {/* Header */}
       <div className="flex items-start gap-3">
-        <div className="p-3 bg-terminal-bg border border-terminal-border rounded">
-          <FileText className="w-6 h-6 text-terminal-amber" />
-        </div>
+        <FileText className="w-6 h-6 text-terminal-amber flex-shrink-0 mt-0.5" />
         <div>
           <h3 className="text-white text-lg font-medium">Terms & Conditions</h3>
           <p className="text-gray-400 text-sm mt-1">
@@ -145,7 +143,7 @@ export function TermsStep({ stepNumber, totalSteps, accepted, onAcceptChange }: 
       </div>
 
       {/* Acceptance Checkbox */}
-      <div className="py-4">
+      <div>
         <label className="flex items-start gap-3 cursor-pointer group">
           <div className="relative flex-shrink-0 mt-0.5">
             <input
@@ -176,7 +174,7 @@ export function TermsStep({ stepNumber, totalSteps, accepted, onAcceptChange }: 
       </div>
 
       {/* Additional Info */}
-      <p className="text-gray-500 text-xs mt-2">
+      <p className="text-gray-500 text-xs">
         <span className="text-terminal-amber">Note:</span> By accepting, you confirm that you understand
         the risks of trading and that RichDad is for informational purposes only.
       </p>

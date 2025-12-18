@@ -1,8 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { TopBar } from './components/TopBar'
-import { Dashboard, News, Settings } from './pages'
 import { useNavigationStore } from './stores/navigationStore'
+
+// Lazy load pages for better code splitting
+const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })))
+const News = lazy(() => import('./pages/News').then(m => ({ default: m.News })))
+const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })))
 import { useSettingsStore } from './stores/settingsStore'
 import { useMarketStore } from './stores/marketStore'
 import { useDataHeartbeat } from './hooks/useDataHeartbeat'
@@ -112,7 +116,13 @@ export default function App() {
         <TopBar />
 
         {/* Page Content */}
-        {renderPage()}
+        <Suspense fallback={
+          <div className="flex-1 flex items-center justify-center bg-terminal-bg">
+            <div className="text-terminal-amber animate-pulse">Loading...</div>
+          </div>
+        }>
+          {renderPage()}
+        </Suspense>
       </div>
 
       {/* Onboarding Wizard */}

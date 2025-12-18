@@ -36,7 +36,7 @@ const sectionContent: Record<Section, { title: string; keywords: string[] }> = {
   'price-alerts': { title: 'Price Alerts', keywords: ['notification', 'alert', 'trigger', 'above', 'below'] },
   'chart-guide': { title: 'Chart Controls', keywords: ['candlestick', 'timeframe', 'zoom', 'pan', 'daily', 'intraday'] },
   'ai-copilot': { title: 'AI Copilot', keywords: ['openai', 'claude', 'gemini', 'grok', 'recommendation', 'chat', 'provider'] },
-  'api-limits': { title: 'API Limits & Usage', keywords: ['rate limit', 'quota', 'calls', 'daily', 'budget', 'alpha vantage'] },
+  'api-limits': { title: 'API Limits & Usage', keywords: ['rate limit', 'quota', 'calls', 'daily', 'budget', 'alpha vantage', 'polygon', 'massive', 'twelvedata', 'finnhub', 'fasttrack', 'fallback'] },
   'shortcuts': { title: 'Keyboard Shortcuts', keywords: ['hotkey', 'cmd', 'ctrl', 'key'] },
   'troubleshooting': { title: 'Troubleshooting', keywords: ['error', 'fix', 'problem', 'not working', 'issue', 'help'] },
   'faq': { title: 'FAQ', keywords: ['question', 'answer', 'common', 'frequently'] },
@@ -112,7 +112,7 @@ export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
             <div className="flex items-center gap-3">
               <BookOpen size={22} className="text-terminal-amber" />
               <h2 className="text-white text-lg font-semibold">Reference Guide</h2>
-              <span className="text-gray-500 text-sm">v4.0.0</span>
+              <span className="text-gray-500 text-sm">v4.3.0</span>
             </div>
             <button
               onClick={onClose}
@@ -650,37 +650,102 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
         <div className="space-y-8">
           <div>
             <h2 className="text-terminal-amber text-2xl font-bold mb-2">API Limits & Usage</h2>
-            <p className="text-gray-400">Understanding rate limits and quotas</p>
+            <p className="text-gray-400">Understanding rate limits, quotas, and automatic fallback</p>
           </div>
 
-          {/* Alpha Vantage */}
-          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-6">
+          {/* Market Data Providers */}
+          <div>
             <div className="flex items-center gap-3 mb-4">
               <Database size={20} className="text-terminal-amber" />
-              <h3 className="text-white text-lg font-semibold">Alpha Vantage (Market Data)</h3>
+              <h3 className="text-white text-lg font-semibold">Market Data Providers</h3>
             </div>
             <div className="space-y-3">
-              <div className="flex justify-between py-2 border-b border-terminal-border">
-                <span className="text-gray-400">Free Tier Limit</span>
-                <span className="text-white font-mono">25 calls/day</span>
+              {/* Polygon.io */}
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-white font-medium">Massive.com (Polygon.io)</span>
+                  <span className="text-terminal-amber text-xs px-2 py-0.5 bg-terminal-amber/20 rounded">Recommended</span>
+                </div>
+                <div className="text-gray-400 text-sm space-y-1">
+                  <p>5 API calls/minute • End-of-day data • 2 years history</p>
+                  <p className="text-gray-500">Best for: Charts and historical analysis</p>
+                </div>
               </div>
-              <div className="flex justify-between py-2 border-b border-terminal-border">
-                <span className="text-gray-400">Reset Time</span>
-                <span className="text-white font-mono">Midnight EST</span>
+
+              {/* TwelveData */}
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-white font-medium">TwelveData</span>
+                  <span className="text-green-400 text-xs px-2 py-0.5 bg-green-400/20 rounded">Best Free Tier</span>
+                </div>
+                <div className="text-gray-400 text-sm space-y-1">
+                  <p>800 API calls/day • Real-time data • All US markets</p>
+                  <p className="text-gray-500">Best for: Live trading and real-time quotes</p>
+                </div>
               </div>
-              <div className="flex justify-between py-2 border-b border-terminal-border">
-                <span className="text-gray-400">Used For</span>
-                <span className="text-white">Stock prices, chart data, news</span>
+
+              {/* Alpha Vantage */}
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-white font-medium">Alpha Vantage</span>
+                </div>
+                <div className="text-gray-400 text-sm space-y-1">
+                  <p>25 API calls/day • Real-time quotes • Resets midnight EST</p>
+                  <p className="text-gray-500">Best for: Basic usage with news sentiment</p>
+                </div>
               </div>
-              <div className="flex justify-between py-2">
-                <span className="text-gray-400">Cache Duration</span>
-                <span className="text-white">Quotes: 1hr, Charts: 24hr</span>
+
+              {/* Finnhub */}
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-white font-medium">Finnhub</span>
+                </div>
+                <div className="text-gray-400 text-sm space-y-1">
+                  <p>60 API calls/minute • Real-time data • Global markets</p>
+                  <p className="text-gray-500">Best for: High-frequency needs</p>
+                </div>
+              </div>
+
+              {/* FastTrack */}
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-white font-medium">FastTrack.net</span>
+                </div>
+                <div className="text-gray-400 text-sm space-y-1">
+                  <p>2,000 API calls/month • 37 years history • Analytics</p>
+                  <p className="text-gray-500">Best for: Long-term historical analysis</p>
+                </div>
               </div>
             </div>
-            <div className="mt-4 pt-4 border-t border-terminal-border">
-              <p className="text-gray-400 text-sm">
-                <span className="text-terminal-amber">Tip:</span> RichDad optimizes API usage with caching.
-                SPY gets priority for intraday data; other symbols use daily data.
+          </div>
+
+          {/* Automatic Fallback System */}
+          <div className="bg-terminal-amber/10 border border-terminal-amber/30 rounded-lg p-6">
+            <h3 className="text-terminal-amber text-lg font-bold mb-4 flex items-center gap-2">
+              <AlertTriangle size={18} />
+              Automatic Fallback System
+            </h3>
+            <p className="text-gray-300 text-sm mb-4">
+              When your primary provider is exhausted or unavailable, RichDad automatically falls back:
+            </p>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="text-terminal-amber">1.</span>
+                <span className="text-gray-300">Tries the next configured provider in priority order</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-terminal-amber">2.</span>
+                <span className="text-gray-300">Uses cached data (quotes: 1 hour, charts: 24 hours)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-terminal-amber">3.</span>
+                <span className="text-gray-300">Falls back to mock data if all else fails</span>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-terminal-amber/30">
+              <p className="text-gray-400 text-xs">
+                <span className="text-terminal-amber">Tip:</span> Configure multiple providers in Settings → API Keys for best reliability.
+                You'll see subtle alerts when approaching limits (80%+) and when fallback kicks in.
               </p>
             </div>
           </div>
@@ -903,6 +968,18 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             {
               q: 'Can I export my trade history?',
               a: 'Yes! Go to Settings → My Profile → Export Trade Decisions. You can export to CSV or TXT.'
+            },
+            {
+              q: 'How do I track my portfolio holdings?',
+              a: 'Go to Settings → Portfolio to view and manage your holdings. Holdings auto-update when you use BUY/SELL from the chart with shares specified.'
+            },
+            {
+              q: 'How do I backup my data?',
+              a: 'Go to Settings → Danger Zone → Backup & Restore → Export Backup. This creates a JSON file with all your settings, trades, holdings, and alerts.'
+            },
+            {
+              q: 'How do I restore from a backup?',
+              a: 'Go to Settings → Danger Zone → Backup & Restore → Import Backup. Select your backup JSON file. Warning: This replaces all current data.'
             },
             {
               q: 'How do I reset everything?',
@@ -1130,7 +1207,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           </div>
 
           <div className="bg-terminal-bg border border-terminal-amber/30 rounded-lg p-6 text-center">
-            <h3 className="text-terminal-amber text-3xl font-bold">RichDad v4.0.0</h3>
+            <h3 className="text-terminal-amber text-3xl font-bold">RichDad v4.3.0</h3>
           </div>
 
           {/* Why RichDad - Bloomberg Comparison */}

@@ -105,24 +105,24 @@ export function generateCandleData(symbol: string, timeframe: Timeframe = 'daily
   const intervalMs = getIntervalMs(timeframe)
   const candleCount = getCandleCount(timeframe)
 
-  // For intraday: start from today's market open (9:30 AM EST)
-  // For daily/weekly: start from candleCount periods ago
-  const isIntraday = !['daily', 'weekly'].includes(timeframe)
+  // For short intraday (< 1H): start from today's market open (9:30 AM EST)
+  // For longer timeframes: start from candleCount periods ago (historical view)
+  const isShortIntraday = ['1min', '5min', '15min', '30min', '45min'].includes(timeframe)
 
   let startTime: number
-  if (isIntraday) {
+  if (isShortIntraday) {
     // Start from today's market open (9:30 AM local time for simplicity)
     const now = new Date()
     now.setHours(9, 30, 0, 0)
     startTime = now.getTime()
   } else {
-    // Start from candleCount periods ago
+    // Start from candleCount periods ago (for 1H+, daily, weekly)
     startTime = Date.now() - (candleCount * intervalMs)
   }
 
   for (let i = 0; i < candleCount; i++) {
     const time = Math.floor((startTime + i * intervalMs) / 1000)
-    const volatility = isIntraday ? 0.005 : 0.02 // Lower volatility for intraday
+    const volatility = isShortIntraday ? 0.005 : 0.02 // Lower volatility for short intraday
 
     const open = price
     const change = (Math.random() - 0.48) * volatility * price

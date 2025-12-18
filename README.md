@@ -1,5 +1,7 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-4.0.0-gold?style=for-the-badge" alt="Version 4.0.0"/>
+  <img src="https://img.shields.io/badge/version-4.3.0-gold?style=for-the-badge" alt="Version 4.3.0"/>
+  <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License"/>
+  <img src="https://github.com/LovelaceX/richdad/actions/workflows/ci.yml/badge.svg" alt="CI"/>
   <img src="https://img.shields.io/badge/tauri-2.x-blue?style=for-the-badge&logo=tauri" alt="Tauri 2.x"/>
   <img src="https://img.shields.io/badge/react-18-61DAFB?style=for-the-badge&logo=react" alt="React 18"/>
   <img src="https://img.shields.io/badge/typescript-strict-3178C6?style=for-the-badge&logo=typescript" alt="TypeScript"/>
@@ -136,40 +138,40 @@ These calls go directly from your machine to the provider. RichDad never sees or
 
 **Apple Silicon (M1/M2/M3/M4)**:
 ```bash
-curl -LO https://github.com/LovelaceX/richdad/releases/latest/download/RichDad_3.0.0_aarch64.dmg
-open RichDad_3.0.0_aarch64.dmg
+curl -LO https://github.com/LovelaceX/richdad/releases/latest/download/RichDad_aarch64.dmg
+open RichDad_aarch64.dmg
 ```
 
 **Intel**:
 ```bash
-curl -LO https://github.com/LovelaceX/richdad/releases/latest/download/RichDad_3.0.0_x64.dmg
-open RichDad_3.0.0_x64.dmg
+curl -LO https://github.com/LovelaceX/richdad/releases/latest/download/RichDad_x64.dmg
+open RichDad_x64.dmg
 ```
 
 ### Windows
 
 **Installer (recommended)**:
 ```powershell
-Invoke-WebRequest -Uri "https://github.com/LovelaceX/richdad/releases/latest/download/RichDad_3.0.0_x64_en-US.msi" -OutFile "RichDad_3.0.0.msi"
-Start-Process RichDad_3.0.0.msi
+Invoke-WebRequest -Uri "https://github.com/LovelaceX/richdad/releases/latest/download/RichDad_x64_en-US.msi" -OutFile "RichDad.msi"
+Start-Process RichDad.msi
 ```
 
 **Portable**:
-Download `RichDad_3.0.0_x64-setup.exe` from [Releases](https://github.com/LovelaceX/richdad/releases)
+Download `RichDad_x64-setup.exe` from [Releases](https://github.com/LovelaceX/richdad/releases)
 
 ### Linux
 
 **Debian/Ubuntu**:
 ```bash
-wget https://github.com/LovelaceX/richdad/releases/latest/download/rich-dad_3.0.0_amd64.deb
-sudo dpkg -i rich-dad_3.0.0_amd64.deb
+wget https://github.com/LovelaceX/richdad/releases/latest/download/RichDad_amd64.deb
+sudo dpkg -i RichDad_amd64.deb
 ```
 
 **AppImage (Universal)**:
 ```bash
-wget https://github.com/LovelaceX/richdad/releases/latest/download/rich-dad_3.0.0_amd64.AppImage
-chmod +x rich-dad_3.0.0_amd64.AppImage
-./rich-dad_3.0.0_amd64.AppImage
+wget https://github.com/LovelaceX/richdad/releases/latest/download/RichDad_amd64.AppImage
+chmod +x RichDad_amd64.AppImage
+./RichDad_amd64.AppImage
 ```
 
 ---
@@ -368,7 +370,20 @@ richdad/
 
 ## Changelog
 
-### v4.0.0 (Current)
+### v4.3.0 (Current)
+- **Smarter AI**: Candlestick patterns now included in AI recommendation prompts
+- **Drawing Tools**: Add horizontal lines (double-click) and trendlines (click two points)
+- **Pattern Insights**: Tooltip shows reliability score breakdown (volume, trend, location bonuses)
+- **Persistent Drawings**: Lines saved per-symbol and persist across sessions
+
+### v4.1.0
+- **Portfolio Holdings**: Track your positions with live P&L calculation
+- **Auto-Update Holdings**: BUY/SELL from QuickTrade automatically adjusts holdings
+- **Full Backup/Restore**: Export all data (settings, trades, holdings, alerts) to JSON
+- **Import Backup**: Restore from any previous backup
+- **Offline Indicator**: See when using cached data due to network issues
+
+### v4.0.0
 - **Investing.com-Style Intraday Charts**: Chart x-axis now shows proper intraday time labels (9:30, 10:00, 10:30...) when selecting 30M or other intraday intervals
 - **Timeframe-Aware Mock Data**: Mock data fallback now generates candles appropriate for selected timeframe instead of always daily
 
@@ -467,7 +482,7 @@ richdad/
 
 ## Roadmap
 
-### v4.1.0 (Next)
+### v4.4.0 (Next)
 - [ ] Trade Tags/Categories (scalp, swing, earnings play)
 - [ ] Trader's Autopsy (session review dashboard)
 - [ ] Portfolio-aware AI (position sizing context)
@@ -485,16 +500,14 @@ richdad/
 
 ## Contributing
 
+We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details.
+
+**Quick Start:**
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Follow TypeScript strict mode
 4. Test thoroughly (`npm run build`)
 5. Submit a pull request
-
-### Code Standards
-- TypeScript strict mode enabled
-- No console.logs in production
-- Professional documentation
 
 ---
 

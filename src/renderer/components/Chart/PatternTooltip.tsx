@@ -43,6 +43,12 @@ function getReliabilityColor(reliability: string): string {
   }
 }
 
+function getScoreBarColor(score: number): string {
+  if (score >= 70) return 'bg-terminal-up'
+  if (score >= 50) return 'bg-terminal-amber'
+  return 'bg-gray-500'
+}
+
 function getTypeColor(type: string): string {
   switch (type) {
     case 'bullish':
@@ -91,28 +97,41 @@ export function PatternTooltip({ pattern, position, onClose }: PatternTooltipPro
     }
   }, [onClose])
 
-  // Calculate position to keep tooltip within viewport
+  // Calculate position to keep tooltip within viewport and near the marker
   const getAdjustedPosition = () => {
     const tooltipWidth = 280
     const tooltipHeight = 200
     const padding = 16
+    const offset = 10
 
     let x = position.x
     let y = position.y
 
-    // Adjust horizontal position
-    if (x + tooltipWidth + padding > window.innerWidth) {
-      x = position.x - tooltipWidth - 10
+    // Adjust horizontal position - prefer right of click, fall back to left
+    if (x + tooltipWidth + offset + padding > window.innerWidth) {
+      x = position.x - tooltipWidth - offset
     } else {
-      x = position.x + 10
+      x = position.x + offset
     }
 
-    // Adjust vertical position
-    if (y + tooltipHeight + padding > window.innerHeight) {
-      y = window.innerHeight - tooltipHeight - padding
+    // Keep horizontal within bounds
+    if (x < padding) x = padding
+    if (x + tooltipWidth > window.innerWidth - padding) {
+      x = window.innerWidth - tooltipWidth - padding
     }
-    if (y < padding) {
-      y = padding
+
+    // Adjust vertical position - prefer below click, fall back to above
+    if (y + tooltipHeight + offset + padding > window.innerHeight) {
+      // Try above the click point
+      y = position.y - tooltipHeight - offset
+    } else {
+      y = position.y + offset
+    }
+
+    // Keep vertical within bounds
+    if (y < padding) y = padding
+    if (y + tooltipHeight > window.innerHeight - padding) {
+      y = window.innerHeight - tooltipHeight - padding
     }
 
     return { x, y }
@@ -161,19 +180,59 @@ export function PatternTooltip({ pattern, position, onClose }: PatternTooltipPro
           {pattern.description}
         </p>
 
+        {/* Reliability Score */}
+        <div className="flex items-center gap-2 pt-2 border-t border-terminal-border">
+          <span className="text-gray-500 text-xs">Reliability:</span>
+          <div className="flex-1 h-1.5 bg-terminal-bg rounded-full overflow-hidden">
+            <div
+              className={`h-full transition-all ${getScoreBarColor(pattern.reliabilityScore)}`}
+              style={{ width: `${pattern.reliabilityScore}%` }}
+            />
+          </div>
+          <span className={`text-xs font-medium ${getReliabilityColor(pattern.reliability)}`}>
+            {pattern.reliabilityScore}
+          </span>
+        </div>
+
+        {/* Score Factors (if available) */}
+        {pattern.factors && (
+          <div className="grid grid-cols-2 gap-1 text-[10px] pt-2">
+            <div className="flex justify-between px-1.5 py-0.5 bg-terminal-bg rounded">
+              <span className="text-gray-500">Base</span>
+              <span className="text-gray-300">{pattern.factors.baseScore}</span>
+            </div>
+            {pattern.factors.volumeBonus > 0 && (
+              <div className="flex justify-between px-1.5 py-0.5 bg-terminal-bg rounded">
+                <span className="text-gray-500">Volume</span>
+                <span className="text-terminal-up">+{pattern.factors.volumeBonus}</span>
+              </div>
+            )}
+            {pattern.factors.trendBonus > 0 && (
+              <div className="flex justify-between px-1.5 py-0.5 bg-terminal-bg rounded">
+                <span className="text-gray-500">Trend</span>
+                <span className="text-terminal-up">+{pattern.factors.trendBonus}</span>
+              </div>
+            )}
+            {pattern.factors.formationQuality > 0 && (
+              <div className="flex justify-between px-1.5 py-0.5 bg-terminal-bg rounded">
+                <span className="text-gray-500">Formation</span>
+                <span className="text-terminal-up">+{pattern.factors.formationQuality}</span>
+              </div>
+            )}
+            {pattern.factors.locationBonus > 0 && (
+              <div className="flex justify-between px-1.5 py-0.5 bg-terminal-bg rounded">
+                <span className="text-gray-500">Location</span>
+                <span className="text-terminal-up">+{pattern.factors.locationBonus}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Metadata */}
         <div className="flex items-center justify-between text-xs pt-2 border-t border-terminal-border">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-gray-500">Reliability:</span>
-              <span className={getReliabilityColor(pattern.reliability)}>
-                {pattern.reliability}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-gray-500">Candles:</span>
-              <span className="text-gray-300">{pattern.candleCount}</span>
-            </div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500">Candles:</span>
+            <span className="text-gray-300">{pattern.candleCount}</span>
           </div>
           <div className="text-right">
             <div className="text-gray-300">{formatTime(pattern.time)}</div>

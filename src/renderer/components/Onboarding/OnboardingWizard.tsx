@@ -11,7 +11,7 @@ interface OnboardingWizardProps {
   onClose: () => void
 }
 
-type MarketDataProvider = 'polygon' | 'alphavantage'
+type MarketDataProvider = 'polygon' | 'twelvedata'
 type AIProviderChoice = 'openai' | 'groq'
 type WizardStepType = 'welcome' | 'terms' | 'provider-choice' | 'api-key' | 'ai-provider'
 
@@ -20,7 +20,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState<MarketDataProvider>('polygon')
   const [polygonKey, setPolygonKey] = useState('')
-  const [alphaVantageKey, setAlphaVantageKey] = useState('')
+  const [twelvedataKey, setTwelvedataKey] = useState('')
   const [selectedAIProvider, setSelectedAIProvider] = useState<AIProviderChoice>('openai')
   const [aiApiKey, setAiApiKey] = useState('')
 
@@ -43,8 +43,8 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
       // Save the appropriate API key based on selected provider
       if (selectedProvider === 'polygon' && polygonKey) {
         await updateSettings({ polygonApiKey: polygonKey })
-      } else if (selectedProvider === 'alphavantage' && alphaVantageKey) {
-        await updateSettings({ alphaVantageApiKey: alphaVantageKey })
+      } else if (selectedProvider === 'twelvedata' && twelvedataKey) {
+        await updateSettings({ twelvedataApiKey: twelvedataKey })
       }
       setCurrentStep('ai-provider')
     } else {
@@ -101,7 +101,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
         )
       case 'provider-choice':
         return (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div className="text-center">
               <p className="text-gray-400 text-sm mb-1">Step {stepNumber} of {totalSteps}</p>
               <h3 className="text-white text-lg font-medium">Choose Market Data Provider</h3>
@@ -119,8 +119,8 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-white font-medium">Massive.com (formerly Polygon.io)</div>
-                    <div className="text-gray-400 text-sm mt-1">Unlimited API calls, 15-min delayed data</div>
+                    <div className="text-white font-medium">Massive.com (Polygon.io)</div>
+                    <div className="text-gray-400 text-sm mt-1">5 API calls/min, EOD data, 2 years history</div>
                   </div>
                   <span className="text-terminal-amber text-xs font-medium px-2 py-1 bg-terminal-amber/20 rounded">
                     Recommended
@@ -129,16 +129,21 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
               </button>
 
               <button
-                onClick={() => setSelectedProvider('alphavantage')}
+                onClick={() => setSelectedProvider('twelvedata')}
                 className={`w-full p-4 rounded-lg border text-left transition-colors ${
-                  selectedProvider === 'alphavantage'
+                  selectedProvider === 'twelvedata'
                     ? 'border-terminal-amber bg-terminal-amber/10'
                     : 'border-terminal-border hover:border-gray-600'
                 }`}
               >
-                <div>
-                  <div className="text-white font-medium">Alpha Vantage</div>
-                  <div className="text-gray-400 text-sm mt-1">Real-time data, 25 calls/day limit</div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-white font-medium">TwelveData</div>
+                    <div className="text-gray-400 text-sm mt-1">800 calls/day, real-time data, all US markets</div>
+                  </div>
+                  <span className="text-green-400 text-xs font-medium px-2 py-1 bg-green-400/20 rounded">
+                    Best Free Tier
+                  </span>
                 </div>
               </button>
             </div>
@@ -149,14 +154,14 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
           <WizardStep
             stepNumber={stepNumber}
             totalSteps={totalSteps}
-            provider={selectedProvider === 'polygon' ? 'polygon' : 'alpha-vantage'}
-            apiKey={selectedProvider === 'polygon' ? polygonKey : alphaVantageKey}
-            onApiKeyChange={selectedProvider === 'polygon' ? setPolygonKey : setAlphaVantageKey}
+            provider={selectedProvider === 'polygon' ? 'polygon' : 'twelvedata'}
+            apiKey={selectedProvider === 'polygon' ? polygonKey : twelvedataKey}
+            onApiKeyChange={selectedProvider === 'polygon' ? setPolygonKey : setTwelvedataKey}
           />
         )
       case 'ai-provider':
         return (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div className="text-center">
               <p className="text-gray-400 text-sm mb-1">Step {stepNumber} of {totalSteps}</p>
               <h3 className="text-white text-lg font-medium">Choose AI Provider</h3>
@@ -174,9 +179,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-terminal-bg border border-terminal-border rounded">
-                      <Sparkles className="w-5 h-5 text-terminal-amber" />
-                    </div>
+                    <Sparkles className="w-5 h-5 text-terminal-amber flex-shrink-0" />
                     <div>
                       <div className="text-white font-medium">OpenAI (GPT-4)</div>
                       <div className="text-gray-400 text-sm mt-1">Most capable reasoning</div>
@@ -197,9 +200,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-terminal-bg border border-terminal-border rounded">
-                    <Zap className="w-5 h-5 text-terminal-up" />
-                  </div>
+                  <Zap className="w-5 h-5 text-terminal-up flex-shrink-0" />
                   <div>
                     <div className="text-white font-medium">Groq (Free)</div>
                     <div className="text-gray-400 text-sm mt-1">Fast Llama 3 inference, completely free</div>

@@ -65,28 +65,41 @@ export function NewsTooltip({ news, position, onClose }: NewsTooltipProps) {
     }
   }, [onClose])
 
-  // Calculate position to keep tooltip within viewport
+  // Calculate position to keep tooltip within viewport and near the marker
   const getAdjustedPosition = () => {
     const tooltipWidth = 320
     const tooltipHeight = 180
     const padding = 16
+    const offset = 10
 
     let x = position.x
     let y = position.y
 
-    // Adjust horizontal position
-    if (x + tooltipWidth + padding > window.innerWidth) {
-      x = position.x - tooltipWidth - 10
+    // Adjust horizontal position - prefer right of click, fall back to left
+    if (x + tooltipWidth + offset + padding > window.innerWidth) {
+      x = position.x - tooltipWidth - offset
     } else {
-      x = position.x + 10
+      x = position.x + offset
     }
 
-    // Adjust vertical position
-    if (y + tooltipHeight + padding > window.innerHeight) {
-      y = window.innerHeight - tooltipHeight - padding
+    // Keep horizontal within bounds
+    if (x < padding) x = padding
+    if (x + tooltipWidth > window.innerWidth - padding) {
+      x = window.innerWidth - tooltipWidth - padding
     }
-    if (y < padding) {
-      y = padding
+
+    // Adjust vertical position - prefer below click, fall back to above
+    if (y + tooltipHeight + offset + padding > window.innerHeight) {
+      // Try above the click point
+      y = position.y - tooltipHeight - offset
+    } else {
+      y = position.y + offset
+    }
+
+    // Keep vertical within bounds
+    if (y < padding) y = padding
+    if (y + tooltipHeight > window.innerHeight - padding) {
+      y = window.innerHeight - tooltipHeight - padding
     }
 
     return { x, y }

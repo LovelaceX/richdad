@@ -19,8 +19,18 @@ export interface DetectedPattern {
   pattern: string
   type: 'bullish' | 'bearish' | 'neutral'
   reliability: 'Low' | 'Medium' | 'High'
+  reliabilityScore: number  // 0-100 numeric score
   description: string
   candleCount: number
+  factors?: ReliabilityFactors  // Optional detailed breakdown
+}
+
+export interface ReliabilityFactors {
+  baseScore: number        // Pattern's inherent reliability
+  volumeBonus: number      // +10-25 if volume spike
+  trendBonus: number       // +10-15 if with trend
+  locationBonus: number    // +5-15 if near key level
+  formationQuality: number // +5-10 for clean formation
 }
 
 // ==========================================
@@ -75,6 +85,177 @@ function getTrend(candles: CandleData[], lookback: number = 5): 'up' | 'down' | 
   if (change > 0.02) return 'up'
   if (change < -0.02) return 'down'
   return 'flat'
+}
+
+// ==========================================
+// RELIABILITY SCORING
+// ==========================================
+
+/**
+ * Base reliability scores for each pattern type
+ */
+const PATTERN_BASE_SCORES: Record<string, number> = {
+  'Doji': 35,
+  'Hammer': 55,
+  'Hanging Man': 50,
+  'Shooting Star': 55,
+  'Inverted Hammer': 45,
+  'Bullish Engulfing': 70,
+  'Bearish Engulfing': 70,
+  'Piercing Line': 60,
+  'Dark Cloud Cover': 60,
+  'Bullish Harami': 40,
+  'Bearish Harami': 40,
+  'Inside Bar': 35,
+  'Outside Up': 55,
+  'Outside Down': 55,
+  'Morning Star': 75,
+  'Evening Star': 75,
+  'Breakaway Bullish': 80,
+  'Breakaway Bearish': 80,
+}
+
+/**
+ * Calculate average volume for recent candles
+ */
+function getAverageVolume(candles: CandleData[], lookback: number = 20): number {
+  const volumeCandles = candles.slice(-lookback).filter(c => c.volume !== undefined)
+  if (volumeCandles.length === 0) return 0
+  return volumeCandles.reduce((sum, c) => sum + (c.volume || 0), 0) / volumeCandles.length
+}
+
+/**
+ * Check if current volume is a spike (significantly above average)
+ */
+function isVolumeSpike(currentVolume: number | undefined, avgVolume: number): number {
+  if (!currentVolume || avgVolume === 0) return 0
+
+  const ratio = currentVolume / avgVolume
+
+  if (ratio >= 2.5) return 25  // Extreme volume spike
+  if (ratio >= 2.0) return 20  // Strong volume spike
+  if (ratio >= 1.5) return 15  // Moderate volume spike
+  if (ratio >= 1.2) return 10  // Slight volume increase
+  return 0
+}
+
+/**
+ * Calculate trend bonus based on pattern type and current trend
+ */
+function getTrendBonus(patternType: 'bullish' | 'bearish' | 'neutral', trend: 'up' | 'down' | 'flat'): number {
+  // Reversal patterns are MORE reliable when they appear at the end of a trend
+  if (patternType === 'bullish' && trend === 'down') return 15  // Bullish at bottom
+  if (patternType === 'bearish' && trend === 'up') return 15    // Bearish at top
+  if (patternType === 'bullish' && trend === 'up') return 10    // Continuation
+  if (patternType === 'bearish' && trend === 'down') return 10  // Continuation
+  if (patternType === 'neutral') return 5                        // Neutral always some value
+  return 0  // Against trend for continuation patterns
+}
+
+/**
+ * Calculate formation quality bonus based on candle proportions
+ */
+function getFormationQualityBonus(candle: CandleData, pattern: string): number {
+  const body = getBody(candle)
+  const range = getRange(candle)
+  const upperWick = getUpperWick(candle)
+  const lowerWick = getLowerWick(candle)
+
+  if (range === 0) return 0
+
+  let score = 0
+
+  switch (pattern) {
+    case 'Hammer':
+    case 'Hanging Man':
+      // Perfect hammer: lower wick 3x+ body, minimal upper wick
+      if (lowerWick >= body * 3 && upperWick <= body * 0.1) score = 10
+      else if (lowerWick >= body * 2.5) score = 7
+      else score = 5
+      break
+
+    case 'Shooting Star':
+    case 'Inverted Hammer':
+      // Perfect shooting star: upper wick 3x+ body, minimal lower wick
+      if (upperWick >= body * 3 && lowerWick <= body * 0.1) score = 10
+      else if (upperWick >= body * 2.5) score = 7
+      else score = 5
+      break
+
+    case 'Doji':
+      // Perfect doji: body less than 5% of range
+      const bodyRatio = body / range
+      if (bodyRatio < 0.03) score = 10
+      else if (bodyRatio < 0.05) score = 7
+      else score = 5
+      break
+
+    case 'Bullish Engulfing':
+    case 'Bearish Engulfing':
+      // Large engulfing body relative to prior
+      if (body / range > 0.7) score = 10
+      else if (body / range > 0.5) score = 7
+      else score = 5
+      break
+
+    default:
+      score = 5  // Default formation quality
+  }
+
+  return score
+}
+
+/**
+ * Calculate location bonus (near round numbers, key levels)
+ */
+function getLocationBonus(price: number): number {
+  // Check if near round number (psychological level)
+  const roundness = price % 10
+  if (roundness < 0.5 || roundness > 9.5) return 15  // Near $X0.00
+  if (price % 5 < 0.25 || price % 5 > 4.75) return 10  // Near $X5.00
+  if (price % 1 < 0.1 || price % 1 > 0.9) return 5  // Near whole dollar
+
+  return 0
+}
+
+/**
+ * Calculate complete reliability score for a pattern
+ */
+function calculateReliabilityScore(
+  pattern: string,
+  patternType: 'bullish' | 'bearish' | 'neutral',
+  candle: CandleData,
+  candles: CandleData[],
+  trend: 'up' | 'down' | 'flat'
+): { score: number; factors: ReliabilityFactors } {
+  const baseScore = PATTERN_BASE_SCORES[pattern] || 50
+  const avgVolume = getAverageVolume(candles)
+  const volumeBonus = isVolumeSpike(candle.volume, avgVolume)
+  const trendBonus = getTrendBonus(patternType, trend)
+  const formationQuality = getFormationQualityBonus(candle, pattern)
+  const locationBonus = getLocationBonus(candle.close)
+
+  const totalScore = Math.min(100, baseScore + volumeBonus + trendBonus + formationQuality + locationBonus)
+
+  return {
+    score: totalScore,
+    factors: {
+      baseScore,
+      volumeBonus,
+      trendBonus,
+      locationBonus,
+      formationQuality
+    }
+  }
+}
+
+/**
+ * Convert numeric score to reliability tier
+ */
+function scoreToReliability(score: number): 'Low' | 'Medium' | 'High' {
+  if (score >= 70) return 'High'
+  if (score >= 50) return 'Medium'
+  return 'Low'
 }
 
 // ==========================================
@@ -390,6 +571,31 @@ const PATTERN_DESCRIPTIONS: Record<string, string> = {
 // MAIN DETECTION FUNCTION
 // ==========================================
 
+/**
+ * Helper function to create a pattern with reliability scoring
+ */
+function createPattern(
+  pattern: string,
+  type: 'bullish' | 'bearish' | 'neutral',
+  candle: CandleData,
+  candles: CandleData[],
+  trend: 'up' | 'down' | 'flat',
+  candleCount: number
+): DetectedPattern {
+  const { score, factors } = calculateReliabilityScore(pattern, type, candle, candles, trend)
+
+  return {
+    time: candle.time,
+    pattern,
+    type,
+    reliability: scoreToReliability(score),
+    reliabilityScore: score,
+    description: PATTERN_DESCRIPTIONS[pattern],
+    candleCount,
+    factors
+  }
+}
+
 export function detectPatterns(candles: CandleData[]): DetectedPattern[] {
   const patterns: DetectedPattern[] = []
 
@@ -406,158 +612,60 @@ export function detectPatterns(candles: CandleData[]): DetectedPattern[] {
 
     // Single-candle patterns
     if (isDoji(curr)) {
-      patterns.push({
-        time: curr.time,
-        pattern: 'Doji',
-        type: 'neutral',
-        reliability: 'Medium',
-        description: PATTERN_DESCRIPTIONS['Doji'],
-        candleCount: 1,
-      })
+      patterns.push(createPattern('Doji', 'neutral', curr, candles, trend, 1))
     }
 
     if (isHammer(curr, trend)) {
-      patterns.push({
-        time: curr.time,
-        pattern: 'Hammer',
-        type: 'bullish',
-        reliability: 'Medium',
-        description: PATTERN_DESCRIPTIONS['Hammer'],
-        candleCount: 1,
-      })
+      patterns.push(createPattern('Hammer', 'bullish', curr, candles, trend, 1))
     }
 
     if (isHangingMan(curr, trend)) {
-      patterns.push({
-        time: curr.time,
-        pattern: 'Hanging Man',
-        type: 'bearish',
-        reliability: 'Medium',
-        description: PATTERN_DESCRIPTIONS['Hanging Man'],
-        candleCount: 1,
-      })
+      patterns.push(createPattern('Hanging Man', 'bearish', curr, candles, trend, 1))
     }
 
     if (isShootingStar(curr, trend)) {
-      patterns.push({
-        time: curr.time,
-        pattern: 'Shooting Star',
-        type: 'bearish',
-        reliability: 'Medium',
-        description: PATTERN_DESCRIPTIONS['Shooting Star'],
-        candleCount: 1,
-      })
+      patterns.push(createPattern('Shooting Star', 'bearish', curr, candles, trend, 1))
     }
 
     if (isInvertedHammer(curr, trend)) {
-      patterns.push({
-        time: curr.time,
-        pattern: 'Inverted Hammer',
-        type: 'bullish',
-        reliability: 'Medium',
-        description: PATTERN_DESCRIPTIONS['Inverted Hammer'],
-        candleCount: 1,
-      })
+      patterns.push(createPattern('Inverted Hammer', 'bullish', curr, candles, trend, 1))
     }
 
     // Two-candle patterns
     if (isBullishEngulfing(prev, curr)) {
-      patterns.push({
-        time: curr.time,
-        pattern: 'Bullish Engulfing',
-        type: 'bullish',
-        reliability: 'High',
-        description: PATTERN_DESCRIPTIONS['Bullish Engulfing'],
-        candleCount: 2,
-      })
+      patterns.push(createPattern('Bullish Engulfing', 'bullish', curr, candles, trend, 2))
     }
 
     if (isBearishEngulfing(prev, curr)) {
-      patterns.push({
-        time: curr.time,
-        pattern: 'Bearish Engulfing',
-        type: 'bearish',
-        reliability: 'High',
-        description: PATTERN_DESCRIPTIONS['Bearish Engulfing'],
-        candleCount: 2,
-      })
+      patterns.push(createPattern('Bearish Engulfing', 'bearish', curr, candles, trend, 2))
     }
 
     if (isPiercingLine(prev, curr, trend)) {
-      patterns.push({
-        time: curr.time,
-        pattern: 'Piercing Line',
-        type: 'bullish',
-        reliability: 'Medium',
-        description: PATTERN_DESCRIPTIONS['Piercing Line'],
-        candleCount: 2,
-      })
+      patterns.push(createPattern('Piercing Line', 'bullish', curr, candles, trend, 2))
     }
 
     if (isDarkCloudCover(prev, curr, trend)) {
-      patterns.push({
-        time: curr.time,
-        pattern: 'Dark Cloud Cover',
-        type: 'bearish',
-        reliability: 'Medium',
-        description: PATTERN_DESCRIPTIONS['Dark Cloud Cover'],
-        candleCount: 2,
-      })
+      patterns.push(createPattern('Dark Cloud Cover', 'bearish', curr, candles, trend, 2))
     }
 
     if (isBullishHarami(prev, curr)) {
-      patterns.push({
-        time: curr.time,
-        pattern: 'Bullish Harami',
-        type: 'bullish',
-        reliability: 'Low',
-        description: PATTERN_DESCRIPTIONS['Bullish Harami'],
-        candleCount: 2,
-      })
+      patterns.push(createPattern('Bullish Harami', 'bullish', curr, candles, trend, 2))
     }
 
     if (isBearishHarami(prev, curr)) {
-      patterns.push({
-        time: curr.time,
-        pattern: 'Bearish Harami',
-        type: 'bearish',
-        reliability: 'Low',
-        description: PATTERN_DESCRIPTIONS['Bearish Harami'],
-        candleCount: 2,
-      })
+      patterns.push(createPattern('Bearish Harami', 'bearish', curr, candles, trend, 2))
     }
 
     if (isInsideBar(prev, curr)) {
-      patterns.push({
-        time: curr.time,
-        pattern: 'Inside Bar',
-        type: 'neutral',
-        reliability: 'Low',
-        description: PATTERN_DESCRIPTIONS['Inside Bar'],
-        candleCount: 2,
-      })
+      patterns.push(createPattern('Inside Bar', 'neutral', curr, candles, trend, 2))
     }
 
     if (isOutsideUp(prev, curr)) {
-      patterns.push({
-        time: curr.time,
-        pattern: 'Outside Up',
-        type: 'bullish',
-        reliability: 'Medium',
-        description: PATTERN_DESCRIPTIONS['Outside Up'],
-        candleCount: 2,
-      })
+      patterns.push(createPattern('Outside Up', 'bullish', curr, candles, trend, 2))
     }
 
     if (isOutsideDown(prev, curr)) {
-      patterns.push({
-        time: curr.time,
-        pattern: 'Outside Down',
-        type: 'bearish',
-        reliability: 'Medium',
-        description: PATTERN_DESCRIPTIONS['Outside Down'],
-        candleCount: 2,
-      })
+      patterns.push(createPattern('Outside Down', 'bearish', curr, candles, trend, 2))
     }
 
     // Three-candle patterns (need at least 3 candles)
@@ -567,25 +675,11 @@ export function detectPatterns(candles: CandleData[]): DetectedPattern[] {
       const c3 = curr
 
       if (isMorningStar(c1, c2, c3, trend)) {
-        patterns.push({
-          time: curr.time,
-          pattern: 'Morning Star',
-          type: 'bullish',
-          reliability: 'High',
-          description: PATTERN_DESCRIPTIONS['Morning Star'],
-          candleCount: 3,
-        })
+        patterns.push(createPattern('Morning Star', 'bullish', curr, candles, trend, 3))
       }
 
       if (isEveningStar(c1, c2, c3, trend)) {
-        patterns.push({
-          time: curr.time,
-          pattern: 'Evening Star',
-          type: 'bearish',
-          reliability: 'High',
-          description: PATTERN_DESCRIPTIONS['Evening Star'],
-          candleCount: 3,
-        })
+        patterns.push(createPattern('Evening Star', 'bearish', curr, candles, trend, 3))
       }
     }
 
@@ -594,25 +688,11 @@ export function detectPatterns(candles: CandleData[]): DetectedPattern[] {
       const fiveCandles = candles.slice(i - 4, i + 1)
 
       if (isBreakawayBullish(fiveCandles)) {
-        patterns.push({
-          time: curr.time,
-          pattern: 'Breakaway Bullish',
-          type: 'bullish',
-          reliability: 'High',
-          description: PATTERN_DESCRIPTIONS['Breakaway Bullish'],
-          candleCount: 5,
-        })
+        patterns.push(createPattern('Breakaway Bullish', 'bullish', curr, candles, trend, 5))
       }
 
       if (isBreakawayBearish(fiveCandles)) {
-        patterns.push({
-          time: curr.time,
-          pattern: 'Breakaway Bearish',
-          type: 'bearish',
-          reliability: 'High',
-          description: PATTERN_DESCRIPTIONS['Breakaway Bearish'],
-          candleCount: 5,
-        })
+        patterns.push(createPattern('Breakaway Bearish', 'bearish', curr, candles, trend, 5))
       }
     }
   }
@@ -638,7 +718,7 @@ export function filterPatternsByType(
 }
 
 /**
- * Filter patterns by reliability
+ * Filter patterns by reliability tier
  */
 export function filterPatternsByReliability(
   patterns: DetectedPattern[],
@@ -648,4 +728,31 @@ export function filterPatternsByReliability(
   const minLevel = reliabilityOrder[minReliability]
 
   return patterns.filter(p => reliabilityOrder[p.reliability] >= minLevel)
+}
+
+/**
+ * Filter patterns by minimum reliability score (0-100)
+ */
+export function filterPatternsByScore(
+  patterns: DetectedPattern[],
+  minScore: number
+): DetectedPattern[] {
+  return patterns.filter(p => p.reliabilityScore >= minScore)
+}
+
+/**
+ * Get score breakdown description for UI display
+ */
+export function getScoreBreakdown(pattern: DetectedPattern): string {
+  if (!pattern.factors) return `Score: ${pattern.reliabilityScore}`
+
+  const { baseScore, volumeBonus, trendBonus, locationBonus, formationQuality } = pattern.factors
+  const parts: string[] = [`Base: ${baseScore}`]
+
+  if (volumeBonus > 0) parts.push(`Volume: +${volumeBonus}`)
+  if (trendBonus > 0) parts.push(`Trend: +${trendBonus}`)
+  if (locationBonus > 0) parts.push(`Location: +${locationBonus}`)
+  if (formationQuality > 0) parts.push(`Formation: +${formationQuality}`)
+
+  return parts.join(' | ')
 }
