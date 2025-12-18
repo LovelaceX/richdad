@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { Quote, CandleData, WatchlistItem } from '../types'
 import { generateQuote, generateCandleData } from '../lib/mockData'
 import { TOP_10_TICKERS, isTop10Symbol } from '../lib/constants'
-import { getUserWatchlist, addToUserWatchlist, removeFromUserWatchlist } from '../lib/db'
+import { getUserWatchlist, addToUserWatchlist, removeFromUserWatchlist, getSettings } from '../lib/db'
 
 // Extended timeframe options: 1M, 5M, 15M, 30M, 45M, 1H, 2H, 4H, 5H, 1D, 1W
 type Timeframe = '1min' | '5min' | '15min' | '30min' | '45min' | '60min' | '120min' | '240min' | '300min' | 'daily' | 'weekly'
@@ -43,6 +43,7 @@ interface MarketState {
   setSelectedDate: (date: string) => void
   loadChartData: (symbol?: string, interval?: Timeframe) => Promise<void>
   loadUserWatchlist: () => Promise<void>  // Load from IndexedDB
+  loadSelectedMarket: () => Promise<void>  // Load selected market from settings
   addToWatchlist: (symbol: string, name?: string, sector?: string) => Promise<void>
   removeFromWatchlist: (symbol: string) => Promise<void>
   toggleChartExpanded: () => void
@@ -237,6 +238,43 @@ export const useMarketStore = create<MarketState>((set, get) => ({
     } catch (error) {
       console.error('[Market Store] Failed to load user watchlist:', error)
       set({ isWatchlistLoaded: true })  // Mark as loaded even on error
+    }
+  },
+
+  /**
+   * Load selected market from settings on app startup
+   * Also sets up listener for market-changed events
+   */
+  loadSelectedMarket: async () => {
+    try {
+      const settings = await getSettings()
+      if (settings.selectedMarket) {
+        const { etf } = settings.selectedMarket
+        console.log(`[Market Store] Loading selected market: ${etf}`)
+
+        // Update selected ticker to the market ETF
+        set({ selectedTicker: etf })
+
+        // Load chart data for the selected market
+        get().loadChartData(etf, '5min').catch(err => {
+          console.error('[Market Store] Chart load error:', err)
+        })
+      }
+
+      // Listen for market-changed events from MarketSelector
+      const handleMarketChange = (event: CustomEvent<{ market: { etf: string } }>) => {
+        const { etf } = event.detail.market
+        console.log(`[Market Store] Market changed to: ${etf}`)
+        set({ selectedTicker: etf })
+        get().loadChartData(etf, '5min').catch(err => {
+          console.error('[Market Store] Chart load error:', err)
+        })
+      }
+
+      window.addEventListener('market-changed', handleMarketChange as EventListener)
+      console.log('[Market Store] Market change listener registered')
+    } catch (error) {
+      console.error('[Market Store] Failed to load selected market:', error)
     }
   },
 

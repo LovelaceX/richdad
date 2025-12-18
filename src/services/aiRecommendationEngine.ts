@@ -143,7 +143,8 @@ export async function generateRecommendation(
 
     // Phase 6: Build prompt and send to AI
     updatePhase('ai', 'active')
-    const prompt = buildAnalysisPrompt(symbol, quote, indicators, newsHeadlines, marketRegime, recentPatterns, memoryContext)
+    const includeOptionsLanguage = aiSettings.includeOptionsLanguage ?? false
+    const prompt = buildAnalysisPrompt(symbol, quote, indicators, newsHeadlines, marketRegime, recentPatterns, memoryContext, includeOptionsLanguage)
     const aiResponse = await sendAnalysisToAI(prompt, aiSettings.provider, aiSettings.apiKey, aiSettings.model)
 
     // Record the AI call (budget tracking)
@@ -210,7 +211,8 @@ function buildAnalysisPrompt(
   newsHeadlines: string[],
   marketRegime: MarketRegime | null,
   patterns: DetectedPattern[],
-  memoryContext: string = ''
+  memoryContext: string = '',
+  includeOptionsLanguage: boolean = false
 ): string {
   const regimeSection = marketRegime
     ? formatRegimeForPrompt(marketRegime)
@@ -261,13 +263,19 @@ Based on this data AND THE MARKET REGIME, provide a trading recommendation. The 
 - In CHOPPY: Avoid directional bets entirely. Strongly favor HOLD. Wait for trend clarity.
 - In LOW_VOL_BULLISH: More aggressive targets acceptable
 - In LOW_VOL_BEARISH: Watch for reversal signals
+${includeOptionsLanguage ? `
+**OPTIONS-AWARE SUGGESTIONS:**
+When confidence is 75% or higher, include optional options strategy suggestions in the rationale:
+- For BUY recommendations: Mention "or Buy Call for leverage" as an alternative
+- For SELL recommendations: Mention "or Buy Put for downside protection" as an alternative
+- Only suggest options when conviction is high and risk/reward is clear` : ''}
 
 Respond ONLY with valid JSON in this exact format:
 
 {
   "action": "BUY" | "SELL" | "HOLD",
   "confidence": 0-100,
-  "rationale": "Brief 2-3 sentence explanation referencing market regime, candlestick patterns, and specific data points",
+  "rationale": "Brief 2-3 sentence explanation referencing market regime, candlestick patterns, and specific data points${includeOptionsLanguage ? '. Include options alternative if confidence >= 75%' : ''}",
   "priceTarget": number or null,
   "stopLoss": number or null
 }

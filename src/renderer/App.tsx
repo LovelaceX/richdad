@@ -28,16 +28,18 @@ export default function App() {
   const zoomOut = useSettingsStore(state => state.zoomOut)
   const resetZoom = useSettingsStore(state => state.resetZoom)
   const loadUserWatchlist = useMarketStore(state => state.loadUserWatchlist)
+  const loadSelectedMarket = useMarketStore(state => state.loadSelectedMarket)
   const [showWizard, setShowWizard] = useState(false)
 
-  // Initialize database and load user watchlist on mount
+  // Initialize database, load user watchlist, and selected market on mount
   useEffect(() => {
     const init = async () => {
       await initializeDatabase()
       await loadUserWatchlist()
+      await loadSelectedMarket()
     }
     init().catch(console.error)
-  }, [loadUserWatchlist])
+  }, [loadUserWatchlist, loadSelectedMarket])
 
   // Check if user needs onboarding wizard on mount
   useEffect(() => {

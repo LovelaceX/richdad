@@ -82,6 +82,13 @@ export interface UserSettings {
 
   // News Ticker
   tickerSpeed: 'slow' | 'normal' | 'fast'
+
+  // Market View Selection
+  selectedMarket?: {
+    name: string   // "S&P 500", "NASDAQ-100", etc.
+    etf: string    // "SPY", "QQQ", etc.
+    index: string  // "^GSPC", "^NDX", etc.
+  }
 }
 
 export interface NewsSource {
@@ -180,6 +187,8 @@ export interface AISettings {
   recommendationInterval?: 5 | 10 | 15  // minutes, default: 15
   confidenceThreshold?: number  // 0-100, default: 70
   aiDailyCallLimit?: number  // 5-100, default: 15 (free tier protection)
+  // Options-aware suggestions
+  includeOptionsLanguage?: boolean  // Include "Buy Call/Put" hints on high-confidence signals
 }
 
 export const AI_PROVIDERS = {
@@ -239,7 +248,8 @@ export const DEFAULT_AI_SETTINGS: AISettings = {
   model: 'gpt-4.0-turbo',
   recommendationInterval: 15,
   confidenceThreshold: 70,
-  aiDailyCallLimit: 15  // Conservative default for free tier protection
+  aiDailyCallLimit: 15,  // Conservative default for free tier protection
+  includeOptionsLanguage: false  // Off by default, can be enabled in settings
 }
 
 // Trade memory for AI learning (hybrid memory system)
@@ -440,7 +450,14 @@ export const DEFAULT_SETTINGS: UserSettings = {
   performanceMode: false,
 
   // News Ticker
-  tickerSpeed: 'normal'
+  tickerSpeed: 'normal',
+
+  // Market View Selection (default to S&P 500)
+  selectedMarket: {
+    name: 'S&P 500',
+    etf: 'SPY',
+    index: '^GSPC'
+  }
 }
 
 // Default news sources

@@ -874,6 +874,26 @@ export function Settings() {
                   )}
                 </div>
 
+                {/* Options-Aware Suggestions Toggle */}
+                <div>
+                  <h3 className="text-white text-sm font-medium mb-3">Options-Aware Suggestions</h3>
+                  <label className="flex items-center justify-between p-3 rounded-lg border border-terminal-border hover:border-gray-600 cursor-pointer">
+                    <div>
+                      <span className="text-white text-sm">Include options alternatives</span>
+                      <p className="text-gray-500 text-xs mt-1">
+                        When enabled, high-confidence recommendations include options language
+                        (e.g., "BUY or Buy Call for leverage")
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={aiSettings.includeOptionsLanguage ?? false}
+                      onChange={(e) => saveAISettings({ includeOptionsLanguage: e.target.checked })}
+                      className="w-5 h-5 accent-terminal-amber"
+                    />
+                  </label>
+                </div>
+
                 {/* AI Budget (Free Tier Protection) */}
                 <div>
                   <h3 className="text-white text-sm font-medium mb-3">AI Budget (Free Tier Protection)</h3>

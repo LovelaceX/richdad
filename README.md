@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-4.3.0-gold?style=for-the-badge" alt="Version 4.3.0"/>
+  <img src="https://img.shields.io/badge/version-4.5.0-gold?style=for-the-badge" alt="Version 4.5.0"/>
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License"/>
   <img src="https://img.shields.io/badge/tauri-2.x-blue?style=for-the-badge&logo=tauri" alt="Tauri 2.x"/>
   <img src="https://img.shields.io/badge/react-18-61DAFB?style=for-the-badge&logo=react" alt="React 18"/>
@@ -54,6 +54,20 @@ RichDad is an open-source trading research tool for individual investors who wan
 - **Configurable Settings**: Recommendation intervals and confidence thresholds
 - **Performance Tracking**: W-L-P records and export to CSV
 - **Combined Signals**: Technical indicators + news sentiment
+- **Options-Aware Mode**: Optional suggestions like "Buy Call for leverage" on high-confidence signals
+- **Market Context**: AI adapts analysis based on selected market (tech-heavy for NASDAQ, blue-chip for Dow)
+
+### Intelligence Panel
+- **News Intel**: Real-time sentiment analysis across your watchlist
+- **Breaking Alerts**: Flags news less than 1 hour old with high-impact keywords
+- **Velocity Spikes**: Detects unusual news volume for specific symbols
+- **Pattern Scanner**: Proactively scans watchlist for candlestick pattern setups
+- **Urgency Indicators**: High/Medium/Low badges based on pattern reliability + volume confirmation
+
+### Market View
+- **Index Selector**: Switch between S&P 500 (SPY), NASDAQ-100 (QQQ), Dow Jones (DIA), Russell 2000 (IWM)
+- **Synced Dashboard**: Chart and analysis adapt to selected market
+- **Multi-Window Support**: Open multiple windows (Cmd+N / Ctrl+N) with shared data
 
 ### Charts
 - **Candlestick Charts**: Powered by TradingView's Lightweight Charts library
@@ -83,6 +97,24 @@ RichDad is an open-source trading research tool for individual investors who wan
 - **CVD Mode**: Colorblind-friendly display
 - **Keyboard Shortcuts**: Navigate without a mouse
 - **Adjustable Settings**: Customize news feed speed and panel layouts
+
+### API Budget System
+- **Tier Selection**: Configure your API tier (free/paid) per provider
+- **Usage Tracking**: Real-time budget meters for all data providers
+- **Smart Fallbacks**: Automatic switch to cached data when limits reached
+- **Toast Notifications**: Alerts when approaching or hitting rate limits
+
+### Keyboard Shortcuts
+
+| Action | Mac | Windows |
+|--------|-----|---------|
+| New Window | Cmd+N | Ctrl+N |
+| Dashboard | Cmd+1 | Ctrl+1 |
+| News | Cmd+2 | Ctrl+2 |
+| Settings | Cmd+, | Ctrl+, |
+| Backtest | Cmd+3 | Ctrl+3 |
+| Trade History | Cmd+4 | Ctrl+4 |
+| Help | Cmd+? | Ctrl+? |
 
 ---
 
@@ -148,11 +180,13 @@ The app includes guided onboarding:
 
 ### 2. Get API Keys
 
-**Market Data (choose one)**:
-| Provider | Free Tier | Link |
-|----------|-----------|------|
-| Massive.com | Unlimited calls, 15-min delay | [Get Key](https://massive.com/dashboard/signup) |
-| Alpha Vantage | 25 calls/day | [Get Key](https://www.alphavantage.co/support/#api-key) |
+**Market Data (choose one or more)**:
+| Provider | Free Tier | Paid Tiers | Link |
+|----------|-----------|------------|------|
+| Polygon | 5 calls/min | Starter: 100/min, Developer: 1K/min, Advanced: Unlimited | [Get Key](https://polygon.io/dashboard/signup) |
+| TwelveData | 8 calls/min, 800/day | Basic: 30/min, Pro: 80/min | [Get Key](https://twelvedata.com/account) |
+| Alpha Vantage | 25 calls/day | Premium: Higher limits | [Get Key](https://www.alphavantage.co/support/#api-key) |
+| Finnhub | 60 calls/min | Premium: Higher limits | [Get Key](https://finnhub.io/register) |
 
 **AI Provider (choose one)**:
 | Provider | Link |

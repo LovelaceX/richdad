@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, BookOpen, Zap, BarChart3, Keyboard, HelpCircle, Shield, FileText, Mail,
-  Search, Gauge, AlertTriangle, Database, TrendingUp, Bell, Eye, Check, Calendar, ExternalLink, Bug, Sparkles
+  Search, Gauge, AlertTriangle, Database, TrendingUp, Bell, Eye, Check, Calendar, ExternalLink, Bug, Sparkles, Activity
 } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 
@@ -19,6 +19,7 @@ type Section =
   | 'watchlist'
   | 'news'
   | 'economic-calendar'
+  | 'intel-panel'
   | 'price-alerts'
   | 'chart-guide'
   | 'ai-copilot'
@@ -39,6 +40,7 @@ const sectionContent: Record<Section, { title: string; keywords: string[] }> = {
   'watchlist': { title: 'Watchlist', keywords: ['market watch', 'stocks', 'symbols', 'add', 'remove', 'track'] },
   'news': { title: 'Market News', keywords: ['headlines', 'feed', 'sentiment', 'filter', 'rss'] },
   'economic-calendar': { title: 'Economic Calendar', keywords: ['fred', 'cpi', 'jobs', 'fed', 'gdp', 'fomc', 'economic events', 'calendar'] },
+  'intel-panel': { title: 'Intelligence Panel', keywords: ['intel', 'pattern', 'scanner', 'news', 'sentiment', 'breaking', 'alerts', 'bullish', 'bearish', 'setup'] },
   'price-alerts': { title: 'Price Alerts', keywords: ['notification', 'alert', 'trigger', 'above', 'below'] },
   'chart-guide': { title: 'Chart Controls', keywords: ['candlestick', 'timeframe', 'zoom', 'pan', 'daily', 'intraday'] },
   'ai-copilot': { title: 'AI Copilot', keywords: ['openai', 'claude', 'gemini', 'grok', 'recommendation', 'chat', 'provider', 'morning briefing', 'briefing', 'thinking', 'animation', 'phases', 'finnhub', 'news'] },
@@ -71,6 +73,7 @@ export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
     { id: 'watchlist', label: 'Watchlist', icon: TrendingUp },
     { id: 'news', label: 'Market News', icon: FileText },
     { id: 'economic-calendar', label: 'Economic Calendar', icon: Calendar },
+    { id: 'intel-panel', label: 'Intelligence Panel', icon: Activity },
     { id: 'price-alerts', label: 'Price Alerts', icon: Bell },
     { id: 'chart-guide', label: 'Chart Controls', icon: BarChart3 },
     { id: 'ai-copilot', label: 'AI Copilot', icon: Zap },
@@ -122,7 +125,7 @@ export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
             <div className="flex items-center gap-3">
               <BookOpen size={22} className="text-terminal-amber" />
               <h2 className="text-white text-lg font-semibold">Reference Guide</h2>
-              <span className="text-gray-500 text-sm">v4.4.0</span>
+              <span className="text-gray-500 text-sm">v4.5.0</span>
             </div>
             <button
               onClick={onClose}
@@ -386,6 +389,68 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 with the new thinking animation that shows what the AI is processing.
               </p>
             </div>
+
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="bg-purple-500/20 text-purple-400 text-xs px-2 py-0.5 rounded">NEW</span>
+                <h3 className="text-white font-semibold">Intelligence Panel</h3>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">
+                Real-time market intelligence from automated background agents.
+              </p>
+              <ul className="text-gray-400 text-sm space-y-1">
+                <li>• <span className="text-blue-400">News Intel</span> - Sentiment analysis across watchlist</li>
+                <li>• <span className="text-purple-400">Pattern Scanner</span> - Detects candlestick patterns automatically</li>
+                <li>• Breaking news alerts and velocity spike detection</li>
+                <li>• Urgency indicators (High/Medium/Low)</li>
+              </ul>
+            </div>
+
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="bg-purple-500/20 text-purple-400 text-xs px-2 py-0.5 rounded">NEW</span>
+                <h3 className="text-white font-semibold">Universal API Budget System</h3>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">
+                Transparent API usage tracking across all providers with tier-aware limits.
+              </p>
+              <ul className="text-gray-400 text-sm space-y-1">
+                <li>• Select your tier (Free/Paid) for each provider in Settings</li>
+                <li>• Budget meter shows usage for Polygon, TwelveData, Alpha Vantage, Finnhub</li>
+                <li>• Toast notifications when limits are reached</li>
+                <li>• Automatic fallback to cached or mock data</li>
+              </ul>
+            </div>
+
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="bg-purple-500/20 text-purple-400 text-xs px-2 py-0.5 rounded">NEW</span>
+                <h3 className="text-white font-semibold">Market View Selector</h3>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">
+                Quick switch between major market indices from the top bar.
+              </p>
+              <ul className="text-gray-400 text-sm space-y-1">
+                <li>• S&P 500 (SPY), NASDAQ-100 (QQQ), Dow Jones (DIA), Russell 2000 (IWM)</li>
+                <li>• Dashboard chart updates to selected market ETF</li>
+                <li>• AI context adapts to selected market</li>
+              </ul>
+            </div>
+
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="bg-purple-500/20 text-purple-400 text-xs px-2 py-0.5 rounded">NEW</span>
+                <h3 className="text-white font-semibold">Options-Aware AI</h3>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">
+                AI recommendations can now include options trading suggestions.
+              </p>
+              <ul className="text-gray-400 text-sm space-y-1">
+                <li>• Enable in Settings → AI Copilot → Include Options Suggestions</li>
+                <li>• High-confidence BUY → "BUY (or Buy Call for leverage)"</li>
+                <li>• High-confidence SELL → "SELL (or Buy Put for protection)"</li>
+              </ul>
+            </div>
           </div>
         </div>
       )
@@ -602,6 +667,78 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               <Step><span className="text-white font-medium">Calendar Page</span> (<kbd className="bg-terminal-border px-2 py-1 rounded text-xs mx-1">Cmd+3</kbd>) - Full table with filters</Step>
               <Step><span className="text-white font-medium">Ticker</span> - Scrolling bar below news showing upcoming events</Step>
             </div>
+          </div>
+        </div>
+      )
+
+    case 'intel-panel':
+      return (
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Intelligence Panel</h2>
+            <p className="text-gray-400">Real-time market intelligence from automated agents</p>
+          </div>
+
+          {/* News Intel */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+              <span className="text-blue-400">News Intel</span>
+            </h3>
+            <p className="text-gray-300 text-sm mb-3">
+              Aggregates news sentiment across your watchlist with real-time analysis.
+            </p>
+            <ul className="text-gray-400 text-sm space-y-1">
+              <li>• <span className="text-green-400">Bullish/Bearish/Neutral</span> sentiment breakdown</li>
+              <li>• <span className="text-red-400">Breaking alerts</span> for news less than 1 hour old</li>
+              <li>• <span className="text-yellow-400">Velocity spikes</span> when a symbol gets unusual coverage</li>
+              <li>• Symbol-by-symbol sentiment overview</li>
+            </ul>
+          </div>
+
+          {/* Pattern Scanner */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+              <span className="text-purple-400">Pattern Scanner</span>
+            </h3>
+            <p className="text-gray-300 text-sm mb-3">
+              Automatically scans your watchlist for candlestick patterns every 15 minutes.
+            </p>
+            <ul className="text-gray-400 text-sm space-y-1">
+              <li>• Detects 18+ candlestick patterns (Engulfing, Hammer, Doji, etc.)</li>
+              <li>• <span className="text-green-400">Bullish</span> and <span className="text-red-400">Bearish</span> setup tabs</li>
+              <li>• Reliability scores based on historical accuracy</li>
+              <li>• Volume confirmation indicators</li>
+              <li>• Only runs during market hours</li>
+            </ul>
+          </div>
+
+          {/* Urgency Indicators */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white font-semibold mb-3">Urgency Indicators</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded bg-red-900/30 text-red-400 text-xs">High</span>
+                <span className="text-gray-300">Breaking news or high-reliability patterns detected</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded bg-yellow-900/30 text-yellow-400 text-xs">Medium</span>
+                <span className="text-gray-300">Notable sentiment shifts or moderate setups</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded bg-gray-900/30 text-gray-400 text-xs">Low</span>
+                <span className="text-gray-300">Normal market activity</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Data Freshness */}
+          <div className="bg-terminal-amber/10 border border-terminal-amber/30 rounded-lg p-4">
+            <h4 className="text-terminal-amber font-medium mb-2">Data Freshness</h4>
+            <p className="text-gray-300 text-sm">
+              The panel shows timestamps for last update. A <span className="text-yellow-400">"Cached"</span> badge
+              appears when data is stale (news: &gt;10 min, patterns: &gt;30 min). This helps you know if you're
+              viewing fresh or cached data due to API limits.
+            </p>
           </div>
         </div>
       )
@@ -958,6 +1095,31 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             </div>
           </div>
 
+          {/* Tier Selection */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-6">
+            <h3 className="text-white text-lg font-bold mb-4">API Tier Selection</h3>
+            <p className="text-gray-300 text-sm mb-4">
+              Select your subscription tier for each provider in Settings → API Keys. This adjusts rate limits accordingly.
+            </p>
+            <div className="space-y-3 text-sm">
+              <div className="flex gap-4">
+                <span className="text-terminal-amber w-28 flex-shrink-0">Polygon</span>
+                <span className="text-gray-400">Free (5/min) • Starter (100/min) • Developer (1K/min) • Advanced (∞)</span>
+              </div>
+              <div className="flex gap-4">
+                <span className="text-terminal-amber w-28 flex-shrink-0">TwelveData</span>
+                <span className="text-gray-400">Free (800/day) • Basic (5K/day) • Pro (unlimited)</span>
+              </div>
+              <div className="flex gap-4">
+                <span className="text-terminal-amber w-28 flex-shrink-0">Finnhub</span>
+                <span className="text-gray-400">Free (60/min) • Premium (300/min)</span>
+              </div>
+            </div>
+            <p className="text-gray-500 text-xs mt-4">
+              The API Budget Meter in Settings shows real-time usage across all providers.
+            </p>
+          </div>
+
           {/* AI Providers */}
           <div className="bg-terminal-bg border border-terminal-border rounded-lg p-6">
             <div className="flex items-center gap-3 mb-4">
@@ -1036,22 +1198,27 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
         <div className="space-y-8">
           <div>
             <h2 className="text-terminal-amber text-2xl font-bold mb-2">Keyboard Shortcuts</h2>
-            <p className="text-gray-400">Navigate faster with hotkeys</p>
+            <p className="text-gray-400">Navigate faster with hotkeys (Mac / Windows)</p>
           </div>
 
           <div>
             <h3 className="text-white text-lg font-semibold mb-4">Navigation</h3>
             <div className="space-y-2">
               {[
-                { key: 'Cmd+1', action: 'Dashboard' },
-                { key: 'Cmd+2', action: 'News' },
-                { key: 'Cmd+3', action: 'Settings' },
-                { key: 'Cmd+N', action: 'New Window' },
-                { key: 'Cmd+?', action: 'Reference Guide (this)' },
-              ].map(({ key, action }) => (
-                <div key={key} className="flex justify-between items-center bg-terminal-bg border border-terminal-border rounded p-3">
+                { mac: 'Cmd+1', win: 'Ctrl+1', action: 'Dashboard' },
+                { mac: 'Cmd+2', win: 'Ctrl+2', action: 'News' },
+                { mac: 'Cmd+3', win: 'Ctrl+3', action: 'Settings' },
+                { mac: 'Cmd+4', win: 'Ctrl+4', action: 'Backtest' },
+                { mac: 'Cmd+N', win: 'Ctrl+N', action: 'New Window' },
+                { mac: 'Cmd+?', win: 'Ctrl+?', action: 'Reference Guide (this)' },
+              ].map(({ mac, win, action }) => (
+                <div key={mac} className="flex justify-between items-center bg-terminal-bg border border-terminal-border rounded p-3">
                   <span className="text-gray-300">{action}</span>
-                  <kbd className="bg-terminal-border px-3 py-1 rounded text-sm">{key}</kbd>
+                  <div className="flex gap-2">
+                    <kbd className="bg-terminal-border px-2 py-1 rounded text-xs text-gray-300">{mac}</kbd>
+                    <span className="text-gray-500">/</span>
+                    <kbd className="bg-terminal-border px-2 py-1 rounded text-xs text-gray-300">{win}</kbd>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1077,13 +1244,17 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             <h3 className="text-white text-lg font-semibold mb-4">View Controls</h3>
             <div className="space-y-2">
               {[
-                { key: 'Cmd++', action: 'Zoom in' },
-                { key: 'Cmd+-', action: 'Zoom out' },
-                { key: 'Cmd+0', action: 'Reset zoom' },
-              ].map(({ key, action }) => (
-                <div key={key} className="flex justify-between items-center bg-terminal-bg border border-terminal-border rounded p-3">
+                { mac: 'Cmd++', win: 'Ctrl++', action: 'Zoom in' },
+                { mac: 'Cmd+-', win: 'Ctrl+-', action: 'Zoom out' },
+                { mac: 'Cmd+0', win: 'Ctrl+0', action: 'Reset zoom' },
+              ].map(({ mac, win, action }) => (
+                <div key={mac} className="flex justify-between items-center bg-terminal-bg border border-terminal-border rounded p-3">
                   <span className="text-gray-300">{action}</span>
-                  <kbd className="bg-terminal-border px-3 py-1 rounded text-sm">{key}</kbd>
+                  <div className="flex gap-2">
+                    <kbd className="bg-terminal-border px-2 py-1 rounded text-xs text-gray-300">{mac}</kbd>
+                    <span className="text-gray-500">/</span>
+                    <kbd className="bg-terminal-border px-2 py-1 rounded text-xs text-gray-300">{win}</kbd>
+                  </div>
                 </div>
               ))}
             </div>
