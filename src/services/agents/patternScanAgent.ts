@@ -46,7 +46,8 @@ export async function generatePatternScanReport(
     try {
       // Fetch historical data (use daily for most symbols, 5min for SPY)
       const interval = symbol === 'SPY' ? '5min' : 'daily'
-      const candles = await fetchHistoricalData(symbol, interval)
+      const historyResult = await fetchHistoricalData(symbol, interval)
+      const candles = historyResult.candles
 
       if (candles.length < 10) {
         console.warn(`[PatternScanner] Insufficient data for ${symbol}`)

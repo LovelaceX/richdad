@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, BookOpen, Zap, BarChart3, Keyboard, HelpCircle, Shield, FileText, Mail,
-  Search, Gauge, AlertTriangle, Database, TrendingUp, Bell, Eye, Check, Calendar, ExternalLink, Bug
+  Search, Gauge, AlertTriangle, Database, TrendingUp, Bell, Eye, Check, Calendar, ExternalLink, Bug, Sparkles
 } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 
@@ -14,6 +14,7 @@ interface HelpModalProps {
 
 type Section =
   | 'get-started'
+  | 'whats-new'
   | 'dashboard'
   | 'watchlist'
   | 'news'
@@ -33,6 +34,7 @@ type Section =
 
 const sectionContent: Record<Section, { title: string; keywords: string[] }> = {
   'get-started': { title: 'Get Started', keywords: ['setup', 'api key', 'configure', 'begin', 'first', 'install'] },
+  'whats-new': { title: "What's New", keywords: ['new', 'features', 'update', 'release', 'latest', 'backtest', 'macd', 'stochastic', 'indicators', 'calendar', 'briefing'] },
   'dashboard': { title: 'Dashboard', keywords: ['home', 'main', 'overview', 'layout', 'panels'] },
   'watchlist': { title: 'Watchlist', keywords: ['market watch', 'stocks', 'symbols', 'add', 'remove', 'track'] },
   'news': { title: 'Market News', keywords: ['headlines', 'feed', 'sentiment', 'filter', 'rss'] },
@@ -64,6 +66,7 @@ export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
 
   const sections: { id: Section; label: string; icon: any }[] = [
     { id: 'get-started', label: 'Get Started', icon: BookOpen },
+    { id: 'whats-new', label: "What's New", icon: Sparkles },
     { id: 'dashboard', label: 'Dashboard', icon: Eye },
     { id: 'watchlist', label: 'Watchlist', icon: TrendingUp },
     { id: 'news', label: 'Market News', icon: FileText },
@@ -293,6 +296,95 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               <Step><span className="text-white font-medium">News</span> (<kbd className="bg-terminal-border px-2 py-1 rounded text-xs mx-1">Cmd+2</kbd>): Read latest market headlines with sentiment</Step>
               <Step><span className="text-white font-medium">AI Panel</span>: Chat with your AI copilot or wait for automatic analysis</Step>
               <Step><span className="text-white font-medium">Watchlist</span>: Track your favorite stocks in real-time</Step>
+            </div>
+          </div>
+        </div>
+      )
+
+    case 'whats-new':
+      return (
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">What's New</h2>
+            <p className="text-gray-400">Latest features and improvements in RichDad</p>
+          </div>
+
+          {/* Feature List */}
+          <div className="space-y-6">
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="bg-purple-500/20 text-purple-400 text-xs px-2 py-0.5 rounded">NEW</span>
+                <h3 className="text-white font-semibold">AI Copilot Backtesting</h3>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">
+                Test AI recommendations against historical data to validate performance before live trading.
+              </p>
+              <ul className="text-gray-400 text-sm space-y-1">
+                <li>• Replay historical market conditions</li>
+                <li>• Track win rates, profit factor, Sharpe ratio</li>
+                <li>• Generate optimization suggestions</li>
+                <li>• Export results to CSV for analysis</li>
+              </ul>
+              <p className="text-gray-500 text-xs mt-3">Access: Press <kbd className="bg-terminal-border px-1.5 py-0.5 rounded">Cmd+4</kbd> or navigate to Backtest</p>
+            </div>
+
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="bg-purple-500/20 text-purple-400 text-xs px-2 py-0.5 rounded">NEW</span>
+                <h3 className="text-white font-semibold">Technical Indicator Panels</h3>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">
+                Stackable indicator panels below the main chart for advanced analysis.
+              </p>
+              <ul className="text-gray-400 text-sm space-y-1">
+                <li>• <span className="text-blue-400">MACD</span> - Momentum and trend direction</li>
+                <li>• <span className="text-green-400">Stochastic RSI</span> - Overbought/oversold signals</li>
+                <li>• Synchronized crosshair with main chart</li>
+                <li>• Toggle visibility via chart header</li>
+              </ul>
+            </div>
+
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="bg-purple-500/20 text-purple-400 text-xs px-2 py-0.5 rounded">NEW</span>
+                <h3 className="text-white font-semibold">Economic Calendar</h3>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">
+                Track major US economic events using FRED API data.
+              </p>
+              <ul className="text-gray-400 text-sm space-y-1">
+                <li>• CPI, Jobs Report, Fed Decisions, GDP releases</li>
+                <li>• Countdown timers to upcoming events</li>
+                <li>• Color-coded by market impact</li>
+              </ul>
+              <p className="text-gray-500 text-xs mt-3">Requires free FRED API key from fred.stlouisfed.org</p>
+            </div>
+
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="bg-blue-500/20 text-blue-400 text-xs px-2 py-0.5 rounded">IMPROVED</span>
+                <h3 className="text-white font-semibold">Data Source Transparency</h3>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">
+                See exactly where your chart data comes from with the new provider indicator.
+              </p>
+              <ul className="text-gray-400 text-sm space-y-1">
+                <li>• Provider badge shows data source (Polygon, TwelveData, etc.)</li>
+                <li>• Timestamp shows when data was last refreshed</li>
+                <li>• Delay indicator for free tier data (15-min)</li>
+                <li>• Hover for detailed source info</li>
+              </ul>
+            </div>
+
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="bg-blue-500/20 text-blue-400 text-xs px-2 py-0.5 rounded">IMPROVED</span>
+                <h3 className="text-white font-semibold">Morning Briefing & AI Animation</h3>
+              </div>
+              <p className="text-gray-300 text-sm">
+                Get a comprehensive market summary at market open. Watch the AI's analysis phases in real-time
+                with the new thinking animation that shows what the AI is processing.
+              </p>
             </div>
           </div>
         </div>
@@ -1151,6 +1243,65 @@ Benefits:
 
 Get a free key at finnhub.io. If not configured, the AI falls back to RSS feeds.`
             },
+            {
+              q: 'Why is my chart data delayed by 15 minutes?',
+              a: `The free tier of Polygon.io (our default data provider) has a 15-minute delay. This is standard for free market data.
+
+Options for real-time data:
+- Switch to TwelveData (free, real-time) in Settings → Data Sources
+- Upgrade to Polygon Pro ($29/mo) for real-time Polygon data
+- Use Alpha Vantage (25 calls/day, real-time)
+
+The chart header shows your current data source and whether it's delayed.`
+            },
+            {
+              q: 'How do I validate AI performance with backtesting?',
+              a: `Use the Backtest feature (Cmd+4) to test AI recommendations against historical data:
+
+1. Select a symbol and date range
+2. Set confidence threshold and position size
+3. Run backtest - the AI will analyze each historical day
+4. Review win rate, profit factor, Sharpe ratio
+5. Get optimization suggestions
+
+This helps you understand the AI's reliability before live trading. Note: Past performance doesn't guarantee future results.`
+            },
+            {
+              q: 'Can the AI learn from my past trades?',
+              a: `Coming soon! We're building a Hybrid Memory System that will:
+
+- Store outcomes of past AI recommendations
+- Find similar historical scenarios when analyzing new ones
+- Include past performance context in AI prompts
+- Track which patterns work best for you
+
+This will let the AI learn from YOUR trading patterns without requiring a local AI model.`
+            },
+            {
+              q: 'Is my data private and secure?',
+              a: `Yes! Your data stays on YOUR device:
+
+- All settings, trades, and history stored locally in IndexedDB
+- API keys encrypted and never shared
+- Only AI prompts are sent to your chosen AI provider
+- No analytics, tracking, or data collection by RichDad
+- No account required - no data leaves your machine
+
+You own your data. You can export or delete it anytime from Settings.`
+            },
+            {
+              q: 'Why use RichDad vs TradingView or NinjaTrader?',
+              a: `RichDad is different:
+
+✓ AI-Powered Analysis - Built-in AI copilot, not just charting
+✓ Free Data Options - Aggregate multiple free data providers
+✓ Desktop-Native - Fast, offline-capable, no browser tabs
+✓ You Choose Providers - Pick your own AI and data sources
+✓ No Subscription Required - Core features are free forever
+✓ Privacy-First - All data stays on your device
+
+TradingView excels at social features and broker integration. NinjaTrader is best for futures and advanced backtesting. RichDad is your AI-powered analysis companion.`
+            },
           ].map(({ q, a }, i) => (
             <div key={i} className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
               <h3 className="text-white font-semibold mb-2">{q}</h3>
@@ -1441,6 +1592,23 @@ Get a free key at finnhub.io. If not configured, the AI falls back to RSS feeds.
                 <p className="text-gray-300 text-sm"><span className="text-white font-medium">Open Source</span> - Every line auditable</p>
               </div>
             </div>
+          </div>
+
+          {/* Our Philosophy */}
+          <div className="bg-gradient-to-r from-terminal-amber/10 to-transparent border-l-2 border-terminal-amber rounded-r-lg p-5">
+            <h3 className="text-white font-semibold mb-3">Our Philosophy</h3>
+            <p className="text-gray-300 text-sm leading-relaxed">
+              RichDad is a <span className="text-terminal-amber font-medium">conduit for greatness</span>. We aggregate the best free and paid data sources,
+              AI providers, and analysis tools so you can make informed decisions.
+            </p>
+            <div className="mt-4 space-y-2 text-sm text-gray-400">
+              <p>• <span className="text-white">You choose your providers</span> - Pick free tiers or premium subscriptions</p>
+              <p>• <span className="text-white">You control your data</span> - Everything stays on your device</p>
+              <p>• <span className="text-white">You own your strategy</span> - We provide tools, you make decisions</p>
+            </div>
+            <p className="text-gray-500 text-xs mt-4 italic">
+              "Empowering retail investors with institutional-grade AI analysis."
+            </p>
           </div>
 
           <div>

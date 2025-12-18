@@ -12,6 +12,7 @@ import type { AIRecommendation, Quote, AnalysisPhase } from '../renderer/types'
 import type { CandleData } from './technicalIndicators'
 import { generateId } from '../renderer/lib/utils'
 import { canMakeAICall, recordAICall, getAIBudgetStatus } from './aiBudgetTracker'
+import { findSimilarScenarios, extractSignature, buildMemoryContext } from './memoryStore'
 
 interface RecommendationResponse {
   action: 'BUY' | 'SELL' | 'HOLD'
@@ -88,7 +89,8 @@ export async function generateRecommendation(
     // Phase 3: Fetch historical data and calculate technical indicators
     updatePhase('technicals', 'active')
     const interval = symbol === 'SPY' ? '5min' : 'daily'
-    const candles = await fetchHistoricalData(symbol, interval)
+    const historyResult = await fetchHistoricalData(symbol, interval)
+    const candles = historyResult.candles
 
     if (candles.length === 0) {
       updatePhase('technicals', 'error', 'No history')
@@ -112,6 +114,25 @@ export async function generateRecommendation(
     updatePhase('patterns', 'complete', patternLabel)
     console.log(`[AI Engine] Detected ${allPatterns.length} patterns, ${recentPatterns.length} significant`)
 
+    // Phase 4b: Query similar past scenarios (hybrid memory)
+    let memoryContext = ''
+    try {
+      const signature = extractSignature({
+        rsi: indicators.rsi14 ?? undefined,
+        macdHistogram: indicators.macd?.histogram,
+        trend: indicators.trend,
+        patterns: recentPatterns.map(p => p.pattern),
+        regime: marketRegime?.regime
+      })
+      const similarScenarios = await findSimilarScenarios(signature, 5)
+      if (similarScenarios.length > 0) {
+        memoryContext = buildMemoryContext(similarScenarios)
+        console.log(`[AI Engine] Found ${similarScenarios.length} similar past scenarios for context`)
+      }
+    } catch (error) {
+      console.warn('[AI Engine] Failed to query memory:', error)
+    }
+
     // Phase 5: Get recent news headlines
     updatePhase('news', 'active')
     const newsHeadlines = await getRecentNews(symbol)
@@ -122,7 +143,7 @@ export async function generateRecommendation(
 
     // Phase 6: Build prompt and send to AI
     updatePhase('ai', 'active')
-    const prompt = buildAnalysisPrompt(symbol, quote, indicators, newsHeadlines, marketRegime, recentPatterns)
+    const prompt = buildAnalysisPrompt(symbol, quote, indicators, newsHeadlines, marketRegime, recentPatterns, memoryContext)
     const aiResponse = await sendAnalysisToAI(prompt, aiSettings.provider, aiSettings.apiKey, aiSettings.model)
 
     // Record the AI call (budget tracking)
@@ -188,7 +209,8 @@ function buildAnalysisPrompt(
   indicators: any,
   newsHeadlines: string[],
   marketRegime: MarketRegime | null,
-  patterns: DetectedPattern[]
+  patterns: DetectedPattern[],
+  memoryContext: string = ''
 ): string {
   const regimeSection = marketRegime
     ? formatRegimeForPrompt(marketRegime)
@@ -231,7 +253,7 @@ Pattern guidance:
 
 **RECENT NEWS (Last 24 hours):**
 ${newsHeadlines.length > 0 ? newsHeadlines.map((h, i) => `${i + 1}. ${h}`).join('\n') : 'No recent news available'}
-
+${memoryContext}
 **INSTRUCTIONS:**
 Based on this data AND THE MARKET REGIME, provide a trading recommendation. The market regime is critical context:
 - In HIGH_VOL_BEARISH (Fear Mode): Be very cautious, favor HOLD or defensive positions

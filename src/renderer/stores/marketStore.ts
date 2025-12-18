@@ -7,6 +7,16 @@ import { getUserWatchlist, addToUserWatchlist, removeFromUserWatchlist } from '.
 // Extended timeframe options: 1M, 5M, 15M, 30M, 45M, 1H, 2H, 4H, 5H, 1D, 1W
 type Timeframe = '1min' | '5min' | '15min' | '30min' | '45min' | '60min' | '120min' | '240min' | '300min' | 'daily' | 'weekly'
 
+// Data source tracking for transparency
+export type DataProvider = 'polygon' | 'twelvedata' | 'alphavantage' | 'mock' | null
+
+export interface DataSource {
+  provider: DataProvider
+  lastUpdated: number | null  // Unix timestamp (ms)
+  isDelayed: boolean          // true for Polygon free tier (15-min delay)
+  cacheAge: number            // ms since last fetch
+}
+
 interface MarketState {
   // Split watchlist into two parts
   top10: WatchlistItem[]         // Static Top 10 (cannot be removed)
@@ -16,6 +26,7 @@ interface MarketState {
   selectedTicker: string
   chartData: CandleData[]
   cacheStatus: { age: number; isFresh: boolean } | null
+  dataSource: DataSource | null  // Track where chart data comes from
   timeframe: Timeframe  // Chart timeframe
   selectedDate: string  // ISO date string (YYYY-MM-DD)
   isChartExpanded: boolean  // Full-screen chart mode
@@ -26,6 +37,7 @@ interface MarketState {
   updateQuote: (symbol: string, quote: Quote) => void
   setQuotes: (quotes: Quote[]) => void
   setCacheStatus: (status: { age: number; isFresh: boolean }) => void
+  setDataSource: (source: DataSource) => void
   refreshAllQuotes: () => void
   setTimeframe: (timeframe: Timeframe) => void
   setSelectedDate: (date: string) => void
@@ -60,6 +72,8 @@ export const useMarketStore = create<MarketState>((set, get) => ({
   chartData: generateCandleData('SPY', '5min'),  // Match default timeframe
 
   cacheStatus: null,
+
+  dataSource: null,  // Will be set when chart data is fetched
 
   timeframe: '5min',  // Default to 5min for SPY
 
@@ -128,6 +142,10 @@ export const useMarketStore = create<MarketState>((set, get) => ({
     set({ cacheStatus: status })
   },
 
+  setDataSource: (source: DataSource) => {
+    set({ dataSource: source })
+  },
+
   refreshAllQuotes: () => {
     set(state => {
       const top10 = state.top10.map(item => ({
@@ -165,20 +183,34 @@ export const useMarketStore = create<MarketState>((set, get) => ({
       const { fetchHistoricalData } = await import('../../services/marketData')
 
       console.log(`[Market Store] Loading chart data for ${targetSymbol} (${targetInterval})`)
-      const candles = await fetchHistoricalData(targetSymbol, targetInterval)
+      const result = await fetchHistoricalData(targetSymbol, targetInterval)
 
+      // Update chart data and data source info
       set({
-        chartData: candles,
-        selectedTicker: targetSymbol
+        chartData: result.candles,
+        selectedTicker: targetSymbol,
+        dataSource: result.source,
+        cacheStatus: {
+          age: result.source.cacheAge,
+          isFresh: result.source.cacheAge < 300000 // Fresh if < 5 minutes
+        }
       })
 
-      console.log(`[Market Store] Chart updated with ${candles.length} candles (${targetInterval})`)
+      console.log(`[Market Store] Chart updated with ${result.candles.length} candles (${targetInterval}) from ${result.source.provider}`)
     } catch (error) {
       console.error('[Market Store] Failed to load chart data:', error)
 
       // Fallback to mock data
       const { generateCandleData } = await import('../lib/mockData')
-      set({ chartData: generateCandleData(symbol || get().selectedTicker, get().timeframe) })
+      set({
+        chartData: generateCandleData(symbol || get().selectedTicker, get().timeframe),
+        dataSource: {
+          provider: 'mock',
+          lastUpdated: Date.now(),
+          isDelayed: false,
+          cacheAge: 0
+        }
+      })
     }
   },
 

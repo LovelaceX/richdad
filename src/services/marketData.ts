@@ -2,11 +2,33 @@ import { getSettings } from '../renderer/lib/db'
 import { generateQuote } from '../renderer/lib/mockData'
 import type { Quote } from '../renderer/types'
 import type { Timeframe } from '../renderer/lib/mockData'
+import type { DataProvider, DataSource } from '../renderer/stores/marketStore'
 import { canUseAlphaVantageForMarket, canUseAlphaVantageForCharts, recordMarketCall, recordChartCall, getBudgetStatus } from './apiBudgetTracker'
 import { fetchPolygonQuotes, fetchPolygonHistorical, fetchPolygonHistoricalRange } from './polygonService'
 import { fetchTwelveDataBatchQuotes, fetchTwelveDataCandles } from './twelveDataService'
 
 const ALPHA_VANTAGE_BASE_URL = 'https://www.alphavantage.co/query'
+
+// Result type with source metadata for transparency
+export interface FetchHistoricalResult {
+  candles: any[]
+  source: DataSource
+}
+
+// Helper to create DataSource object
+function createDataSource(
+  provider: DataProvider,
+  isDelayed: boolean = false,
+  cacheAge: number = 0
+): DataSource {
+  return {
+    provider,
+    lastUpdated: Date.now(),
+    isDelayed,
+    cacheAge
+  }
+}
+
 const CACHE_DURATION_MS = 3600000 // 1 hour (3600 seconds)
 const RATE_LIMIT_DELAY_MS = 12000 // 5 calls/min = 12s between calls
 
@@ -232,11 +254,12 @@ function aggregateCandles(candles: any[], count: number): any[] {
 
 /**
  * Fetch historical OHLCV data for charts
+ * Returns candles AND source metadata for transparency
  */
 export async function fetchHistoricalData(
   symbol: string,
   interval: string = 'daily'
-): Promise<any[]> {
+): Promise<FetchHistoricalResult> {
   const settings = await getSettings()
   const provider = settings.marketDataProvider || 'polygon'
 
@@ -246,17 +269,28 @@ export async function fetchHistoricalData(
     if (!polygonKey) {
       console.warn('[Market Data] No Polygon API key configured, falling back to mock data')
       const { generateCandleData } = await import('../renderer/lib/mockData')
-      return generateCandleData(symbol, interval as Timeframe)
+      return {
+        candles: generateCandleData(symbol, interval as Timeframe),
+        source: createDataSource('mock', false, 0)
+      }
     }
     try {
       const candles = await fetchPolygonHistorical(symbol, interval, polygonKey)
-      if (candles.length > 0) return candles
+      if (candles.length > 0) {
+        return {
+          candles,
+          source: createDataSource('polygon', true, 0) // Polygon free tier is 15-min delayed
+        }
+      }
     } catch (error) {
       console.error('[Market Data] Polygon historical fetch failed:', error)
     }
     // Fallback to mock if Polygon fails
     const { generateCandleData } = await import('../renderer/lib/mockData')
-    return generateCandleData(symbol, interval as Timeframe)
+    return {
+      candles: generateCandleData(symbol, interval as Timeframe),
+      source: createDataSource('mock', false, 0)
+    }
   }
 
   // Route to TwelveData if configured
@@ -265,17 +299,28 @@ export async function fetchHistoricalData(
     if (!twelveDataKey) {
       console.warn('[Market Data] No TwelveData API key configured, falling back to mock data')
       const { generateCandleData } = await import('../renderer/lib/mockData')
-      return generateCandleData(symbol, interval as Timeframe)
+      return {
+        candles: generateCandleData(symbol, interval as Timeframe),
+        source: createDataSource('mock', false, 0)
+      }
     }
     try {
       const candles = await fetchTwelveDataCandles(symbol, interval, twelveDataKey)
-      if (candles.length > 0) return candles
+      if (candles.length > 0) {
+        return {
+          candles,
+          source: createDataSource('twelvedata', false, 0) // TwelveData is real-time
+        }
+      }
     } catch (error) {
       console.error('[Market Data] TwelveData historical fetch failed:', error)
     }
     // Fallback to mock if TwelveData fails
     const { generateCandleData } = await import('../renderer/lib/mockData')
-    return generateCandleData(symbol, interval as Timeframe)
+    return {
+      candles: generateCandleData(symbol, interval as Timeframe),
+      source: createDataSource('mock', false, 0)
+    }
   }
 
   // Alpha Vantage path below
@@ -291,7 +336,10 @@ export async function fetchHistoricalData(
 
   if (cached && cacheAge < HISTORICAL_CACHE_DURATION_MS) {
     console.log(`[Market Data] Serving ${symbol} (${interval}) chart from cache (age: ${Math.round(cacheAge / 3600000)}h)`)
-    return cached
+    return {
+      candles: cached,
+      source: createDataSource('alphavantage', false, cacheAge)
+    }
   }
 
   // Check API budget before making call
@@ -300,12 +348,18 @@ export async function fetchHistoricalData(
 
     if (cached) {
       console.log('[Market Data] Returning stale cached data (budget exhausted)')
-      return cached
+      return {
+        candles: cached,
+        source: createDataSource('alphavantage', false, cacheAge)
+      }
     }
 
     // No cache - fall back to mock
     const { generateCandleData } = await import('../renderer/lib/mockData')
-    return generateCandleData(symbol, interval as Timeframe)
+    return {
+      candles: generateCandleData(symbol, interval as Timeframe),
+      source: createDataSource('mock', false, 0)
+    }
   }
 
   const apiKey = settings.alphaVantageApiKey
@@ -313,7 +367,10 @@ export async function fetchHistoricalData(
   if (!apiKey) {
     console.warn('[Market Data] No API key configured, falling back to mock data')
     const { generateCandleData } = await import('../renderer/lib/mockData')
-    return generateCandleData(symbol, interval as Timeframe)
+    return {
+      candles: generateCandleData(symbol, interval as Timeframe),
+      source: createDataSource('mock', false, 0)
+    }
   }
 
   try {
@@ -380,7 +437,10 @@ export async function fetchHistoricalData(
     // Record API call in budget tracker
     recordChartCall()
 
-    return filtered
+    return {
+      candles: filtered,
+      source: createDataSource('alphavantage', false, 0)
+    }
 
   } catch (error) {
     console.error(`[Market Data] Historical data fetch failed for ${symbol}:`, error)
@@ -388,7 +448,10 @@ export async function fetchHistoricalData(
 
     // Fallback to mock data
     const { generateCandleData } = await import('../renderer/lib/mockData')
-    return generateCandleData(symbol, interval as Timeframe)
+    return {
+      candles: generateCandleData(symbol, interval as Timeframe),
+      source: createDataSource('mock', false, 0)
+    }
   }
 }
 

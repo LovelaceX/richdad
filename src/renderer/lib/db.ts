@@ -234,6 +234,33 @@ export const DEFAULT_AI_SETTINGS: AISettings = {
   aiDailyCallLimit: 15  // Conservative default for free tier protection
 }
 
+// Trade memory for AI learning (hybrid memory system)
+export interface TradeMemory {
+  id?: number
+  timestamp: number
+  symbol: string
+  signature: {
+    rsiBucket: 'oversold' | 'neutral' | 'overbought'
+    macdSignal: 'bullish' | 'bearish' | 'neutral'
+    trend: 'up' | 'down' | 'sideways'
+    patterns: string[]
+    regime: string
+  }
+  recommendation: {
+    action: 'BUY' | 'SELL' | 'HOLD'
+    confidence: number
+    rationale: string
+    priceTarget?: number
+    stopLoss?: number
+  }
+  outcome: {
+    result: 'win' | 'loss' | 'pending'
+    profitPercent: number
+    daysHeld: number
+    exitPrice?: number
+  }
+}
+
 // Database class
 class DadAppDatabase extends Dexie {
   tradeDecisions!: EntityTable<TradeDecision, 'id'>
@@ -246,6 +273,7 @@ class DadAppDatabase extends Dexie {
   aiSettings!: EntityTable<AISettings, 'id'>
   watchlist!: EntityTable<WatchlistEntry, 'id'>
   holdings!: EntityTable<Holding, 'id'>
+  tradeMemories!: EntityTable<TradeMemory, 'id'>
 
   constructor() {
     super('dadapp')
@@ -328,6 +356,21 @@ class DadAppDatabase extends Dexie {
       aiSettings: '++id, provider',
       watchlist: '++id, symbol, addedAt',
       holdings: '++id, symbol, entryDate'
+    })
+
+    // v7: Add tradeMemories table for hybrid memory system (AI learning)
+    this.version(7).stores({
+      tradeDecisions: '++id, timestamp, symbol, action, decision, source, outcome',
+      userSettings: '++id',
+      newsSources: '++id, name, type, enabled, category',
+      proTraders: '++id, handle, source, enabled',
+      priceAlerts: '++id, symbol, triggered, createdAt',
+      pnlEntries: '++id, date',
+      userProfile: '++id',
+      aiSettings: '++id, provider',
+      watchlist: '++id, symbol, addedAt',
+      holdings: '++id, symbol, entryDate',
+      tradeMemories: '++id, timestamp, symbol, outcome.result'
     })
   }
 }

@@ -894,6 +894,46 @@ export function Settings() {
               <h2 className="text-white text-lg font-medium mb-1">API Keys</h2>
               <p className="text-gray-500 text-sm mb-6">Configure API keys for market data and news sources</p>
 
+              {/* What You're Getting Summary */}
+              <div className="bg-gradient-to-r from-terminal-amber/10 to-terminal-bg border border-terminal-amber/30 rounded-lg p-4 mb-6">
+                <h3 className="text-terminal-amber text-sm font-medium mb-3 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4" />
+                  Your Current Setup
+                </h3>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <span className="text-gray-500">Market Data:</span>
+                    <span className="text-white ml-2">
+                      {settings?.marketDataProvider === 'polygon' ? 'Polygon (15-min delayed)' :
+                       settings?.marketDataProvider === 'twelvedata' ? 'TwelveData (real-time)' :
+                       settings?.marketDataProvider === 'alphavantage' ? 'Alpha Vantage (real-time)' :
+                       'Polygon (default)'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">AI Analysis:</span>
+                    <span className="text-white ml-2">
+                      {aiSettings?.provider ? aiSettings.provider.charAt(0).toUpperCase() + aiSettings.provider.slice(1) : 'Not configured'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">News:</span>
+                    <span className="text-white ml-2">
+                      {settings?.finnhubApiKey ? 'Finnhub (real-time)' : 'RSS feeds'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Calendar:</span>
+                    <span className="text-white ml-2">
+                      {settings?.fredApiKey ? 'FRED (120/min)' : 'Not configured'}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-gray-500 text-[10px] mt-3 pt-2 border-t border-terminal-border/50">
+                  Estimated monthly cost: <span className="text-terminal-up font-medium">$0</span> (all free tiers)
+                </p>
+              </div>
+
               {/* Launch Setup Wizard Button */}
               <button
                 onClick={() => setShowOnboardingWizard(true)}

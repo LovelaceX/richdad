@@ -4,12 +4,13 @@ import { analyzeSentiment, initializeSentimentAnalysis } from './sentimentServic
 import { generateRecommendation, isMarketOpen } from './aiRecommendationEngine'
 import { outcomeTracker } from './outcomeTracker'
 import { generateNewsIntelReport } from './agents/newsIntelAgent'
+import { generatePatternScanReport } from './agents/patternScanAgent'
 import { db } from '../renderer/lib/db'
 import type { Quote, NewsItem, AnalysisPhase } from '../renderer/types'
-import type { NewsIntelReport } from './agents/types'
+import type { NewsIntelReport, PatternScanReport } from './agents/types'
 
 export type DataUpdateCallback = (data: {
-  type: 'market' | 'news' | 'sentiment' | 'ai_recommendation' | 'alert_triggered' | 'ai_analysis_start' | 'ai_phase_update' | 'ai_analysis_end' | 'news_intel'
+  type: 'market' | 'news' | 'sentiment' | 'ai_recommendation' | 'alert_triggered' | 'ai_analysis_start' | 'ai_phase_update' | 'ai_analysis_end' | 'news_intel' | 'pattern_scan'
   payload: any
 }) => void
 
@@ -18,6 +19,7 @@ class DataHeartbeatService {
   private newsInterval: NodeJS.Timeout | null = null
   private sentimentInterval: NodeJS.Timeout | null = null
   private aiAnalysisInterval: NodeJS.Timeout | null = null
+  private patternScanInterval: NodeJS.Timeout | null = null
   private callbacks: Set<DataUpdateCallback> = new Set()
   private isRunning = false
   private cachedNews: NewsItem[] = []
@@ -29,6 +31,7 @@ class DataHeartbeatService {
   private NEWS_UPDATE_INTERVAL = 300000 // 5 minutes
   private SENTIMENT_UPDATE_INTERVAL = 600000 // 10 minutes
   private AI_ANALYSIS_INTERVAL = 900000 // Default 15 minutes (overridden in start() from AISettings)
+  private PATTERN_SCAN_INTERVAL = 900000 // 15 minutes (pattern scanner runs during market hours)
 
   /**
    * Start the heartbeat service
@@ -58,6 +61,7 @@ class DataHeartbeatService {
     this.startNewsUpdates()
     this.startSentimentUpdates()
     this.startAIAnalysis()
+    this.startPatternScanning()
 
     console.log('[Heartbeat] Service started')
   }
@@ -75,11 +79,13 @@ class DataHeartbeatService {
     if (this.newsInterval) clearInterval(this.newsInterval)
     if (this.sentimentInterval) clearInterval(this.sentimentInterval)
     if (this.aiAnalysisInterval) clearInterval(this.aiAnalysisInterval)
+    if (this.patternScanInterval) clearInterval(this.patternScanInterval)
 
     this.marketInterval = null
     this.newsInterval = null
     this.sentimentInterval = null
     this.aiAnalysisInterval = null
+    this.patternScanInterval = null
 
     // Stop outcome tracker
     outcomeTracker.stop()
@@ -294,6 +300,46 @@ class DataHeartbeatService {
   }
 
   /**
+   * Generate pattern scan report for watchlist symbols
+   */
+  async updatePatternScan(): Promise<PatternScanReport | null> {
+    try {
+      // Only run during market hours
+      if (!isMarketOpen()) {
+        console.log('[Heartbeat] Market closed, skipping pattern scan')
+        return null
+      }
+
+      // Get watchlist symbols from market store
+      const { useMarketStore } = await import('../renderer/stores/marketStore')
+      const watchlist = useMarketStore.getState().watchlist
+      const symbols = watchlist.map(item => item.symbol)
+
+      if (symbols.length === 0) {
+        console.log('[Heartbeat] No watchlist symbols to scan')
+        return null
+      }
+
+      console.log(`[Heartbeat] Running pattern scan for ${symbols.length} symbols`)
+
+      const report = await generatePatternScanReport(symbols)
+
+      console.log(`[Heartbeat] Pattern scan complete: ${report.setupsFound.length} setups found (${report.summary.highReliabilityCount} high reliability)`)
+
+      this.notifyCallbacks({
+        type: 'pattern_scan',
+        payload: report
+      })
+
+      return report
+
+    } catch (error) {
+      console.error('[Heartbeat] Pattern scan failed:', error)
+      return null
+    }
+  }
+
+  /**
    * Manually trigger sentiment analysis
    */
   async updateSentiment(): Promise<void> {
@@ -475,6 +521,18 @@ class DataHeartbeatService {
     this.aiAnalysisInterval = setInterval(() => {
       this.updateAIAnalysis('SPY')
     }, this.AI_ANALYSIS_INTERVAL)
+  }
+
+  private startPatternScanning(): void {
+    // Initial pattern scan (after market data loads)
+    setTimeout(() => {
+      this.updatePatternScan()
+    }, 15000) // Wait 15s for market data to load
+
+    // Periodic updates (every 15 minutes during market hours)
+    this.patternScanInterval = setInterval(() => {
+      this.updatePatternScan()
+    }, this.PATTERN_SCAN_INTERVAL)
   }
 
   private notifyCallbacks(data: Parameters<DataUpdateCallback>[0]): void {

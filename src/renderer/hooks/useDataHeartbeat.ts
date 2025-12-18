@@ -6,7 +6,7 @@ import { useAIStore } from '../stores/aiStore'
 import { useIntelStore } from '../stores/intelStore'
 import { playSound } from '../lib/sounds'
 import type { DataUpdateCallback } from '../../services/DataHeartbeatService'
-import type { NewsIntelReport } from '../../services/agents/types'
+import type { NewsIntelReport, PatternScanReport } from '../../services/agents/types'
 
 /**
  * Hook to initialize and manage the data heartbeat service
@@ -26,6 +26,7 @@ export function useDataHeartbeat() {
 
   // Intel store actions
   const setNewsIntel = useIntelStore(state => state.setNewsIntel)
+  const setPatternScan = useIntelStore(state => state.setPatternScan)
   const activeBreakingAlerts = useIntelStore(state => state.activeBreakingAlerts)
 
   // Track previous alert count to detect new alerts
@@ -122,6 +123,16 @@ export function useDataHeartbeat() {
         prevAlertCountRef.current = activeBreakingAlerts.length
 
         setNewsIntel(report)
+        break
+      }
+
+      case 'pattern_scan': {
+        // Pattern scan report generated
+        const report = payload as PatternScanReport
+        console.log('[useDataHeartbeat] Pattern scan report received:', report)
+        console.log(`[useDataHeartbeat] Found ${report.setupsFound.length} setups (${report.summary.highReliabilityCount} high reliability)`)
+
+        setPatternScan(report)
         break
       }
     }

@@ -137,7 +137,8 @@ export async function calculateMarketRegime(forceRefresh = false): Promise<Marke
     const vixValue = vixQuote?.price ?? 18 // Default to neutral if unavailable
 
     // Fetch SPY historical for MA(50)
-    const spyCandles = await fetchHistoricalData('SPY', 'daily')
+    const spyHistoryResult = await fetchHistoricalData('SPY', 'daily')
+    const spyCandles = spyHistoryResult.candles
     const spyMA50 = calculateSMA(spyCandles, 50)
 
     // Determine regime

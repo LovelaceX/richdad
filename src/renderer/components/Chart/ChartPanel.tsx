@@ -16,14 +16,6 @@ import { usePatternStore } from '../../stores/patternStore'
 import { useDrawingStore } from '../../stores/drawingStore'
 import { formatPrice, formatChange, formatPercent, getColorClass } from '../../lib/utils'
 
-// Helper to format cache age
-function formatCacheAge(ms: number): string {
-  const mins = Math.floor(ms / 60000)
-  if (mins < 1) return 'Just now'
-  if (mins < 60) return `${mins}m ago`
-  return `${Math.floor(mins / 60)}h ago`
-}
-
 export function ChartPanel() {
   const selectedTicker = useMarketStore(state => state.selectedTicker)
   const watchlist = useMarketStore(state => state.watchlist)
@@ -34,6 +26,7 @@ export function ChartPanel() {
   const isChartExpanded = useMarketStore(state => state.isChartExpanded)
   const toggleChartExpanded = useMarketStore(state => state.toggleChartExpanded)
   const cacheStatus = useMarketStore(state => state.cacheStatus)
+  const dataSource = useMarketStore(state => state.dataSource)
   const loadChartData = useMarketStore(state => state.loadChartData)
   const currentRecommendation = useAIStore(state => state.currentRecommendation)
 
@@ -266,15 +259,39 @@ export function ChartPanel() {
             })} EST
           </div>
 
-          {/* Data Freshness Indicator */}
-          <div className="flex items-center gap-1.5 border-l border-terminal-border pl-3">
+          {/* Data Source & Freshness Indicator */}
+          <div className="flex items-center gap-1.5 border-l border-terminal-border pl-3 group relative">
+            {/* Provider Badge */}
+            <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded uppercase ${
+              dataSource?.provider === 'polygon' ? 'bg-purple-500/20 text-purple-400' :
+              dataSource?.provider === 'twelvedata' ? 'bg-blue-500/20 text-blue-400' :
+              dataSource?.provider === 'alphavantage' ? 'bg-green-500/20 text-green-400' :
+              dataSource?.provider === 'mock' ? 'bg-gray-500/20 text-gray-400' :
+              'bg-gray-500/20 text-gray-400'
+            }`}>
+              {dataSource?.provider || 'Loading'}
+              {dataSource?.isDelayed && ' (15m)'}
+            </span>
+
+            {/* Freshness dot */}
             <div
               className={`w-2 h-2 rounded-full ${cacheStatus?.isFresh ? 'bg-green-400' : 'bg-amber-400'}`}
               title={cacheStatus?.isFresh ? 'Data is fresh' : 'Data may be stale'}
             />
+
+            {/* Last updated time */}
             <span className="text-gray-500 text-[10px] tabular-nums">
-              {cacheStatus?.age ? formatCacheAge(cacheStatus.age) : 'Loading...'}
+              {dataSource?.lastUpdated
+                ? new Date(dataSource.lastUpdated).toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true
+                  })
+                : 'Loading...'}
             </span>
+
+            {/* Refresh button */}
             <button
               onClick={handleRefreshChart}
               disabled={isRefreshing}
@@ -283,6 +300,24 @@ export function ChartPanel() {
             >
               <RefreshCw className={`w-3 h-3 text-gray-500 ${isRefreshing ? 'animate-spin' : ''}`} />
             </button>
+
+            {/* Tooltip on hover */}
+            <div className="absolute top-full left-0 mt-1 px-2 py-1.5 bg-terminal-bg border border-terminal-border rounded text-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
+              <div className="text-gray-400">
+                <span className="text-gray-500">Provider:</span> {dataSource?.provider === 'polygon' ? 'Polygon.io (Free Tier)' :
+                  dataSource?.provider === 'twelvedata' ? 'TwelveData' :
+                  dataSource?.provider === 'alphavantage' ? 'Alpha Vantage' :
+                  dataSource?.provider === 'mock' ? 'Mock Data' : 'Unknown'}
+              </div>
+              <div className="text-gray-400">
+                <span className="text-gray-500">Data Type:</span> {dataSource?.isDelayed ? '15-min delayed' : 'Real-time'}
+              </div>
+              {dataSource?.lastUpdated && (
+                <div className="text-gray-400">
+                  <span className="text-gray-500">Updated:</span> {new Date(dataSource.lastUpdated).toLocaleTimeString()}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Timeframe Selector */}
