@@ -497,7 +497,7 @@ We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md)
 
 ## License
 
-**MIT License** - Copyright (c) 2024 LovelaceX
+**MIT License** - Copyright (c) 2025 LovelaceX
 
 See [LICENSE](./LICENSE) for full text.
 
