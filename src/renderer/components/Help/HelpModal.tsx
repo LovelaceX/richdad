@@ -1064,6 +1064,61 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             </div>
           </div>
 
+          {/* Market Indices & Data Accuracy */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <TrendingUp size={20} className="text-terminal-amber" />
+              <h3 className="text-white text-lg font-semibold">Market Indices Available</h3>
+            </div>
+            <p className="text-gray-400 text-sm mb-4">
+              Use the Market Selector dropdown (next to logo) to switch between these indices:
+            </p>
+            <div className="space-y-2 mb-6">
+              <div className="flex gap-4 py-2 border-b border-terminal-border">
+                <span className="text-terminal-amber w-24 flex-shrink-0 font-medium">SPY</span>
+                <span className="text-white w-20">S&P 500</span>
+                <span className="text-gray-400 text-sm">500 largest US companies - broad market benchmark</span>
+              </div>
+              <div className="flex gap-4 py-2 border-b border-terminal-border">
+                <span className="text-terminal-amber w-24 flex-shrink-0 font-medium">QQQ</span>
+                <span className="text-white w-20">NASDAQ</span>
+                <span className="text-gray-400 text-sm">100 largest non-financial NASDAQ stocks - tech-heavy</span>
+              </div>
+              <div className="flex gap-4 py-2 border-b border-terminal-border">
+                <span className="text-terminal-amber w-24 flex-shrink-0 font-medium">DIA</span>
+                <span className="text-white w-20">Dow Jones</span>
+                <span className="text-gray-400 text-sm">30 blue-chip industrial companies - oldest index</span>
+              </div>
+              <div className="flex gap-4 py-2">
+                <span className="text-terminal-amber w-24 flex-shrink-0 font-medium">IWM</span>
+                <span className="text-white w-20">Russell</span>
+                <span className="text-gray-400 text-sm">2000 small-cap stocks - small company performance</span>
+              </div>
+            </div>
+
+            <h4 className="text-white font-medium mb-3">Data Accuracy</h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-start gap-2">
+                <Check size={14} className="text-terminal-up mt-0.5 flex-shrink-0" />
+                <span className="text-gray-300">All providers pull from official NYSE/NASDAQ exchange feeds</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <Check size={14} className="text-terminal-up mt-0.5 flex-shrink-0" />
+                <span className="text-gray-300">Same data used by Bloomberg, Yahoo Finance, and brokers</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <Check size={14} className="text-terminal-up mt-0.5 flex-shrink-0" />
+                <span className="text-gray-300">ETF prices match what you'd see on any trading platform</span>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-terminal-border">
+              <p className="text-gray-500 text-xs">
+                <span className="text-terminal-amber">Free tier timing:</span> Polygon has 15-min delay. TwelveData, Alpha Vantage, and Finnhub provide real-time data but with call limits.
+              </p>
+            </div>
+          </div>
+
           {/* Automatic Fallback System */}
           <div className="bg-terminal-amber/10 border border-terminal-amber/30 rounded-lg p-6">
             <h3 className="text-terminal-amber text-lg font-bold mb-4 flex items-center gap-2">
