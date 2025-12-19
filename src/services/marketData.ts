@@ -568,15 +568,33 @@ function aggregateCandles(candles: CandleData[], count: number): CandleData[] {
 }
 
 /**
+ * Options for fetchHistoricalData
+ */
+interface FetchHistoricalOptions {
+  /** AbortSignal for request cancellation */
+  signal?: AbortSignal
+}
+
+/**
  * Fetch historical OHLCV data for charts
  * Returns candles AND source metadata for transparency
  *
  * DEDUPLICATION: If an identical request is already in flight, returns the same promise
+ * CANCELLATION: Pass options.signal to abort in-flight requests
  */
 export async function fetchHistoricalData(
   symbol: string,
-  interval: string = 'daily'
+  interval: string = 'daily',
+  options?: FetchHistoricalOptions
 ): Promise<FetchHistoricalResult> {
+  // Check if already aborted before starting
+  if (options?.signal?.aborted) {
+    return {
+      candles: [],
+      source: createDataSource(null, false, 0)
+    }
+  }
+
   // Create cache key for deduplication
   const dedupeKey = createHistoricalCacheKey(symbol, interval)
 
@@ -588,7 +606,7 @@ export async function fetchHistoricalData(
   }
 
   // Create new request and track it
-  const request = fetchHistoricalDataInternal(symbol, interval).finally(() => {
+  const request = fetchHistoricalDataInternal(symbol, interval, options).finally(() => {
     pendingHistoricalRequests.delete(dedupeKey)
   })
 
@@ -602,8 +620,15 @@ export async function fetchHistoricalData(
  */
 async function fetchHistoricalDataInternal(
   symbol: string,
-  interval: string = 'daily'
+  interval: string = 'daily',
+  options?: FetchHistoricalOptions
 ): Promise<FetchHistoricalResult> {
+  // Check abort signal periodically during long operations
+  const checkAborted = () => {
+    if (options?.signal?.aborted) {
+      throw new DOMException('Request was aborted', 'AbortError')
+    }
+  }
   const settings = await getSettings()
   const provider = settings.marketDataProvider || 'polygon'
 
@@ -637,6 +662,7 @@ async function fetchHistoricalDataInternal(
     }
 
     try {
+      checkAborted() // Check before API call
       recordPolygonCall()
       const candles = await withRetry(() => fetchPolygonHistorical(symbol, interval, polygonKey))
       if (candles.length > 0) {
@@ -689,6 +715,7 @@ async function fetchHistoricalDataInternal(
     }
 
     try {
+      checkAborted() // Check before API call
       recordTwelveDataCall()
       const candles = await withRetry(() => fetchTwelveDataCandles(symbol, interval, twelveDataKey))
       if (candles.length > 0) {

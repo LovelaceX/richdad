@@ -6,6 +6,9 @@ import { getUserWatchlist, addToUserWatchlist, removeFromUserWatchlist, getSetti
 // Track chart load requests to prevent stale data from race conditions
 let chartLoadSequence = 0
 
+// AbortController for cancelling in-flight chart data requests
+let chartLoadController: AbortController | null = null
+
 // Store market-changed listener reference for proper cleanup
 let marketChangedHandler: ((e: Event) => void) | null = null
 
@@ -167,6 +170,13 @@ export const useMarketStore = create<MarketState>((set, get) => ({
   },
 
   loadChartData: async (symbol?: string, interval?: Timeframe) => {
+    // Cancel any previous in-flight request
+    if (chartLoadController) {
+      chartLoadController.abort()
+    }
+    chartLoadController = new AbortController()
+    const signal = chartLoadController.signal
+
     // Increment sequence to track this request
     const currentSequence = ++chartLoadSequence
 
@@ -178,7 +188,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
       // Import marketData service
       const { fetchHistoricalData } = await import('../../services/marketData')
 
-      const result = await fetchHistoricalData(targetSymbol, targetInterval)
+      const result = await fetchHistoricalData(targetSymbol, targetInterval, { signal })
 
       // Check if this request is still the latest (prevent stale data from race conditions)
       if (currentSequence !== chartLoadSequence) {
@@ -196,6 +206,11 @@ export const useMarketStore = create<MarketState>((set, get) => ({
         }
       })
     } catch (error) {
+      // Silently ignore abort errors - they're expected when user changes ticker rapidly
+      if (error instanceof Error && error.name === 'AbortError') {
+        return
+      }
+
       // Only update state if this is still the latest request
       if (currentSequence !== chartLoadSequence) return
 

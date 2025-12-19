@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-5.0.0-gold?style=for-the-badge" alt="Version 5.0.0"/>
+  <img src="https://img.shields.io/badge/version-5.1.0-gold?style=for-the-badge" alt="Version 5.1.0"/>
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License"/>
   <img src="https://img.shields.io/badge/tauri-2.x-blue?style=for-the-badge&logo=tauri" alt="Tauri 2.x"/>
   <img src="https://img.shields.io/badge/react-18-61DAFB?style=for-the-badge&logo=react" alt="React 18"/>
@@ -342,6 +342,24 @@ See [LICENSE](./LICENSE) for full text.
 ---
 
 ## Changelog
+
+### v5.1.0 - UX Polish Sprint
+
+**New Components**
+- Added reusable `LoadingState`, `ErrorState`, `EmptyState` components for consistent UX feedback
+- Added `FreshnessBadge` component for data age visualization
+
+**Data Freshness Badges**
+- Watchlist items now show freshness indicator (green/yellow/red dot)
+- Hover tooltip displays "Updated Xm ago" for each price
+- Thresholds: Fresh (<5m), Stale (5-15m), Very stale (>15m)
+
+**Request Cancellation**
+- Added AbortController support to chart data fetching
+- Rapid ticker switching now cancels previous in-flight requests
+- Reduces wasted API calls and prevents stale data bugs
+
+---
 
 ### v5.0.0 - Code Quality & Type Safety
 

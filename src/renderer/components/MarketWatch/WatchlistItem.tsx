@@ -3,6 +3,7 @@ import { X } from 'lucide-react'
 import type { WatchlistItem as WatchlistItemType } from '../../types'
 import { formatPrice, formatChange, formatPercent, getColorClass } from '../../lib/utils'
 import { useMarketStore } from '../../stores/marketStore'
+import { FreshnessBadge } from '../common'
 
 interface WatchlistItemProps {
   item: WatchlistItemType
@@ -52,6 +53,15 @@ export const WatchlistItem = memo(function WatchlistItem({ item, isSelected, onC
       <span className={`text-right tabular-nums w-12 flex-shrink-0 text-xs ${colorClass}`}>
         {quote ? formatPercent(quote.changePercent) : '—'}
       </span>
+
+      {/* Data freshness indicator */}
+      {quote && (
+        <FreshnessBadge
+          isFresh={quote.isFresh}
+          cacheAge={quote.cacheAge}
+          className="ml-2 flex-shrink-0"
+        />
+      )}
 
       {/* Spacer */}
       <div className="flex-1" />

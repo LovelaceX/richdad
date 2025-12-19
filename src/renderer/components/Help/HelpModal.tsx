@@ -125,7 +125,7 @@ export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
             <div className="flex items-center gap-3">
               <BookOpen size={22} className="text-terminal-amber" />
               <h2 className="text-white text-lg font-semibold">Reference Guide</h2>
-              <span className="text-gray-500 text-sm">v5.0.0</span>
+              <span className="text-gray-500 text-sm">v5.1.0</span>
             </div>
             <button
               onClick={onClose}
@@ -314,22 +314,39 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
 
           {/* Feature List */}
           <div className="space-y-6">
-            {/* v5.0.0 */}
+            {/* v5.1.0 */}
             <div className="bg-terminal-bg border border-green-500/30 rounded-lg p-5">
               <div className="flex items-center gap-2 mb-3">
-                <span className="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded">v5.0.0</span>
+                <span className="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded">v5.1.0</span>
+                <h3 className="text-white font-semibold">UX Polish Sprint</h3>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">
+                User experience improvements with data freshness visibility and reusable components.
+              </p>
+              <ul className="text-gray-400 text-sm space-y-1">
+                <li>• Data freshness badges on watchlist items (green/yellow/red indicators)</li>
+                <li>• Hover tooltips showing "Updated Xm ago" for each price</li>
+                <li>• Request cancellation for rapid ticker switching</li>
+                <li>• Reusable LoadingState, ErrorState, EmptyState components</li>
+                <li>• Reduced wasted API calls during fast navigation</li>
+              </ul>
+            </div>
+
+            {/* v5.0.0 */}
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="bg-blue-500/20 text-blue-400 text-xs px-2 py-0.5 rounded">v5.0.0</span>
                 <h3 className="text-white font-semibold">Code Quality & Reliability</h3>
               </div>
               <p className="text-gray-300 text-sm mb-3">
                 Major reliability improvements with type safety enhancements and bug fixes.
               </p>
               <ul className="text-gray-400 text-sm space-y-1">
-                <li>• Fixed race condition in chart loading (rapid ticker changes handled correctly)</li>
+                <li>• Fixed race condition in chart loading</li>
                 <li>• Added VTI, SMH, VXX to market indices selector</li>
                 <li>• Dynamic Top 10 holdings based on selected market index</li>
                 <li>• Type-safe event system (12 discriminated union types)</li>
                 <li>• Better error handling with crash isolation</li>
-                <li>• Memory leak fixes in event listeners</li>
               </ul>
             </div>
 
@@ -1769,8 +1786,8 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
           </div>
 
           <div className="bg-terminal-bg border border-terminal-amber/30 rounded-lg p-6 text-center">
-            <h3 className="text-terminal-amber text-3xl font-bold">RichDad v5.0.0</h3>
-            <p className="text-gray-500 text-sm mt-2">Type Safety • Reliability Fixes • More Market Indices</p>
+            <h3 className="text-terminal-amber text-3xl font-bold">RichDad v5.1.0</h3>
+            <p className="text-gray-500 text-sm mt-2">UX Polish • Data Freshness Badges • Request Cancellation</p>
           </div>
 
           {/* Why RichDad - Bloomberg Comparison */}
