@@ -125,7 +125,7 @@ export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
             <div className="flex items-center gap-3">
               <BookOpen size={22} className="text-terminal-amber" />
               <h2 className="text-white text-lg font-semibold">Reference Guide</h2>
-              <span className="text-gray-500 text-sm">v4.5.0</span>
+              <span className="text-gray-500 text-sm">v4.4.0</span>
             </div>
             <button
               onClick={onClose}

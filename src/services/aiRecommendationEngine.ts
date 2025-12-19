@@ -409,11 +409,14 @@ ${regimeSection}
 **TECHNICAL INDICATORS:**
 ${indicators.rsi14 ? `- RSI (14): ${indicators.rsi14} ${indicators.rsi14 > 70 ? '(Overbought)' : indicators.rsi14 < 30 ? '(Oversold)' : '(Neutral)'}` : '- RSI: N/A'}
 ${indicators.macd ? `- MACD: ${indicators.macd.histogram > 0 ? 'Bullish' : 'Bearish'} (Value: ${indicators.macd.value}, Signal: ${indicators.macd.signal})` : '- MACD: N/A'}
+${indicators.bollingerBands ? `- Bollinger Bands: Upper $${indicators.bollingerBands.upper}, Middle $${indicators.bollingerBands.middle}, Lower $${indicators.bollingerBands.lower} (%B: ${indicators.bollingerBands.percentB}${indicators.bollingerBands.percentB > 1 ? ' - Above upper band' : indicators.bollingerBands.percentB < 0 ? ' - Below lower band' : ''})` : ''}
+${indicators.atr14 ? `- ATR (14): $${indicators.atr14} (volatility measure for stop-loss sizing)` : ''}
 ${indicators.ma20 ? `- MA(20): $${indicators.ma20}` : ''}
 ${indicators.ma50 ? `- MA(50): $${indicators.ma50}` : ''}
 ${indicators.ma200 ? `- MA(200): $${indicators.ma200}` : ''}
 - Trend: ${indicators.trend}
 - Momentum: ${indicators.momentum}
+${indicators.volatility ? `- Volatility: ${indicators.volatility}` : ''}
 
 **RECENT CANDLESTICK PATTERNS:**
 ${patternSection}
@@ -454,8 +457,10 @@ Respond ONLY with valid JSON in this exact format:
 Rules:
 - confidence should be 0-100 (whole number)
 - priceTarget and stopLoss are optional but recommended for BUY/SELL
-- rationale MUST reference the market regime, any significant candlestick patterns, AND specific technical data (RSI, MACD, news, etc.)
-- In high volatility regimes, recommend tighter stops and lower position sizes
+- When ATR is available, use it for stop-loss sizing: stopLoss = current price - (2 × ATR) for BUY, current price + (2 × ATR) for SELL
+- When Bollinger Bands show %B < 0.2 (near lower band), this supports BUY signals; %B > 0.8 (near upper band) supports SELL signals
+- rationale MUST reference the market regime, any significant candlestick patterns, AND specific technical data (RSI, MACD, Bollinger Bands, etc.)
+- In high volatility regimes or when volatility is "high", recommend tighter stops and lower position sizes
 - Be honest about uncertainty - lower confidence if data is mixed or regime is risky
 
 Respond with ONLY the JSON object, no additional text.`
@@ -856,11 +861,14 @@ ${regimeSection}
 **TECHNICAL INDICATORS:**
 ${indicators.rsi14 ? `- RSI (14): ${indicators.rsi14} ${indicators.rsi14 > 70 ? '(Overbought)' : indicators.rsi14 < 30 ? '(Oversold)' : '(Neutral)'}` : '- RSI: N/A'}
 ${indicators.macd ? `- MACD: ${indicators.macd.histogram > 0 ? 'Bullish' : 'Bearish'} (Value: ${indicators.macd.value?.toFixed(2)}, Signal: ${indicators.macd.signal?.toFixed(2)})` : '- MACD: N/A'}
+${indicators.bollingerBands ? `- Bollinger Bands: Upper $${indicators.bollingerBands.upper}, Middle $${indicators.bollingerBands.middle}, Lower $${indicators.bollingerBands.lower} (%B: ${indicators.bollingerBands.percentB})` : ''}
+${indicators.atr14 ? `- ATR (14): $${indicators.atr14}` : ''}
 ${indicators.ma20 ? `- MA(20): $${indicators.ma20.toFixed(2)}` : ''}
 ${indicators.ma50 ? `- MA(50): $${indicators.ma50.toFixed(2)}` : ''}
 ${indicators.ma200 ? `- MA(200): $${indicators.ma200.toFixed(2)}` : ''}
 - Trend: ${indicators.trend || 'Unknown'}
 - Momentum: ${indicators.momentum || 'Unknown'}
+${indicators.volatility ? `- Volatility: ${indicators.volatility}` : ''}
 
 **CANDLESTICK PATTERNS:**
 ${patternSection}

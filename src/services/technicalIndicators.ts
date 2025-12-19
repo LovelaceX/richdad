@@ -13,8 +13,19 @@ export interface TechnicalIndicators {
   ma20: number | null
   ma50: number | null
   ma200: number | null
+  bollingerBands: BollingerBands | null
+  atr14: number | null
   trend: 'bullish' | 'bearish' | 'neutral'
   momentum: 'strong' | 'moderate' | 'weak'
+  volatility: 'high' | 'normal' | 'low'
+}
+
+export interface BollingerBands {
+  upper: number   // Upper band (SMA + 2 * StdDev)
+  middle: number  // Middle band (20-period SMA)
+  lower: number   // Lower band (SMA - 2 * StdDev)
+  width: number   // Band width as percentage ((upper - lower) / middle)
+  percentB: number // %B: Where price is within bands (0 = lower, 1 = upper)
 }
 
 export interface CandleData {
@@ -44,6 +55,18 @@ export interface StochRSIResult {
 }
 
 export interface RSISeriesResult {
+  time: number
+  value: number
+}
+
+export interface BollingerBandsSeriesResult {
+  time: number
+  upper: number
+  middle: number
+  lower: number
+}
+
+export interface ATRSeriesResult {
   time: number
   value: number
 }
@@ -168,6 +191,104 @@ export function calculateSMA(candles: CandleData[], period: number): number | nu
 }
 
 /**
+ * Calculate Bollinger Bands
+ * Standard: 20-period SMA with 2 standard deviations
+ *
+ * Upper Band = SMA + (2 × Standard Deviation)
+ * Middle Band = 20-period SMA
+ * Lower Band = SMA - (2 × Standard Deviation)
+ * %B = (Price - Lower Band) / (Upper Band - Lower Band)
+ */
+export function calculateBollingerBands(
+  candles: CandleData[],
+  period: number = 20,
+  stdDevMultiplier: number = 2
+): BollingerBands | null {
+  if (candles.length < period) return null
+
+  const closes = candles.slice(-period).map(c => c.close)
+  const currentPrice = candles[candles.length - 1].close
+
+  // Calculate SMA (middle band)
+  const sma = closes.reduce((a, b) => a + b, 0) / period
+
+  // Calculate Standard Deviation
+  const squaredDiffs = closes.map(price => Math.pow(price - sma, 2))
+  const avgSquaredDiff = squaredDiffs.reduce((a, b) => a + b, 0) / period
+  const stdDev = Math.sqrt(avgSquaredDiff)
+
+  // Calculate bands
+  const upper = sma + (stdDevMultiplier * stdDev)
+  const lower = sma - (stdDevMultiplier * stdDev)
+
+  // Calculate band width as percentage
+  const width = ((upper - lower) / sma) * 100
+
+  // Calculate %B (where price is within bands)
+  // 0 = at lower band, 1 = at upper band, 0.5 = at middle
+  const percentB = upper !== lower ? (currentPrice - lower) / (upper - lower) : 0.5
+
+  return {
+    upper: Math.round(upper * 100) / 100,
+    middle: Math.round(sma * 100) / 100,
+    lower: Math.round(lower * 100) / 100,
+    width: Math.round(width * 100) / 100,
+    percentB: Math.round(percentB * 100) / 100
+  }
+}
+
+/**
+ * Calculate ATR (Average True Range)
+ * Measures volatility by decomposing the entire range of an asset price
+ *
+ * True Range = max of:
+ *   - Current High - Current Low
+ *   - |Current High - Previous Close|
+ *   - |Current Low - Previous Close|
+ *
+ * ATR = Wilder's Smoothed Average of True Range
+ */
+export function calculateATR(candles: CandleData[], period: number = 14): number | null {
+  if (candles.length < period + 1) return null
+
+  // Calculate True Range for each candle
+  const trueRanges: number[] = []
+  for (let i = 1; i < candles.length; i++) {
+    const current = candles[i]
+    const prevClose = candles[i - 1].close
+
+    const highLow = current.high - current.low
+    const highPrevClose = Math.abs(current.high - prevClose)
+    const lowPrevClose = Math.abs(current.low - prevClose)
+
+    const tr = Math.max(highLow, highPrevClose, lowPrevClose)
+    trueRanges.push(tr)
+  }
+
+  // Use Wilder's smoothing (same as RSI)
+  // First ATR is simple average of first 'period' true ranges
+  let atr = trueRanges.slice(0, period).reduce((a, b) => a + b, 0) / period
+
+  // Subsequent values use smoothing
+  for (let i = period; i < trueRanges.length; i++) {
+    atr = ((atr * (period - 1)) + trueRanges[i]) / period
+  }
+
+  return Math.round(atr * 100) / 100
+}
+
+/**
+ * Calculate ATR as a percentage of price (useful for comparing across stocks)
+ */
+export function calculateATRPercent(candles: CandleData[], period: number = 14): number | null {
+  const atr = calculateATR(candles, period)
+  if (atr === null) return null
+
+  const currentPrice = candles[candles.length - 1].close
+  return Math.round((atr / currentPrice) * 10000) / 100 // Returns as percentage
+}
+
+/**
  * Calculate all technical indicators
  */
 export function calculateIndicators(candles: CandleData[]): TechnicalIndicators {
@@ -176,6 +297,8 @@ export function calculateIndicators(candles: CandleData[]): TechnicalIndicators 
   const ma20 = calculateSMA(candles, 20)
   const ma50 = calculateSMA(candles, 50)
   const ma200 = calculateSMA(candles, 200)
+  const bollingerBands = calculateBollingerBands(candles, 20, 2)
+  const atr14 = calculateATR(candles, 14)
 
   // Determine trend based on moving averages
   let trend: 'bullish' | 'bearish' | 'neutral' = 'neutral'
@@ -199,14 +322,39 @@ export function calculateIndicators(candles: CandleData[]): TechnicalIndicators 
     }
   }
 
+  // Determine volatility based on Bollinger Band width and ATR
+  // Band width > 4% or ATR% > 3% = high volatility
+  // Band width < 2% or ATR% < 1% = low volatility
+  let volatility: 'high' | 'normal' | 'low' = 'normal'
+  if (bollingerBands) {
+    if (bollingerBands.width > 4) {
+      volatility = 'high'
+    } else if (bollingerBands.width < 2) {
+      volatility = 'low'
+    }
+  }
+  // ATR% can override if significantly different
+  if (atr14 && candles.length > 0) {
+    const currentPrice = candles[candles.length - 1].close
+    const atrPercent = (atr14 / currentPrice) * 100
+    if (atrPercent > 3) {
+      volatility = 'high'
+    } else if (atrPercent < 1 && volatility !== 'high') {
+      volatility = 'low'
+    }
+  }
+
   return {
     rsi14,
     macd,
     ma20,
     ma50,
     ma200,
+    bollingerBands,
+    atr14,
     trend,
-    momentum
+    momentum,
+    volatility
   }
 }
 
@@ -226,12 +374,27 @@ export function getIndicatorSummary(indicators: TechnicalIndicators): string {
     parts.push(`MACD: ${macdStatus} (${indicators.macd.value})`)
   }
 
+  if (indicators.bollingerBands) {
+    const bb = indicators.bollingerBands
+    let bbStatus = 'Middle'
+    if (bb.percentB > 1) bbStatus = 'Above Upper'
+    else if (bb.percentB < 0) bbStatus = 'Below Lower'
+    else if (bb.percentB > 0.8) bbStatus = 'Near Upper'
+    else if (bb.percentB < 0.2) bbStatus = 'Near Lower'
+    parts.push(`BB: ${bbStatus} (%B: ${bb.percentB})`)
+  }
+
+  if (indicators.atr14) {
+    parts.push(`ATR: $${indicators.atr14}`)
+  }
+
   if (indicators.ma20 && indicators.ma50) {
     parts.push(`MA20: $${indicators.ma20}, MA50: $${indicators.ma50}`)
   }
 
   parts.push(`Trend: ${indicators.trend}`)
   parts.push(`Momentum: ${indicators.momentum}`)
+  parts.push(`Volatility: ${indicators.volatility}`)
 
   return parts.join(' | ')
 }
@@ -457,4 +620,182 @@ export function calculateStochRSISeries(
   }
 
   return results
+}
+
+/**
+ * Calculate Bollinger Bands series for charting
+ * Returns upper, middle, and lower bands for each candle
+ */
+export function calculateBollingerBandsSeries(
+  candles: CandleData[],
+  period: number = 20,
+  stdDevMultiplier: number = 2
+): BollingerBandsSeriesResult[] {
+  if (candles.length < period) return []
+
+  const results: BollingerBandsSeriesResult[] = []
+
+  for (let i = period - 1; i < candles.length; i++) {
+    // Get the window of closes for this point
+    const windowCandles = candles.slice(i - period + 1, i + 1)
+    const closes = windowCandles.map(c => c.close)
+
+    // Calculate SMA (middle band)
+    const sma = closes.reduce((a, b) => a + b, 0) / period
+
+    // Calculate Standard Deviation
+    const squaredDiffs = closes.map(price => Math.pow(price - sma, 2))
+    const avgSquaredDiff = squaredDiffs.reduce((a, b) => a + b, 0) / period
+    const stdDev = Math.sqrt(avgSquaredDiff)
+
+    // Calculate bands
+    const upper = sma + (stdDevMultiplier * stdDev)
+    const lower = sma - (stdDevMultiplier * stdDev)
+
+    results.push({
+      time: candles[i].time,
+      upper: Math.round(upper * 100) / 100,
+      middle: Math.round(sma * 100) / 100,
+      lower: Math.round(lower * 100) / 100
+    })
+  }
+
+  return results
+}
+
+/**
+ * Calculate ATR series for charting
+ * Returns ATR value for each candle (after warmup period)
+ */
+export function calculateATRSeries(
+  candles: CandleData[],
+  period: number = 14
+): ATRSeriesResult[] {
+  if (candles.length < period + 1) return []
+
+  const results: ATRSeriesResult[] = []
+
+  // Calculate True Range for each candle
+  const trueRanges: number[] = []
+  for (let i = 1; i < candles.length; i++) {
+    const current = candles[i]
+    const prevClose = candles[i - 1].close
+
+    const highLow = current.high - current.low
+    const highPrevClose = Math.abs(current.high - prevClose)
+    const lowPrevClose = Math.abs(current.low - prevClose)
+
+    const tr = Math.max(highLow, highPrevClose, lowPrevClose)
+    trueRanges.push(tr)
+  }
+
+  // First ATR is simple average of first 'period' true ranges
+  let atr = trueRanges.slice(0, period).reduce((a, b) => a + b, 0) / period
+
+  // Add first ATR value
+  results.push({
+    time: candles[period].time,
+    value: Math.round(atr * 100) / 100
+  })
+
+  // Calculate subsequent ATR values using Wilder's smoothing
+  for (let i = period; i < trueRanges.length; i++) {
+    atr = ((atr * (period - 1)) + trueRanges[i]) / period
+    results.push({
+      time: candles[i + 1].time,
+      value: Math.round(atr * 100) / 100
+    })
+  }
+
+  return results
+}
+
+/**
+ * Get Bollinger Band signals for trading
+ * Returns actionable signals based on band position
+ */
+export function getBollingerSignals(bb: BollingerBands): {
+  signal: 'buy' | 'sell' | 'hold'
+  strength: 'strong' | 'moderate' | 'weak'
+  reason: string
+} {
+  // Price below lower band - potential mean reversion buy
+  if (bb.percentB < 0) {
+    return {
+      signal: 'buy',
+      strength: bb.percentB < -0.1 ? 'strong' : 'moderate',
+      reason: `Price below lower band (%B: ${bb.percentB}) - oversold condition`
+    }
+  }
+
+  // Price above upper band - potential mean reversion sell
+  if (bb.percentB > 1) {
+    return {
+      signal: 'sell',
+      strength: bb.percentB > 1.1 ? 'strong' : 'moderate',
+      reason: `Price above upper band (%B: ${bb.percentB}) - overbought condition`
+    }
+  }
+
+  // Near lower band - early buy signal
+  if (bb.percentB < 0.2) {
+    return {
+      signal: 'buy',
+      strength: 'weak',
+      reason: `Price near lower band (%B: ${bb.percentB}) - approaching oversold`
+    }
+  }
+
+  // Near upper band - early sell signal
+  if (bb.percentB > 0.8) {
+    return {
+      signal: 'sell',
+      strength: 'weak',
+      reason: `Price near upper band (%B: ${bb.percentB}) - approaching overbought`
+    }
+  }
+
+  return {
+    signal: 'hold',
+    strength: 'weak',
+    reason: `Price within bands (%B: ${bb.percentB}) - no clear signal`
+  }
+}
+
+/**
+ * Get volatility-based position sizing using ATR
+ * Returns suggested position size multiplier based on current volatility
+ */
+export function getATRPositionMultiplier(
+  atr: number,
+  currentPrice: number,
+  baseVolatility: number = 2 // Expected "normal" ATR%
+): number {
+  const atrPercent = (atr / currentPrice) * 100
+
+  // Higher volatility = smaller position
+  // Lower volatility = larger position (but capped)
+  const ratio = baseVolatility / atrPercent
+
+  // Clamp between 0.5x and 1.5x normal position size
+  return Math.min(1.5, Math.max(0.5, ratio))
+}
+
+/**
+ * Calculate ATR-based stop loss level
+ * Returns suggested stop loss price based on ATR multiplier
+ */
+export function calculateATRStopLoss(
+  currentPrice: number,
+  atr: number,
+  multiplier: number = 2,
+  direction: 'long' | 'short' = 'long'
+): number {
+  const stopDistance = atr * multiplier
+
+  if (direction === 'long') {
+    return Math.round((currentPrice - stopDistance) * 100) / 100
+  } else {
+    return Math.round((currentPrice + stopDistance) * 100) / 100
+  }
 }

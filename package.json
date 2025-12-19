@@ -1,7 +1,7 @@
 {
   "name": "richdad-tauri",
   "private": false,
-  "version": "4.3.0",
+  "version": "4.4.0",
   "type": "module",
   "description": "Bloomberg Terminal-style trading co-pilot with AI-powered analysis",
   "author": "LovelaceX",

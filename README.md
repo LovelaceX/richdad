@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-4.5.0-gold?style=for-the-badge" alt="Version 4.5.0"/>
+  <img src="https://img.shields.io/badge/version-4.4.0-gold?style=for-the-badge" alt="Version 4.4.0"/>
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License"/>
   <img src="https://img.shields.io/badge/tauri-2.x-blue?style=for-the-badge&logo=tauri" alt="Tauri 2.x"/>
   <img src="https://img.shields.io/badge/react-18-61DAFB?style=for-the-badge&logo=react" alt="React 18"/>
@@ -338,6 +338,32 @@ Contributions are welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelin
 **MIT License** - Copyright (c) 2025 LovelaceX
 
 See [LICENSE](./LICENSE) for full text.
+
+---
+
+## Changelog
+
+### v4.4.0 - Reliability & Performance
+
+**Error Handling**
+- Added top-level ErrorBoundary to prevent crashes from taking down the app
+- AI calls now have 30-second timeout with automatic cancellation
+- AI responses validated with schema checking to prevent malformed data crashes
+
+**Network Resilience**
+- Added retry logic with exponential backoff (3 attempts, 1-10s delays)
+- Smart retry skipping for rate limit and auth errors (no point retrying)
+- Graceful fallback chain: API → Cache → Mock data
+
+**Performance**
+- Added React.memo to frequently rendered components (NavBar, PatternDiagram, WatchlistItem)
+- Memoized expensive selectors in ChartPanel to reduce re-renders
+- Fixed memory leak in DataHeartbeatService event listeners
+- Fixed event listener leak in market store initialization
+
+**Memory Management**
+- AI message history now capped at 100 messages to prevent unbounded growth
+- Improved cleanup of stale data in background services
 
 ---
 
