@@ -9,12 +9,13 @@ export function WatchlistGrid() {
 
   return (
     <div className="text-xs">
-      {/* Header */}
-      <div className="grid grid-cols-4 gap-1 px-3 py-2 border-b border-terminal-border text-gray-500 font-semibold sticky top-0 bg-terminal-panel">
-        <span>Symbol</span>
-        <span className="text-right">Price</span>
-        <span className="text-right">Chg</span>
-        <span className="text-right">%</span>
+      {/* Header - matches WatchlistItem flex layout */}
+      <div className="flex items-center px-3 py-2 border-b border-terminal-border text-gray-500 font-semibold sticky top-0 bg-terminal-panel">
+        <span className="w-12 flex-shrink-0">Symbol</span>
+        <span className="text-right w-14 flex-shrink-0">Price</span>
+        <span className="text-right w-12 flex-shrink-0">Chg</span>
+        <span className="text-right w-12 flex-shrink-0">%</span>
+        <div className="flex-1" />
       </div>
 
       {/* Top 10 Section */}

@@ -114,6 +114,11 @@ export function ChartPanel() {
           <div className="border-l border-terminal-border pl-3">
             <MarketRegimeIndicator compact />
           </div>
+
+          {/* Market Index Selector - moved here to be next to regime indicator */}
+          <div className="border-l border-terminal-border pl-3">
+            <MarketSelector />
+          </div>
         </div>
 
         {/* Controls - can shrink/scroll */}
@@ -131,11 +136,6 @@ export function ChartPanel() {
               </span>
             </div>
           )}
-
-          {/* Market Index Selector */}
-          <div className="border-l border-terminal-border pl-3">
-            <MarketSelector />
-          </div>
 
           {/* Quick Buy/Sell Buttons */}
           <QuickTradeButtons />
