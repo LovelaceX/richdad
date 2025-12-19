@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-4.4.0-gold?style=for-the-badge" alt="Version 4.4.0"/>
+  <img src="https://img.shields.io/badge/version-5.0.0-gold?style=for-the-badge" alt="Version 5.0.0"/>
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License"/>
   <img src="https://img.shields.io/badge/tauri-2.x-blue?style=for-the-badge&logo=tauri" alt="Tauri 2.x"/>
   <img src="https://img.shields.io/badge/react-18-61DAFB?style=for-the-badge&logo=react" alt="React 18"/>
@@ -342,6 +342,32 @@ See [LICENSE](./LICENSE) for full text.
 ---
 
 ## Changelog
+
+### v5.0.0 - Code Quality & Type Safety
+
+**Type Safety Improvements**
+- Replaced `any` payload in DataHeartbeatService with discriminated union (12 typed event types)
+- Added `CacheStatus` type export for proper type checking
+- Improved worker error handling with typed listener sets
+
+**Bug Fixes**
+- Fixed race condition in chart loading (rapid ticker changes no longer show stale data)
+- Fixed event listener accumulation in market store (proper cleanup on HMR)
+- Fixed division by zero in backtest results (NaN/Infinity guards)
+- Fixed sentiment worker error handler overwrite (concurrent requests now handled correctly)
+- Added error state tracking in DataHeartbeat hook
+
+**Code Cleanup**
+- Deleted 4 duplicate backup files
+- Removed commented-out code in TopBar
+- Added ErrorBoundary to AI Panel for crash isolation
+
+**Market Indices**
+- Added VTI (Total Stock Market), SMH (Semiconductors), VXX (Volatility) to market selector
+- Dynamic Top 10 holdings based on selected market index
+- Market regime moved to tooltip for cleaner UI
+
+---
 
 ### v4.4.0 - Reliability & Performance
 

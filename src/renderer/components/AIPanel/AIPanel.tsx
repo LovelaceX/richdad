@@ -7,6 +7,7 @@ import { AIPerformanceSummary } from './AIPerformanceSummary'
 import { AnalysisProgress } from './AnalysisProgress'
 import { MorningBriefingButton } from './MorningBriefingButton'
 import { IntelPanel } from '../Intel'
+import { ErrorBoundary } from '../ErrorBoundary'
 import { useAIStore } from '../../stores/aiStore'
 import { useMarketStore } from '../../stores/marketStore'
 import { useSettingsStore } from '../../stores/settingsStore'
@@ -71,15 +72,17 @@ export function AIPanel() {
 
       {/* Scrollable messages - takes remaining space */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-2">
-        {/* Analysis Progress - animated step-by-step display */}
-        <AnimatePresence>
-          {analysisProgress && (
-            <AnalysisProgress progress={analysisProgress} />
-          )}
-        </AnimatePresence>
+        <ErrorBoundary fallbackTitle="AI Panel Error">
+          {/* Analysis Progress - animated step-by-step display */}
+          <AnimatePresence>
+            {analysisProgress && (
+              <AnalysisProgress progress={analysisProgress} />
+            )}
+          </AnimatePresence>
 
-        <ActivityLog />
-        <div ref={messagesEndRef} />
+          <ActivityLog />
+          <div ref={messagesEndRef} />
+        </ErrorBoundary>
       </div>
 
       {/* Performance Summary - collapsible */}

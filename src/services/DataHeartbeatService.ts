@@ -6,32 +6,32 @@ import { outcomeTracker } from './outcomeTracker'
 import { generateNewsIntelReport } from './agents/newsIntelAgent'
 import { generatePatternScanReport } from './agents/patternScanAgent'
 import { websocketService, type WebSocketState } from './websocketService'
-import { db, getSettings } from '../renderer/lib/db'
-import type { Quote, NewsItem, AnalysisPhase } from '../renderer/types'
+import { db, getSettings, type PriceAlert } from '../renderer/lib/db'
+import type { Quote, NewsItem, AnalysisPhase, AIRecommendation } from '../renderer/types'
 import type { NewsIntelReport, PatternScanReport } from './agents/types'
+import type { CacheStatus } from './marketData'
 
-// Event types for callbacks
-// Note: Using generic payload type as events have varying structures
-// A full discriminated union would require updating all callback handlers
-export type DataUpdateType =
-  | 'market'
-  | 'news'
-  | 'sentiment'
-  | 'ai_recommendation'
-  | 'alert_triggered'
-  | 'ai_analysis_start'
-  | 'ai_phase_update'
-  | 'ai_analysis_end'
-  | 'news_intel'
-  | 'pattern_scan'
-  | 'websocket_status'
-  | 'realtime_quote'
+// Discriminated union for all data update events
+// Each event type has a specific payload structure for type safety
+export type DataUpdateEvent =
+  | { type: 'market'; payload: { quotes: Quote[]; cacheStatus: CacheStatus; isRealtime?: boolean } }
+  | { type: 'news'; payload: NewsItem[] }
+  | { type: 'sentiment'; payload: NewsItem[] }
+  | { type: 'ai_recommendation'; payload: AIRecommendation }
+  | { type: 'alert_triggered'; payload: PriceAlert & { currentPrice: number } }
+  | { type: 'ai_analysis_start'; payload: { ticker: string } }
+  | { type: 'ai_phase_update'; payload: { phaseId: string; status: AnalysisPhase['status']; result?: string } }
+  | { type: 'ai_analysis_end'; payload: { ticker: string; success: boolean; error?: string } }
+  | { type: 'news_intel'; payload: NewsIntelReport }
+  | { type: 'pattern_scan'; payload: PatternScanReport }
+  | { type: 'websocket_status'; payload: { state: WebSocketState; message?: string } }
+  | { type: 'realtime_quote'; payload: Quote }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type DataUpdateCallback = (data: {
-  type: DataUpdateType
-  payload: any  // TODO: Replace with discriminated union when refactoring hooks
-}) => void
+// Extract just the type strings for convenience
+export type DataUpdateType = DataUpdateEvent['type']
+
+// Callback type using the discriminated union
+export type DataUpdateCallback = (data: DataUpdateEvent) => void
 
 // Memory limits to prevent unbounded growth
 const MAX_CACHED_NEWS = 500

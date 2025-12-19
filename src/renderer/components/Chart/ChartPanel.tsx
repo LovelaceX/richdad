@@ -5,12 +5,11 @@ import { ProactiveAlert } from './ProactiveAlert'
 import { TimeframeSelector } from './TimeframeSelector'
 import { QuickTradeButtons } from './QuickTradeButtons'
 import { PositionSizeCalculator } from './PositionSizeCalculator'
-import { MarketRegimeIndicator } from './MarketRegimeIndicator'
 import { MarketContextPanel } from './MarketContextPanel'
 import { ChartSyncProvider } from './ChartSyncContext'
 import { IndicatorSelector } from './IndicatorSelector'
 import { IndicatorPanelGroup } from './IndicatorPanelGroup'
-import { MarketSelector } from '../TopBar/MarketSelector'
+import { MarketIndexDropdown } from '../TopBar/MarketIndexDropdown'
 import { useMarketStore } from '../../stores/marketStore'
 import { useAIStore } from '../../stores/aiStore'
 import { usePatternStore } from '../../stores/patternStore'
@@ -110,14 +109,9 @@ export function ChartPanel() {
             )}
           </div>
 
-          {/* Market Regime Indicator */}
+          {/* Unified Market Index Dropdown with Price + Regime */}
           <div className="border-l border-terminal-border pl-3">
-            <MarketRegimeIndicator compact />
-          </div>
-
-          {/* Market Index Selector - moved here to be next to regime indicator */}
-          <div className="border-l border-terminal-border pl-3">
-            <MarketSelector />
+            <MarketIndexDropdown />
           </div>
         </div>
 

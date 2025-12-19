@@ -1,6 +1,7 @@
 import type { NewsItem } from '../renderer/types'
 
 let worker: Worker | null = null
+let workerErrorListeners: Set<(error: ErrorEvent) => void> = new Set()
 
 /**
  * Initialize sentiment analysis worker
@@ -11,6 +12,13 @@ export function initializeSentimentAnalysis(): void {
     worker = new Worker(new URL('./sentimentWorker.ts', import.meta.url), {
       type: 'module'
     })
+
+    // Set up global error handler that notifies all pending requests
+    worker.onerror = (error) => {
+      console.error('[Sentiment] Worker error:', error)
+      workerErrorListeners.forEach(listener => listener(error))
+    }
+
     console.log('[Sentiment] Worker initialized, model will pre-load')
   }
 }
@@ -56,29 +64,35 @@ export async function analyzeSentiment(
   return new Promise((resolve, reject) => {
     // 10s timeout (model should already be loaded at startup)
     const timeout = setTimeout(() => {
+      cleanup()
       reject(new Error('Sentiment analysis timeout'))
     }, 10000)
 
+    // Cleanup function to remove all listeners
+    const cleanup = () => {
+      clearTimeout(timeout)
+      worker!.removeEventListener('message', handler)
+      workerErrorListeners.delete(errorHandler)
+    }
+
     const handler = (e: MessageEvent) => {
       if (e.data.type === 'result') {
-        clearTimeout(timeout)
-        worker!.removeEventListener('message', handler)
+        cleanup()
         resolve(new Map(e.data.sentiments))
       } else if (e.data.type === 'error') {
-        clearTimeout(timeout)
-        worker!.removeEventListener('message', handler)
+        cleanup()
         reject(new Error(e.data.error))
       }
     }
 
-    worker!.addEventListener('message', handler)
-
-    worker!.onerror = (error) => {
-      clearTimeout(timeout)
-      worker!.removeEventListener('message', handler)
-      console.error('[Sentiment] Worker error:', error)
+    // Register error listener for this request (notified by global onerror)
+    const errorHandler = (error: ErrorEvent) => {
+      cleanup()
       reject(error)
     }
+
+    worker!.addEventListener('message', handler)
+    workerErrorListeners.add(errorHandler)
 
     worker!.postMessage({
       headlines: headlines.map(h => ({
@@ -96,6 +110,7 @@ export function terminateSentimentAnalysis(): void {
   if (worker) {
     worker.terminate()
     worker = null
+    workerErrorListeners.clear()
     console.log('[Sentiment] Worker terminated')
   }
 }

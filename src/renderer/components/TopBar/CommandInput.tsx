@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { Search, Terminal } from 'lucide-react'
 import { useMarketStore } from '../../stores/marketStore'
-import { TICKERS } from '../../lib/mockData'
+import { POPULAR_STOCKS } from '../../lib/stockSymbols'
 
 export function CommandInput() {
   const [value, setValue] = useState('')
@@ -13,7 +13,7 @@ export function CommandInput() {
       const input = value.toUpperCase().trim()
 
       // Check if it's a ticker symbol
-      const ticker = TICKERS.find(t => t.symbol === input)
+      const ticker = POPULAR_STOCKS.find(t => t.symbol === input)
       if (ticker) {
         setSelectedTicker(ticker.symbol)
         setValue('')

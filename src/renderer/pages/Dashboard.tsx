@@ -1,7 +1,6 @@
 import { Panel, PanelGroup } from 'react-resizable-panels'
 import { MarketWatch } from '../components/MarketWatch'
 import { ChartPanel } from '../components/Chart'
-import { AIPanel } from '../components/AIPanel'
 import { NewsTicker } from '../components/NewsTicker'
 import { EconomicCalendarTicker } from '../components/EconomicCalendarTicker'
 import { MarketOverview } from '../components/MarketOverview'
@@ -10,7 +9,7 @@ import { useSettingsStore } from '../stores/settingsStore'
 
 export function Dashboard() {
   const { panelSizes, panelVisibility } = useSettingsStore()
-  const { leftPanelVisible, rightPanelVisible, chartVisible, newsTickerVisible, economicCalendarTickerVisible } = panelVisibility
+  const { leftPanelVisible, chartVisible, newsTickerVisible, economicCalendarTickerVisible } = panelVisibility
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -34,23 +33,16 @@ export function Dashboard() {
                 </Panel>
               )}
 
-              {/* Center: Chart */}
+              {/* Center: Chart - now takes up all remaining space */}
               {chartVisible && (
-                <Panel defaultSize={leftPanelVisible && rightPanelVisible ? 55 : leftPanelVisible || rightPanelVisible ? 75 : 100} minSize={30}>
+                <Panel defaultSize={leftPanelVisible ? 80 : 100} minSize={50}>
                   <ErrorBoundary fallbackTitle="Chart Error">
                     <ChartPanel />
                   </ErrorBoundary>
                 </Panel>
               )}
 
-              {/* Right: AI Copilot */}
-              {rightPanelVisible && (
-                <Panel defaultSize={panelSizes.rightPanel} minSize={15} maxSize={35}>
-                  <ErrorBoundary fallbackTitle="AI Panel Error">
-                    <AIPanel />
-                  </ErrorBoundary>
-                </Panel>
-              )}
+              {/* AI Copilot is now a modal - see AIModal in App.tsx */}
 
             </PanelGroup>
           </Panel>

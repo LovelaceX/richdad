@@ -1,10 +1,9 @@
 import { Minus, Plus, WifiOff } from 'lucide-react'
 import { CommandInput } from './CommandInput'
-// import { WindowControls } from './WindowControls' - Disabled: Using native OS window controls
 import { NavBar } from '../Navigation/NavBar'
-// MarketSelector moved to ChartPanel header
 import { APIBudgetAlert } from './APIBudgetAlert'
 import { AIBudgetAlert } from './AIBudgetAlert'
+import { AICopilotButton } from './AICopilotButton'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useNetworkStatus } from '../../hooks/useNetworkStatus'
 
@@ -61,10 +60,11 @@ export function TopBar() {
           <CommandInput />
         </div>
 
-        {/* Right: Zoom Controls */}
-        <div className="flex justify-end items-center" style={{ width: '240px' }}>
+        {/* Right: AI Copilot + Zoom Controls */}
+        <div className="flex justify-end items-center gap-2 no-drag" style={{ width: '280px' }}>
+          <AICopilotButton />
+          <div className="w-px h-5 bg-terminal-border" />
           <ZoomControls />
-          {/* <WindowControls /> - Disabled: Using native OS window controls */}
         </div>
       </div>
 

@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { dataHeartbeat } from '../../services/DataHeartbeatService'
 import { useMarketStore } from '../stores/marketStore'
 import { useNewsStore } from '../stores/newsStore'
 import { useAIStore } from '../stores/aiStore'
 import { useIntelStore } from '../stores/intelStore'
+import { useAIModalStore } from '../stores/aiModalStore'
 import { playSound } from '../lib/sounds'
 import type { DataUpdateCallback } from '../../services/DataHeartbeatService'
 import type { NewsIntelReport, PatternScanReport } from '../../services/agents/types'
@@ -28,23 +29,27 @@ export function useDataHeartbeat() {
   const setNewsIntel = useIntelStore(state => state.setNewsIntel)
   const setPatternScan = useIntelStore(state => state.setPatternScan)
 
+  // AI modal notification
+  const incrementAIUnread = useAIModalStore(state => state.incrementUnread)
+
   // Track previous alert count to detect new alerts
   const prevAlertCountRef = useRef(0)
 
-  useEffect(() => {
-    console.log('[useDataHeartbeat] Initializing heartbeat service')
+  // Track heartbeat service errors
+  const [heartbeatError, setHeartbeatError] = useState<Error | null>(null)
 
+  useEffect(() => {
     // Subscribe to data updates
     const unsubscribe = dataHeartbeat.subscribe(handleDataUpdate)
 
     // Start the heartbeat service
     dataHeartbeat.start().catch(error => {
       console.error('[useDataHeartbeat] Failed to start heartbeat:', error)
+      setHeartbeatError(error instanceof Error ? error : new Error(String(error)))
     })
 
     // Cleanup on unmount
     return () => {
-      console.log('[useDataHeartbeat] Cleaning up heartbeat service')
       unsubscribe()
       dataHeartbeat.stop()
     }
@@ -97,6 +102,7 @@ export function useDataHeartbeat() {
         // New AI-generated recommendation
         console.log('[useDataHeartbeat] Received AI recommendation:', payload)
         setRecommendation(payload)
+        incrementAIUnread()  // Show notification badge on AI Copilot button
         break
 
       case 'ai_analysis_start':
@@ -139,14 +145,14 @@ export function useDataHeartbeat() {
       case 'pattern_scan': {
         // Pattern scan report generated
         const report = payload as PatternScanReport
-        console.log('[useDataHeartbeat] Pattern scan report received:', report)
-        console.log(`[useDataHeartbeat] Found ${report.setupsFound.length} setups (${report.summary.highReliabilityCount} high reliability)`)
-
         setPatternScan(report)
         break
       }
     }
   }
+
+  // Return error state so consumers can display warning if heartbeat failed
+  return { heartbeatError }
 }
 
 /**

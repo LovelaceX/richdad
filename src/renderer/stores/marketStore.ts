@@ -1,10 +1,13 @@
 import { create } from 'zustand'
 import type { Quote, CandleData, WatchlistItem } from '../types'
-import { TOP_10_TICKERS, isTop10Symbol } from '../lib/constants'
+import { TOP_10_TICKERS, isTop10Symbol, getIndexConstituents } from '../lib/constants'
 import { getUserWatchlist, addToUserWatchlist, removeFromUserWatchlist, getSettings } from '../lib/db'
 
-// Track if market-changed listener is already registered to prevent duplicates
-let marketChangedListenerRegistered = false
+// Track chart load requests to prevent stale data from race conditions
+let chartLoadSequence = 0
+
+// Store market-changed listener reference for proper cleanup
+let marketChangedHandler: ((e: Event) => void) | null = null
 
 // Extended timeframe options: 1M, 5M, 15M, 30M, 45M, 1H, 2H, 4H, 5H, 1D, 1W
 type Timeframe = '1min' | '5min' | '15min' | '30min' | '45min' | '60min' | '120min' | '240min' | '300min' | 'daily' | 'weekly'
@@ -164,6 +167,9 @@ export const useMarketStore = create<MarketState>((set, get) => ({
   },
 
   loadChartData: async (symbol?: string, interval?: Timeframe) => {
+    // Increment sequence to track this request
+    const currentSequence = ++chartLoadSequence
+
     try {
       const state = get()
       const targetSymbol = symbol || state.selectedTicker
@@ -172,8 +178,12 @@ export const useMarketStore = create<MarketState>((set, get) => ({
       // Import marketData service
       const { fetchHistoricalData } = await import('../../services/marketData')
 
-      console.log(`[Market Store] Loading chart data for ${targetSymbol} (${targetInterval})`)
       const result = await fetchHistoricalData(targetSymbol, targetInterval)
+
+      // Check if this request is still the latest (prevent stale data from race conditions)
+      if (currentSequence !== chartLoadSequence) {
+        return // Discard stale response
+      }
 
       // Update chart data and data source info
       set({
@@ -185,9 +195,10 @@ export const useMarketStore = create<MarketState>((set, get) => ({
           isFresh: result.source.cacheAge < 300000 // Fresh if < 5 minutes
         }
       })
-
-      console.log(`[Market Store] Chart updated with ${result.candles.length} candles (${targetInterval}) from ${result.source.provider}`)
     } catch (error) {
+      // Only update state if this is still the latest request
+      if (currentSequence !== chartLoadSequence) return
+
       console.error('[Market Store] Failed to load chart data:', error)
 
       // Show empty state - no mock data
@@ -236,34 +247,55 @@ export const useMarketStore = create<MarketState>((set, get) => ({
   loadSelectedMarket: async () => {
     try {
       const settings = await getSettings()
-      if (settings.selectedMarket) {
-        const { etf } = settings.selectedMarket
-        console.log(`[Market Store] Loading selected market: ${etf}`)
+      const etf = settings.selectedMarket?.etf || 'SPY'
+      console.log(`[Market Store] Loading selected market: ${etf}`)
 
-        // Update selected ticker to the market ETF
-        set({ selectedTicker: etf })
+      // Get Top 10 constituents for the selected index
+      const constituents = getIndexConstituents(etf)
+      const newTop10: WatchlistItem[] = constituents.map(ticker => ({ ...ticker }))
 
-        // Load chart data for the selected market
-        get().loadChartData(etf, '5min').catch(err => {
+      // Update selected ticker and Top 10
+      set(state => ({
+        selectedTicker: etf,
+        top10: newTop10,
+        watchlist: combineWatchlists(newTop10, state.userWatchlist)
+      }))
+
+      // Load chart data for the selected market
+      get().loadChartData(etf, '5min').catch(err => {
+        console.error('[Market Store] Chart load error:', err)
+      })
+
+      // Remove old listener if exists (prevents accumulation during HMR or re-init)
+      if (marketChangedHandler) {
+        window.removeEventListener('market-changed', marketChangedHandler)
+      }
+
+      // Create new handler
+      const handleMarketChange = (event: Event) => {
+        const customEvent = event as CustomEvent<{ market: { etf: string } }>
+        const { etf: newEtf } = customEvent.detail.market
+
+        // Get Top 10 constituents for the new index
+        const newConstituents = getIndexConstituents(newEtf)
+        const updatedTop10: WatchlistItem[] = newConstituents.map(ticker => ({ ...ticker }))
+
+        // Update selected ticker and Top 10
+        set(state => ({
+          selectedTicker: newEtf,
+          top10: updatedTop10,
+          watchlist: combineWatchlists(updatedTop10, state.userWatchlist)
+        }))
+
+        // Load chart data for the new market
+        get().loadChartData(newEtf, '5min').catch(err => {
           console.error('[Market Store] Chart load error:', err)
         })
       }
 
-      // Listen for market-changed events from MarketSelector (only register once)
-      if (!marketChangedListenerRegistered) {
-        const handleMarketChange = (event: CustomEvent<{ market: { etf: string } }>) => {
-          const { etf } = event.detail.market
-          console.log(`[Market Store] Market changed to: ${etf}`)
-          set({ selectedTicker: etf })
-          get().loadChartData(etf, '5min').catch(err => {
-            console.error('[Market Store] Chart load error:', err)
-          })
-        }
-
-        window.addEventListener('market-changed', handleMarketChange as EventListener)
-        marketChangedListenerRegistered = true
-        console.log('[Market Store] Market change listener registered')
-      }
+      // Store reference and register listener
+      marketChangedHandler = handleMarketChange
+      window.addEventListener('market-changed', handleMarketChange)
     } catch (error) {
       console.error('[Market Store] Failed to load selected market:', error)
     }

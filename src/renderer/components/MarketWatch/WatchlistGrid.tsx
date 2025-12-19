@@ -19,17 +19,24 @@ export function WatchlistGrid() {
       </div>
 
       {/* Top 10 Section */}
-      <div>
-        {top10.map(item => (
-          <WatchlistItem
-            key={item.symbol}
-            item={item}
-            isSelected={item.symbol === selectedTicker}
-            onClick={() => setSelectedTicker(item.symbol)}
-            isTop10={true}
-          />
-        ))}
-      </div>
+      {top10.length > 0 ? (
+        <div>
+          {top10.map(item => (
+            <WatchlistItem
+              key={item.symbol}
+              item={item}
+              isSelected={item.symbol === selectedTicker}
+              onClick={() => setSelectedTicker(item.symbol)}
+              isTop10={true}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="px-3 py-4 text-center text-gray-500 text-[10px]">
+          <p>No market data</p>
+          <p className="mt-1">Settings → Data Sources</p>
+        </div>
+      )}
 
       {/* Divider - only show if user has custom watchlist items */}
       {userWatchlist.length > 0 && (

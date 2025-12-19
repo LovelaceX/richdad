@@ -1,7 +1,5 @@
 import { getSettings } from '../renderer/lib/db'
-import { generateQuote } from '../renderer/lib/mockData'
 import type { Quote } from '../renderer/types'
-import type { Timeframe } from '../renderer/lib/mockData'
 import type { DataProvider, DataSource } from '../renderer/stores/marketStore'
 import type { CandleData } from './technicalIndicators'
 import {
@@ -313,8 +311,8 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
   if (provider === 'polygon') {
     const polygonKey = settings.polygonApiKey
     if (!polygonKey) {
-      console.warn('[Market Data] No Polygon API key configured, using mock data')
-      return addCacheMetadata(symbols.map(symbol => generateQuote(symbol)), 'mock')
+      console.warn('[Market Data] No Polygon API key configured')
+      return [] // No data available - UI will show setup prompt
     }
 
     // Check budget before making API call
@@ -326,7 +324,7 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
         const filtered = cachedQuotes.filter(q => symbols.includes(q.symbol))
         return addCacheMetadata(filtered, age > CACHE_DURATION_MS ? 'stale' : 'cache', age)
       }
-      return addCacheMetadata(symbols.map(symbol => generateQuote(symbol)), 'mock')
+      return [] // Rate limited, no cache - UI will show error state
     }
 
     try {
@@ -347,50 +345,52 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
         return addCacheMetadata(filtered, 'stale', age)
       }
     }
-    // Fallback to mock if Polygon fails
-    return addCacheMetadata(symbols.map(symbol => generateQuote(symbol)), 'mock')
+    // No data available
+    return []
   }
 
   // Route to TwelveData if configured
   if (provider === 'twelvedata') {
     const twelveDataKey = settings.twelvedataApiKey
     if (!twelveDataKey) {
-      console.warn('[Market Data] No TwelveData API key configured, using mock data')
-      return addCacheMetadata(symbols.map(symbol => generateQuote(symbol)), 'mock')
+      console.warn('[Market Data] No TwelveData API key configured')
+      return [] // No data available - UI will show setup prompt
     }
 
     // Check budget before making API call
     if (!canUseTwelveData()) {
-      console.warn('[Market Data] TwelveData rate limit reached, using cached/mock data')
+      console.warn('[Market Data] TwelveData rate limit reached, using cached data')
       const age = Date.now() - cacheTimestamp
       if (cachedQuotes.length > 0 && age < CACHE_DURATION_MS * 2) {
         const filtered = cachedQuotes.filter(q => symbols.includes(q.symbol))
         return addCacheMetadata(filtered, age > CACHE_DURATION_MS ? 'stale' : 'cache', age)
       }
-      return addCacheMetadata(symbols.map(symbol => generateQuote(symbol)), 'mock')
+      return [] // Rate limited, no cache - UI will show error state
     }
 
     try {
       recordTwelveDataCall()
       const quotesMap = await withRetry(() => fetchTwelveDataBatchQuotes(symbols, twelveDataKey))
-      const quotes: Quote[] = symbols.map(symbol => {
-        const data = quotesMap.get(symbol)
-        if (data) {
-          return {
-            symbol,
-            price: data.price,
-            change: data.change,
-            changePercent: data.changePercent,
-            volume: data.volume,
-            high: data.price * 1.01, // Approximate if not available
-            low: data.price * 0.99,
-            open: data.price - data.change,
-            previousClose: data.price - data.change,
-            timestamp: Date.now()
+      const quotes: Quote[] = symbols
+        .map(symbol => {
+          const data = quotesMap.get(symbol)
+          if (data) {
+            return {
+              symbol,
+              price: data.price,
+              change: data.change,
+              changePercent: data.changePercent,
+              volume: data.volume,
+              high: data.price * 1.01, // Approximate if not available
+              low: data.price * 0.99,
+              open: data.price - data.change,
+              previousClose: data.price - data.change,
+              timestamp: Date.now()
+            }
           }
-        }
-        return generateQuote(symbol)
-      })
+          return null // No data for this symbol
+        })
+        .filter((q): q is Quote => q !== null) // Filter out nulls
       // Update cache
       cachedQuotes = quotes
       cacheTimestamp = Date.now()
@@ -404,17 +404,17 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
         return addCacheMetadata(filtered, 'stale', age)
       }
     }
-    // Fallback to mock if TwelveData fails
-    return addCacheMetadata(symbols.map(symbol => generateQuote(symbol)), 'mock')
+    // No data available
+    return []
   }
 
   // Alpha Vantage path
   const apiKey = settings.alphaVantageApiKey
 
-  // Fallback to mock if no API key
+  // No API key configured
   if (!apiKey) {
-    console.warn('[Market Data] No Alpha Vantage API key configured, using mock data')
-    return addCacheMetadata(symbols.map(symbol => generateQuote(symbol)), 'mock')
+    console.warn('[Market Data] No Alpha Vantage API key configured')
+    return [] // No data available - UI will show setup prompt
   }
 
   // Check cache first (1-hour cache)
@@ -428,11 +428,11 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
 
   // Check API budget before making call
   if (!canUseAlphaVantageForMarket()) {
-    console.warn('[Market Data] Budget exhausted, serving from stale cache or mock')
+    console.warn('[Market Data] Budget exhausted, serving from stale cache')
     if (cachedQuotes.length > 0) {
       return addCacheMetadata(cachedQuotes, 'stale', currentCacheAge)
     }
-    return addCacheMetadata(symbols.map(symbol => generateQuote(symbol)), 'mock')
+    return [] // Budget exhausted, no cache - UI will show error state
   }
 
   try {
@@ -494,25 +494,28 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
     return addCacheMetadata(quotes, 'api', 0)
 
   } catch (error) {
-    console.error('Failed to fetch live prices after retries, falling back to mock:', error)
-    // If we have stale cache, return it instead of mock
+    console.error('Failed to fetch live prices after retries:', error)
+    // If we have stale cache, return it
     if (cachedQuotes.length > 0) {
       console.warn('[Market Data] Using stale cache due to API error')
       const staleCacheAge = Date.now() - cacheTimestamp
       return addCacheMetadata(cachedQuotes, 'stale', staleCacheAge)
     }
-    return addCacheMetadata(symbols.map(symbol => generateQuote(symbol)), 'mock')
+    return [] // No data available - UI will show error state
   }
+}
+
+// Cache status type for UI display
+export type CacheStatus = {
+  age: number
+  isFresh: boolean
+  budgetRemaining: number
 }
 
 /**
  * Get cache metadata for UI display
  */
-export function getCacheStatus(): {
-  age: number
-  isFresh: boolean
-  budgetRemaining: number
-} {
+export function getCacheStatus(): CacheStatus {
   const age = Date.now() - cacheTimestamp
   const isFresh = age < CACHE_DURATION_MS
   const budget = getBudgetStatus()
@@ -608,11 +611,10 @@ async function fetchHistoricalDataInternal(
   if (provider === 'polygon') {
     const polygonKey = settings.polygonApiKey
     if (!polygonKey) {
-      console.warn('[Market Data] No Polygon API key configured, falling back to mock data')
-      const { generateCandleData } = await import('../renderer/lib/mockData')
+      console.warn('[Market Data] No Polygon API key configured')
       return {
-        candles: generateCandleData(symbol, interval as Timeframe),
-        source: createDataSource('mock', false, 0)
+        candles: [], // No data - UI will show setup prompt
+        source: createDataSource(null, false, 0)
       }
     }
 
@@ -628,10 +630,9 @@ async function fetchHistoricalDataInternal(
           source: createDataSource('polygon', true, cacheAge)
         }
       }
-      const { generateCandleData } = await import('../renderer/lib/mockData')
       return {
-        candles: generateCandleData(symbol, interval as Timeframe),
-        source: createDataSource('mock', false, 0)
+        candles: [], // Rate limited, no cache - UI will show error state
+        source: createDataSource(null, false, 0)
       }
     }
 
@@ -652,11 +653,10 @@ async function fetchHistoricalDataInternal(
     } catch (error) {
       console.error('[Market Data] Polygon historical fetch failed after retries:', error)
     }
-    // Fallback to mock if Polygon fails
-    const { generateCandleData } = await import('../renderer/lib/mockData')
+    // No data available
     return {
-      candles: generateCandleData(symbol, interval as Timeframe),
-      source: createDataSource('mock', false, 0)
+      candles: [],
+      source: createDataSource(null, false, 0)
     }
   }
 
@@ -664,11 +664,10 @@ async function fetchHistoricalDataInternal(
   if (provider === 'twelvedata') {
     const twelveDataKey = settings.twelvedataApiKey
     if (!twelveDataKey) {
-      console.warn('[Market Data] No TwelveData API key configured, falling back to mock data')
-      const { generateCandleData } = await import('../renderer/lib/mockData')
+      console.warn('[Market Data] No TwelveData API key configured')
       return {
-        candles: generateCandleData(symbol, interval as Timeframe),
-        source: createDataSource('mock', false, 0)
+        candles: [], // No data - UI will show setup prompt
+        source: createDataSource(null, false, 0)
       }
     }
 
@@ -683,10 +682,9 @@ async function fetchHistoricalDataInternal(
           source: createDataSource('twelvedata', false, cacheAge)
         }
       }
-      const { generateCandleData } = await import('../renderer/lib/mockData')
       return {
-        candles: generateCandleData(symbol, interval as Timeframe),
-        source: createDataSource('mock', false, 0)
+        candles: [], // Rate limited, no cache - UI will show error state
+        source: createDataSource(null, false, 0)
       }
     }
 
@@ -702,11 +700,10 @@ async function fetchHistoricalDataInternal(
     } catch (error) {
       console.error('[Market Data] TwelveData historical fetch failed after retries:', error)
     }
-    // Fallback to mock if TwelveData fails
-    const { generateCandleData } = await import('../renderer/lib/mockData')
+    // No data available
     return {
-      candles: generateCandleData(symbol, interval as Timeframe),
-      source: createDataSource('mock', false, 0)
+      candles: [],
+      source: createDataSource(null, false, 0)
     }
   }
 
@@ -731,7 +728,7 @@ async function fetchHistoricalDataInternal(
 
   // Check API budget before making call
   if (!canUseAlphaVantageForCharts()) {
-    console.warn('[Market Data] Chart budget exhausted, serving from stale cache or mock')
+    console.warn('[Market Data] Chart budget exhausted, serving from stale cache')
 
     if (cached) {
       console.log('[Market Data] Returning stale cached data (budget exhausted)')
@@ -741,22 +738,20 @@ async function fetchHistoricalDataInternal(
       }
     }
 
-    // No cache - fall back to mock
-    const { generateCandleData } = await import('../renderer/lib/mockData')
+    // No cache available
     return {
-      candles: generateCandleData(symbol, interval as Timeframe),
-      source: createDataSource('mock', false, 0)
+      candles: [], // Budget exhausted, no cache - UI will show error state
+      source: createDataSource(null, false, 0)
     }
   }
 
   const apiKey = settings.alphaVantageApiKey
 
   if (!apiKey) {
-    console.warn('[Market Data] No API key configured, falling back to mock data')
-    const { generateCandleData } = await import('../renderer/lib/mockData')
+    console.warn('[Market Data] No API key configured')
     return {
-      candles: generateCandleData(symbol, interval as Timeframe),
-      source: createDataSource('mock', false, 0)
+      candles: [], // No data - UI will show setup prompt
+      source: createDataSource(null, false, 0)
     }
   }
 
@@ -835,13 +830,11 @@ async function fetchHistoricalDataInternal(
 
   } catch (error) {
     console.error(`[Market Data] Historical data fetch failed for ${symbol} after retries:`, error)
-    console.log('[Market Data] Falling back to mock data')
 
-    // Fallback to mock data
-    const { generateCandleData } = await import('../renderer/lib/mockData')
+    // No data available
     return {
-      candles: generateCandleData(symbol, interval as Timeframe),
-      source: createDataSource('mock', false, 0)
+      candles: [], // API failed - UI will show error state
+      source: createDataSource(null, false, 0)
     }
   }
 }
@@ -889,9 +882,8 @@ export async function fetchHistoricalDataRange(
   // Only Polygon supports date range queries well
   const polygonKey = settings.polygonApiKey
   if (!polygonKey) {
-    console.warn('[Market Data] No Polygon API key for backtest data, using mock')
-    const { generateCandleData } = await import('../renderer/lib/mockData')
-    return generateCandleData(symbol, timeframe === '1d' ? 'daily' : timeframe as Timeframe)
+    console.warn('[Market Data] No Polygon API key for backtest data')
+    return [] // Return empty - UI should show error state
   }
 
   try {
@@ -911,10 +903,9 @@ export async function fetchHistoricalDataRange(
     console.error('[Market Data] Range fetch failed after retries:', error)
   }
 
-  // Fallback to mock
-  console.warn('[Market Data] Using mock data for backtest')
-  const { generateCandleData } = await import('../renderer/lib/mockData')
-  return generateCandleData(symbol, timeframe === '1d' ? 'daily' : timeframe as Timeframe)
+  // No fallback - return empty array so UI shows error state
+  console.warn('[Market Data] No data available for backtest')
+  return []
 }
 
 /**

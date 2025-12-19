@@ -23,10 +23,16 @@ interface BacktestResultsProps {
 export function BacktestResults({ result, insights }: BacktestResultsProps) {
   const { metrics, config } = result
 
+  // Guard against NaN/Infinity values from division by zero
+  const safeNumber = (value: number, fallback = 0): number => {
+    return Number.isFinite(value) ? value : fallback
+  }
+
   // Format percentage with sign
   const formatPercent = (value: number, decimals = 1) => {
-    const formatted = value.toFixed(decimals)
-    return value >= 0 ? `+${formatted}%` : `${formatted}%`
+    const safe = safeNumber(value)
+    const formatted = safe.toFixed(decimals)
+    return safe >= 0 ? `+${formatted}%` : `${formatted}%`
   }
 
   // Format currency
@@ -39,9 +45,11 @@ export function BacktestResults({ result, insights }: BacktestResultsProps) {
     }).format(value)
   }
 
-  // Determine if metric is good/bad
-  const isGoodWinRate = metrics.winRate >= 50
-  const isGoodPF = metrics.profitFactor >= 1.5
+  // Determine if metric is good/bad (with safe guards for NaN)
+  const winRate = safeNumber(metrics.winRate)
+  const profitFactor = safeNumber(metrics.profitFactor)
+  const isGoodWinRate = winRate >= 50
+  const isGoodPF = profitFactor >= 1.5
   const isGoodReturn = metrics.totalReturnPercent >= 0
   const isLowDrawdown = metrics.maxDrawdownPercent <= 15
 
@@ -56,7 +64,7 @@ export function BacktestResults({ result, insights }: BacktestResultsProps) {
             Win Rate
           </div>
           <div className={`text-2xl font-bold ${isGoodWinRate ? 'text-green-400' : 'text-red-400'}`}>
-            {metrics.winRate.toFixed(1)}%
+            {winRate.toFixed(1)}%
           </div>
           <div className="text-xs text-gray-500 mt-1">
             {metrics.winningTrades}W / {metrics.losingTrades}L
@@ -70,10 +78,10 @@ export function BacktestResults({ result, insights }: BacktestResultsProps) {
             Profit Factor
           </div>
           <div className={`text-2xl font-bold ${isGoodPF ? 'text-green-400' : 'text-red-400'}`}>
-            {metrics.profitFactor.toFixed(2)}
+            {profitFactor.toFixed(2)}
           </div>
           <div className="text-xs text-gray-500 mt-1">
-            {metrics.profitFactor >= 1 ? 'Profitable' : 'Unprofitable'}
+            {profitFactor >= 1 ? 'Profitable' : 'Unprofitable'}
           </div>
         </div>
 

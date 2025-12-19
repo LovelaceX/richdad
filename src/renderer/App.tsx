@@ -17,10 +17,12 @@ import { initializeDatabase, getSettings } from './lib/db'
 import { OnboardingWizard } from './components/Onboarding/OnboardingWizard'
 import { FloatingHelp } from './components/Help/FloatingHelp'
 import { HelpModal } from './components/Help/HelpModal'
+import { AIModal } from './components/AIPanel/AIModal'
 import { ToastContainer } from './components/Toast/ToastContainer'
 import { FindInPage } from './components/FindInPage'
 import { applyTheme } from './lib/themes'
 import { useHelpStore } from './stores/helpStore'
+import { useAIModalStore } from './stores/aiModalStore'
 
 export default function App() {
   const cvdMode = useSettingsStore(state => state.cvdMode)
@@ -30,6 +32,10 @@ export default function App() {
   const helpIsOpen = useHelpStore(state => state.isOpen)
   const helpInitialSection = useHelpStore(state => state.initialSection)
   const closeHelp = useHelpStore(state => state.closeHelp)
+
+  // Global AI Modal state
+  const aiModalIsOpen = useAIModalStore(state => state.isOpen)
+  const closeAIModal = useAIModalStore(state => state.closeModal)
   const currentPage = useNavigationStore(state => state.currentPage)
   const zoomLevel = useSettingsStore(state => state.zoomLevel)
   const zoomScale = zoomLevel / 100
@@ -174,6 +180,12 @@ export default function App() {
         isOpen={helpIsOpen}
         onClose={closeHelp}
         initialSection={helpInitialSection}
+      />
+
+      {/* AI Copilot Modal (controlled by aiModalStore) */}
+      <AIModal
+        isOpen={aiModalIsOpen}
+        onClose={closeAIModal}
       />
 
       {/* Toast Notifications (for API limit warnings, etc.) */}

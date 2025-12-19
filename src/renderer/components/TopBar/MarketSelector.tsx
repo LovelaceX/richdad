@@ -2,12 +2,12 @@ import { useState, useEffect, useRef } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { getSettings, updateSettings } from '../../lib/db'
 
-// Available market indices with their ETF tickers
+// Available market indices with their ETF tickers and full names
 const MARKETS = [
-  { name: 'S&P 500', etf: 'SPY', index: '^GSPC' },
-  { name: 'NASDAQ-100', etf: 'QQQ', index: '^NDX' },
-  { name: 'Dow Jones', etf: 'DIA', index: '^DJI' },
-  { name: 'Russell 2000', etf: 'IWM', index: '^RUT' },
+  { name: 'S&P 500', etf: 'SPY', index: '^GSPC', fullName: 'SPDR S&P 500 ETF' },
+  { name: 'NASDAQ-100', etf: 'QQQ', index: '^NDX', fullName: 'Invesco QQQ Trust' },
+  { name: 'Dow Jones', etf: 'DIA', index: '^DJI', fullName: 'SPDR Dow Jones Industrial' },
+  { name: 'Russell 2000', etf: 'IWM', index: '^RUT', fullName: 'iShares Russell 2000 ETF' },
 ] as const
 
 export type MarketOption = typeof MARKETS[number]

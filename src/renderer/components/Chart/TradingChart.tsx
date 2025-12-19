@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { createChart, ColorType, IChartApi, ISeriesApi, CandlestickData, Time, SeriesMarker, IPriceLine } from 'lightweight-charts'
+import { TrendingUp } from 'lucide-react'
 import { useMarketStore } from '../../stores/marketStore'
 import { usePatternStore } from '../../stores/patternStore'
 import { useNewsStore } from '../../stores/newsStore'
@@ -8,6 +9,7 @@ import { detectPatterns } from '../../../services/candlestickPatterns'
 import { PatternTooltipContainer } from './PatternTooltip'
 import { NewsTooltip, matchNewsToCandles, NewsMarker } from './NewsTooltip'
 import { TrendlinePrimitive } from './TrendlinePrimitive'
+import { SetupPrompt } from '../common/SetupPrompt'
 import type { NewsItem } from '../../types'
 
 export function TradingChart() {
@@ -374,6 +376,21 @@ export function TradingChart() {
       container.removeEventListener('click', handleChartClick)
     }
   }, [handleChartClick])
+
+  // Show empty state when no chart data
+  if (chartData.length === 0) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-black">
+        <SetupPrompt
+          icon={<TrendingUp className="w-6 h-6 text-gray-500" />}
+          title="No chart data available"
+          description="Connect a data source API key to load market data"
+          helpSection="api-limits"
+          settingsPath="Data Sources"
+        />
+      </div>
+    )
+  }
 
   return (
     <>
