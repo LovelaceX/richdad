@@ -52,7 +52,11 @@ const NavItem = memo(function NavItem({ id, icon, label, shortcut }: NavItemProp
   )
 })
 
-export function NavBar() {
+/**
+ * NavBar - Memoized since it has no props
+ * Child NavItems handle their own state subscriptions
+ */
+export const NavBar = memo(function NavBar() {
   return (
     <div className="flex items-center gap-1 px-2 no-drag">
       <NavItem
@@ -93,4 +97,4 @@ export function NavBar() {
       <NotificationBell />
     </div>
   )
-}
+})

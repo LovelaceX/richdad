@@ -1,3 +1,5 @@
+import { memo } from 'react'
+
 interface PatternDiagramProps {
   pattern: string
   className?: string
@@ -193,7 +195,11 @@ const PATTERN_DIAGRAMS: Record<string, JSX.Element> = {
   ),
 }
 
-export function PatternDiagram({ pattern, className = '' }: PatternDiagramProps) {
+/**
+ * PatternDiagram - Memoized to prevent unnecessary re-renders
+ * Only re-renders when pattern or className props change
+ */
+export const PatternDiagram = memo(function PatternDiagram({ pattern, className = '' }: PatternDiagramProps) {
   const diagram = PATTERN_DIAGRAMS[pattern]
 
   if (!diagram) {
@@ -212,4 +218,4 @@ export function PatternDiagram({ pattern, className = '' }: PatternDiagramProps)
       {diagram}
     </div>
   )
-}
+})

@@ -20,6 +20,86 @@ import { fetchTwelveDataBatchQuotes, fetchTwelveDataCandles } from './twelveData
 
 const ALPHA_VANTAGE_BASE_URL = 'https://www.alphavantage.co/query'
 
+// ==========================================
+// RETRY LOGIC WITH EXPONENTIAL BACKOFF
+// ==========================================
+
+interface RetryConfig {
+  maxAttempts: number
+  baseDelayMs: number
+  maxDelayMs: number
+  shouldRetry?: (error: unknown) => boolean
+}
+
+const DEFAULT_RETRY_CONFIG: RetryConfig = {
+  maxAttempts: 3,
+  baseDelayMs: 1000,
+  maxDelayMs: 10000,
+  // Don't retry on rate limit errors - they won't resolve quickly
+  shouldRetry: (error: unknown) => {
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase()
+      // Don't retry rate limits or auth errors
+      if (message.includes('rate limit') || message.includes('unauthorized') ||
+          message.includes('invalid api key') || message.includes('403') ||
+          message.includes('401')) {
+        return false
+      }
+    }
+    return true
+  }
+}
+
+/**
+ * Execute a function with exponential backoff retry
+ * Handles transient network failures gracefully
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  config: Partial<RetryConfig> = {}
+): Promise<T> {
+  const { maxAttempts, baseDelayMs, maxDelayMs, shouldRetry } = {
+    ...DEFAULT_RETRY_CONFIG,
+    ...config
+  }
+
+  let lastError: unknown
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      lastError = error
+
+      // Check if we should retry this error
+      if (shouldRetry && !shouldRetry(error)) {
+        console.warn(`[MarketData] Non-retryable error, failing immediately:`, error)
+        throw error
+      }
+
+      // Don't retry on last attempt
+      if (attempt === maxAttempts) {
+        console.error(`[MarketData] All ${maxAttempts} attempts failed`)
+        throw error
+      }
+
+      // Calculate delay with exponential backoff + jitter
+      const exponentialDelay = baseDelayMs * Math.pow(2, attempt - 1)
+      const jitter = Math.random() * 0.3 * exponentialDelay // ±15% jitter
+      const delay = Math.min(exponentialDelay + jitter, maxDelayMs)
+
+      console.warn(
+        `[MarketData] Attempt ${attempt}/${maxAttempts} failed, retrying in ${Math.round(delay)}ms:`,
+        error instanceof Error ? error.message : error
+      )
+
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
+
+  throw lastError
+}
+
 // Result type with source metadata for transparency
 export interface FetchHistoricalResult {
   candles: CandleData[]
@@ -177,7 +257,7 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
 
     try {
       recordPolygonCall()
-      const quotes = await fetchPolygonQuotes(symbols, polygonKey)
+      const quotes = await withRetry(() => fetchPolygonQuotes(symbols, polygonKey))
       if (quotes.length > 0) {
         // Update cache
         cachedQuotes = quotes
@@ -185,7 +265,7 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
         return addCacheMetadata(quotes, 'api', 0)
       }
     } catch (error) {
-      console.error('[Market Data] Polygon fetch failed:', error)
+      console.error('[Market Data] Polygon fetch failed after retries:', error)
       // Try cache on error
       const age = Date.now() - cacheTimestamp
       if (cachedQuotes.length > 0) {
@@ -218,7 +298,7 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
 
     try {
       recordTwelveDataCall()
-      const quotesMap = await fetchTwelveDataBatchQuotes(symbols, twelveDataKey)
+      const quotesMap = await withRetry(() => fetchTwelveDataBatchQuotes(symbols, twelveDataKey))
       const quotes: Quote[] = symbols.map(symbol => {
         const data = quotesMap.get(symbol)
         if (data) {
@@ -242,7 +322,7 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
       cacheTimestamp = Date.now()
       return addCacheMetadata(quotes, 'api', 0)
     } catch (error) {
-      console.error('[Market Data] TwelveData fetch failed:', error)
+      console.error('[Market Data] TwelveData fetch failed after retries:', error)
       // Try cache on error
       const age = Date.now() - cacheTimestamp
       if (cachedQuotes.length > 0) {
@@ -295,24 +375,29 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
     const symbolsParam = symbols.join(',')
     const url = `${ALPHA_VANTAGE_BASE_URL}?function=BATCH_STOCK_QUOTES&symbols=${symbolsParam}&apikey=${apiKey}`
 
-    const response = await fetch(url)
+    // Fetch with retry logic
+    const data = await withRetry(async () => {
+      const response = await fetch(url)
 
-    if (!response.ok) {
-      throw new Error(`Alpha Vantage API error: ${response.status}`)
-    }
+      if (!response.ok) {
+        throw new Error(`Alpha Vantage API error: ${response.status}`)
+      }
 
-    const data = await response.json()
+      const json = await response.json()
 
-    // Check for API error messages
-    if (data['Error Message']) {
-      throw new Error(data['Error Message'])
-    }
+      // Check for API error messages
+      if (json['Error Message']) {
+        throw new Error(json['Error Message'])
+      }
 
-    // Check for rate limit message
-    if (data['Note']) {
-      console.warn('Alpha Vantage rate limit hit:', data['Note'])
-      throw new Error('Rate limit exceeded')
-    }
+      // Check for rate limit message
+      if (json['Note']) {
+        console.warn('Alpha Vantage rate limit hit:', json['Note'])
+        throw new Error('Rate limit exceeded')
+      }
+
+      return json
+    })
 
     // Parse batch quotes
     const quotes: Quote[] = data['Stock Quotes']?.map((item: any) => ({
@@ -335,7 +420,7 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
     return addCacheMetadata(quotes, 'api', 0)
 
   } catch (error) {
-    console.error('Failed to fetch live prices, falling back to mock:', error)
+    console.error('Failed to fetch live prices after retries, falling back to mock:', error)
     // If we have stale cache, return it instead of mock
     if (cachedQuotes.length > 0) {
       console.warn('[Market Data] Using stale cache due to API error')
@@ -478,7 +563,7 @@ async function fetchHistoricalDataInternal(
 
     try {
       recordPolygonCall()
-      const candles = await fetchPolygonHistorical(symbol, interval, polygonKey)
+      const candles = await withRetry(() => fetchPolygonHistorical(symbol, interval, polygonKey))
       if (candles.length > 0) {
         // Cache the results
         const cacheKey = `${symbol}_${interval}`
@@ -491,7 +576,7 @@ async function fetchHistoricalDataInternal(
         }
       }
     } catch (error) {
-      console.error('[Market Data] Polygon historical fetch failed:', error)
+      console.error('[Market Data] Polygon historical fetch failed after retries:', error)
     }
     // Fallback to mock if Polygon fails
     const { generateCandleData } = await import('../renderer/lib/mockData')
@@ -533,7 +618,7 @@ async function fetchHistoricalDataInternal(
 
     try {
       recordTwelveDataCall()
-      const candles = await fetchTwelveDataCandles(symbol, interval, twelveDataKey)
+      const candles = await withRetry(() => fetchTwelveDataCandles(symbol, interval, twelveDataKey))
       if (candles.length > 0) {
         return {
           candles,
@@ -541,7 +626,7 @@ async function fetchHistoricalDataInternal(
         }
       }
     } catch (error) {
-      console.error('[Market Data] TwelveData historical fetch failed:', error)
+      console.error('[Market Data] TwelveData historical fetch failed after retries:', error)
     }
     // Fallback to mock if TwelveData fails
     const { generateCandleData } = await import('../renderer/lib/mockData')
@@ -615,8 +700,11 @@ async function fetchHistoricalDataInternal(
       ...(baseInterval !== 'daily' ? { interval: baseInterval } : {})
     })
 
-    const response = await fetch(`${ALPHA_VANTAGE_BASE_URL}?${params}`)
-    const data = await response.json()
+    // Fetch with retry logic
+    const data = await withRetry(async () => {
+      const response = await fetch(`${ALPHA_VANTAGE_BASE_URL}?${params}`)
+      return response.json()
+    })
 
     // Parse time series data
     const timeSeriesKey = Object.keys(data).find(key => key.includes('Time Series'))
@@ -672,7 +760,7 @@ async function fetchHistoricalDataInternal(
     }
 
   } catch (error) {
-    console.error(`[Market Data] Historical data fetch failed for ${symbol}:`, error)
+    console.error(`[Market Data] Historical data fetch failed for ${symbol} after retries:`, error)
     console.log('[Market Data] Falling back to mock data')
 
     // Fallback to mock data
@@ -733,20 +821,20 @@ export async function fetchHistoricalDataRange(
   }
 
   try {
-    const candles = await fetchPolygonHistoricalRange(
+    const candles = await withRetry(() => fetchPolygonHistoricalRange(
       symbol,
       adjustedStartDate,
       endDate,
       timeframe,
       polygonKey
-    )
+    ))
 
     if (candles.length > 0) {
       console.log(`[Market Data] Fetched ${candles.length} candles for backtest`)
       return candles
     }
   } catch (error) {
-    console.error('[Market Data] Range fetch failed:', error)
+    console.error('[Market Data] Range fetch failed after retries:', error)
   }
 
   // Fallback to mock

@@ -2,6 +2,7 @@ import { useEffect, useState, lazy, Suspense } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { TopBar } from './components/TopBar'
 import { useNavigationStore } from './stores/navigationStore'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 // Lazy load pages for better code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })))
@@ -125,13 +126,15 @@ export default function App() {
         <TopBar />
 
         {/* Page Content */}
-        <Suspense fallback={
-          <div className="flex-1 flex items-center justify-center bg-terminal-bg">
-            <div className="text-terminal-amber animate-pulse">Loading...</div>
-          </div>
-        }>
-          {renderPage()}
-        </Suspense>
+        <ErrorBoundary fallbackTitle="Application Error">
+          <Suspense fallback={
+            <div className="flex-1 flex items-center justify-center bg-terminal-bg">
+              <div className="text-terminal-amber animate-pulse">Loading...</div>
+            </div>
+          }>
+            {renderPage()}
+          </Suspense>
+        </ErrorBoundary>
       </div>
 
       {/* Onboarding Wizard */}

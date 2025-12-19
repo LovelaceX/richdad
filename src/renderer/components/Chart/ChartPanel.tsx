@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { TrendingUp, Calendar, Maximize2, Minimize2, Activity, Minus, TrendingUp as TrendlineIcon, Trash2, RefreshCw } from 'lucide-react'
 import { TradingChart } from './TradingChart'
 import { ProactiveAlert } from './ProactiveAlert'
@@ -45,8 +45,12 @@ export function ChartPanel() {
   const clearDrawings = useDrawingStore(state => state.clearDrawings)
   const horizontalLines = useDrawingStore(state => state.horizontalLines)
   const trendlines = useDrawingStore(state => state.trendlines)
-  const hasDrawings = horizontalLines.some(l => l.symbol === selectedTicker) ||
-                      trendlines.some(l => l.symbol === selectedTicker)
+  // Memoize drawing check to avoid re-computing on every render
+  const hasDrawings = useMemo(
+    () => horizontalLines.some(l => l.symbol === selectedTicker) ||
+          trendlines.some(l => l.symbol === selectedTicker),
+    [horizontalLines, trendlines, selectedTicker]
+  )
 
   // Market Context Panel toggle
   const [showMarketContext, setShowMarketContext] = useState(false)
@@ -72,7 +76,11 @@ export function ChartPanel() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isChartExpanded, toggleChartExpanded])
 
-  const selectedItem = watchlist.find(item => item.symbol === selectedTicker)
+  // Memoize the selected item lookup to avoid re-computing on every render
+  const selectedItem = useMemo(
+    () => watchlist.find(item => item.symbol === selectedTicker),
+    [watchlist, selectedTicker]
+  )
   const quote = selectedItem?.quote
 
   // Date picker constraints
