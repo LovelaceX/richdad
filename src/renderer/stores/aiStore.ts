@@ -5,6 +5,10 @@ import { generateId } from '../lib/utils'
 import { sendChatMessage } from '../lib/ai'
 import { playSound } from '../lib/sounds'
 
+// Memory limits to prevent unbounded growth
+const MAX_CHAT_MESSAGES = 100 // Maximum chat/info messages to keep
+const MAX_ALERT_MESSAGES = 3 // Maximum alert-type messages to keep
+
 // Default analysis phases for the AI thinking animation
 export const DEFAULT_ANALYSIS_PHASES: Omit<AnalysisPhase, 'status' | 'result'>[] = [
   { id: 'regime', label: 'Checking Market Regime' },
@@ -77,8 +81,8 @@ export const useAIStore = create<AIState>((set, get) => ({
           m.type !== 'recommendation' && m.type !== 'analysis' && m.type !== 'alert'
         )
 
-        // Keep only the 2 most recent alerts (so with new one = 3 total)
-        const keptAlerts = alertMessages.slice(-2)
+        // Keep only the most recent alerts (so with new one = MAX_ALERT_MESSAGES total)
+        const keptAlerts = alertMessages.slice(-(MAX_ALERT_MESSAGES - 1))
 
         const newRecommendationMessage = {
           id: generateId(),
@@ -121,8 +125,8 @@ export const useAIStore = create<AIState>((set, get) => ({
           m.type !== 'recommendation' && m.type !== 'analysis' && m.type !== 'alert'
         )
 
-        // Keep only 2 most recent alerts (so with new one = 3 total)
-        const keptAlerts = alertMessages.slice(-2)
+        // Keep only most recent alerts (so with new one = MAX_ALERT_MESSAGES total)
+        const keptAlerts = alertMessages.slice(-(MAX_ALERT_MESSAGES - 1))
 
         return {
           messages: [
@@ -133,9 +137,29 @@ export const useAIStore = create<AIState>((set, get) => ({
         }
       }
 
-      // For chat/info messages, just append (newest at bottom)
+      // For chat/info messages, append with limit to prevent unbounded growth
+      const updatedMessages = [...state.messages, newMessage]
+
+      // If we exceed max, remove oldest chat/info messages
+      if (updatedMessages.length > MAX_CHAT_MESSAGES + MAX_ALERT_MESSAGES) {
+        // Get alert and non-alert messages
+        const alerts = updatedMessages.filter(m =>
+          m.type === 'recommendation' || m.type === 'analysis' || m.type === 'alert'
+        )
+        const chatMessages = updatedMessages.filter(m =>
+          m.type !== 'recommendation' && m.type !== 'analysis' && m.type !== 'alert'
+        )
+
+        // Keep only the most recent chat messages
+        const trimmedChat = chatMessages.slice(-MAX_CHAT_MESSAGES)
+
+        return {
+          messages: [...trimmedChat, ...alerts.slice(-MAX_ALERT_MESSAGES)],
+        }
+      }
+
       return {
-        messages: [...state.messages, newMessage],
+        messages: updatedMessages,
       }
     })
   },

@@ -4,6 +4,9 @@ import { generateQuote, generateCandleData } from '../lib/mockData'
 import { TOP_10_TICKERS, isTop10Symbol } from '../lib/constants'
 import { getUserWatchlist, addToUserWatchlist, removeFromUserWatchlist, getSettings } from '../lib/db'
 
+// Track if market-changed listener is already registered to prevent duplicates
+let marketChangedListenerRegistered = false
+
 // Extended timeframe options: 1M, 5M, 15M, 30M, 45M, 1H, 2H, 4H, 5H, 1D, 1W
 type Timeframe = '1min' | '5min' | '15min' | '30min' | '45min' | '60min' | '120min' | '240min' | '300min' | 'daily' | 'weekly'
 
@@ -261,18 +264,21 @@ export const useMarketStore = create<MarketState>((set, get) => ({
         })
       }
 
-      // Listen for market-changed events from MarketSelector
-      const handleMarketChange = (event: CustomEvent<{ market: { etf: string } }>) => {
-        const { etf } = event.detail.market
-        console.log(`[Market Store] Market changed to: ${etf}`)
-        set({ selectedTicker: etf })
-        get().loadChartData(etf, '5min').catch(err => {
-          console.error('[Market Store] Chart load error:', err)
-        })
-      }
+      // Listen for market-changed events from MarketSelector (only register once)
+      if (!marketChangedListenerRegistered) {
+        const handleMarketChange = (event: CustomEvent<{ market: { etf: string } }>) => {
+          const { etf } = event.detail.market
+          console.log(`[Market Store] Market changed to: ${etf}`)
+          set({ selectedTicker: etf })
+          get().loadChartData(etf, '5min').catch(err => {
+            console.error('[Market Store] Chart load error:', err)
+          })
+        }
 
-      window.addEventListener('market-changed', handleMarketChange as EventListener)
-      console.log('[Market Store] Market change listener registered')
+        window.addEventListener('market-changed', handleMarketChange as EventListener)
+        marketChangedListenerRegistered = true
+        console.log('[Market Store] Market change listener registered')
+      }
     } catch (error) {
       console.error('[Market Store] Failed to load selected market:', error)
     }

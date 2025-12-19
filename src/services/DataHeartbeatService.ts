@@ -68,6 +68,10 @@ class DataHeartbeatService {
   private websocketEnabled = false
   private websocketUnsubscribe: (() => void) | null = null
 
+  // Bound event handlers (stored as class properties to allow proper cleanup)
+  // IMPORTANT: .bind() creates new references, so we store them for removeEventListener
+  private boundHandleWebSocketFallback = this.handleWebSocketFallback.bind(this)
+
   // Intervals (configurable)
   private MARKET_UPDATE_INTERVAL = 60000 // 1 minute (but respects 1-hour cache)
   private NEWS_UPDATE_INTERVAL = 300000 // 5 minutes
@@ -114,8 +118,8 @@ class DataHeartbeatService {
     this.startPatternScanning()
     this.startCleanupRoutine()
 
-    // Listen for WebSocket fallback event
-    window.addEventListener('websocket-fallback', this.handleWebSocketFallback.bind(this))
+    // Listen for WebSocket fallback event (using stored bound reference for proper cleanup)
+    window.addEventListener('websocket-fallback', this.boundHandleWebSocketFallback)
 
     console.log('[Heartbeat] Service started')
   }
@@ -151,8 +155,8 @@ class DataHeartbeatService {
     websocketService.disconnect()
     this.websocketEnabled = false
 
-    // Remove event listener
-    window.removeEventListener('websocket-fallback', this.handleWebSocketFallback.bind(this))
+    // Remove event listener (using stored bound reference for proper cleanup)
+    window.removeEventListener('websocket-fallback', this.boundHandleWebSocketFallback)
 
     // Stop outcome tracker
     outcomeTracker.stop()

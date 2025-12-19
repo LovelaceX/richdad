@@ -1,6 +1,107 @@
 import { getEnabledProviders, AI_PROVIDERS, type AIProviderConfig, type AIProvider } from './db'
 import type { AIMessage } from '../types'
 
+// Timeout for AI API requests (30 seconds)
+const AI_REQUEST_TIMEOUT_MS = 30000
+
+/**
+ * Fetch with timeout using AbortController
+ * Prevents the UI from hanging indefinitely if an AI provider doesn't respond
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeoutMs: number = AI_REQUEST_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    })
+    return response
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Request timed out after ${timeoutMs / 1000} seconds`)
+    }
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
+/**
+ * Safely extract response content with validation
+ * Prevents crashes from malformed AI responses
+ */
+function extractOpenAIContent(data: unknown): string {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Invalid response format: expected object')
+  }
+
+  const response = data as Record<string, unknown>
+
+  if (!Array.isArray(response.choices) || response.choices.length === 0) {
+    throw new Error('Invalid response format: missing choices array')
+  }
+
+  const choice = response.choices[0] as Record<string, unknown>
+  const message = choice?.message as Record<string, unknown>
+  const content = message?.content
+
+  if (typeof content !== 'string') {
+    return 'No response generated'
+  }
+
+  return content
+}
+
+function extractClaudeContent(data: unknown): string {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Invalid response format: expected object')
+  }
+
+  const response = data as Record<string, unknown>
+
+  if (!Array.isArray(response.content) || response.content.length === 0) {
+    throw new Error('Invalid response format: missing content array')
+  }
+
+  const block = response.content[0] as Record<string, unknown>
+  const text = block?.text
+
+  if (typeof text !== 'string') {
+    return 'No response generated'
+  }
+
+  return text
+}
+
+function extractGeminiContent(data: unknown): string {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Invalid response format: expected object')
+  }
+
+  const response = data as Record<string, unknown>
+
+  if (!Array.isArray(response.candidates) || response.candidates.length === 0) {
+    throw new Error('Invalid response format: missing candidates array')
+  }
+
+  const candidate = response.candidates[0] as Record<string, unknown>
+  const content = candidate?.content as Record<string, unknown>
+  const parts = content?.parts as Array<Record<string, unknown>>
+  const text = parts?.[0]?.text
+
+  if (typeof text !== 'string') {
+    return 'No response generated'
+  }
+
+  return text
+}
+
 const SYSTEM_PROMPT = `You are an AI trading co-pilot for richdad.app - a Bloomberg Terminal-style desktop application. You help traders make informed decisions by providing market analysis, explaining trading concepts, and offering insights based on current market conditions.
 
 Your personality should be professional and concise. Focus on actionable insights. When discussing stocks:
@@ -106,7 +207,7 @@ async function sendOpenAI(
     { role: 'user', content: message }
   ]
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+  const response = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -126,7 +227,7 @@ async function sendOpenAI(
   }
 
   const data = await response.json()
-  return data.choices[0]?.message?.content || 'No response generated'
+  return extractOpenAIContent(data)
 }
 
 async function sendClaude(
@@ -140,7 +241,7 @@ async function sendClaude(
     { role: 'user', content: message }
   ]
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+  const response = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -162,7 +263,7 @@ async function sendClaude(
   }
 
   const data = await response.json()
-  return data.content[0]?.text || 'No response generated'
+  return extractClaudeContent(data)
 }
 
 async function sendGemini(
@@ -179,7 +280,7 @@ async function sendGemini(
     { role: 'user', parts: [{ text: message }] }
   ]
 
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
       method: 'POST',
@@ -203,7 +304,7 @@ async function sendGemini(
   }
 
   const data = await response.json()
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated'
+  return extractGeminiContent(data)
 }
 
 async function sendGrok(
@@ -219,7 +320,7 @@ async function sendGrok(
     { role: 'user', content: message }
   ]
 
-  const response = await fetch('https://api.x.ai/v1/chat/completions', {
+  const response = await fetchWithTimeout('https://api.x.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -239,7 +340,7 @@ async function sendGrok(
   }
 
   const data = await response.json()
-  return data.choices[0]?.message?.content || 'No response generated'
+  return extractOpenAIContent(data)
 }
 
 async function sendDeepSeek(
@@ -255,7 +356,7 @@ async function sendDeepSeek(
     { role: 'user', content: message }
   ]
 
-  const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+  const response = await fetchWithTimeout('https://api.deepseek.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -275,7 +376,7 @@ async function sendDeepSeek(
   }
 
   const data = await response.json()
-  return data.choices[0]?.message?.content || 'No response generated'
+  return extractOpenAIContent(data)
 }
 
 async function sendLlama(
@@ -291,7 +392,7 @@ async function sendLlama(
     { role: 'user', content: message }
   ]
 
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const response = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -311,5 +412,5 @@ async function sendLlama(
   }
 
   const data = await response.json()
-  return data.choices[0]?.message?.content || 'No response generated'
+  return extractOpenAIContent(data)
 }
