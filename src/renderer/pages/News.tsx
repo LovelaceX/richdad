@@ -1,21 +1,20 @@
 import { useState, useMemo } from 'react'
 import { Newspaper, Filter, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
+import { useShallow } from 'zustand/shallow'
 import { useNewsStore } from '../stores/newsStore'
 import { useMarketStore } from '../stores/marketStore'
 import type { NewsItem } from '../types'
 
 type FilterType = 'all' | 'watchlist' | 'positive' | 'negative' | 'neutral'
 
-// Selector to extract only symbols (stable when quotes change)
-const selectWatchlistSymbols = (state: { watchlist: Array<{ symbol: string }> }) =>
-  state.watchlist.map(w => w.symbol)
-
 export function News() {
   const [filter, setFilter] = useState<FilterType>('all')
   const headlines = useNewsStore(state => state.headlines)
-  // Only re-render when watchlist symbols change, not when quotes update
-  const watchlistSymbols = useMarketStore(selectWatchlistSymbols)
+  // Use shallow comparison to prevent re-renders when array contents haven't changed
+  const watchlistSymbols = useMarketStore(useShallow(state =>
+    state.watchlist.map(w => w.symbol)
+  ))
 
   const filteredNews = useMemo(() => {
     return headlines.filter((item: NewsItem) => {

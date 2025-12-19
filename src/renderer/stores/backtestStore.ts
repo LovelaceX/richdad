@@ -5,6 +5,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { useShallow } from 'zustand/shallow'
 import type {
   BacktestConfig,
   BacktestResult,
@@ -256,11 +257,12 @@ export const useBacktestStore = create<BacktestState>()(
 
 // Selector hooks
 export const useBacktestIsRunning = () => useBacktestStore(state => state.isRunning)
-export const useBacktestProgress = () => useBacktestStore(state => ({
+// Use shallow comparison to prevent infinite re-renders from new object creation
+export const useBacktestProgress = () => useBacktestStore(useShallow(state => ({
   progress: state.progress,
   phase: state.currentPhase,
   message: state.progressMessage
-}))
+})))
 export const useBacktestResult = () => useBacktestStore(state => state.currentResult)
 export const useBacktestInsights = () => useBacktestStore(state => state.currentInsights)
 export const useSavedResults = () => useBacktestStore(state => state.savedResults)
