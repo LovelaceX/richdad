@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ChevronDown, ChevronUp, BarChart3 } from 'lucide-react'
 import { getAIPerformanceStats } from '../../lib/db'
 
@@ -21,17 +21,31 @@ interface PerformanceStats {
 export function AIPerformanceSummary() {
   const [isExpanded, setIsExpanded] = useState(false)
   const [stats, setStats] = useState<PerformanceStats | null>(null)
+  const isMountedRef = useRef(true)
 
   useEffect(() => {
+    isMountedRef.current = true
+
     const loadStats = async () => {
-      const data = await getAIPerformanceStats(30)
-      setStats(data)
+      try {
+        const data = await getAIPerformanceStats(30)
+        // Only update state if component is still mounted
+        if (isMountedRef.current) {
+          setStats(data)
+        }
+      } catch (error) {
+        console.error('Failed to load performance stats:', error)
+      }
     }
 
     loadStats()
     // Refresh every 5 minutes
     const interval = setInterval(loadStats, 5 * 60 * 1000)
-    return () => clearInterval(interval)
+
+    return () => {
+      isMountedRef.current = false
+      clearInterval(interval)
+    }
   }, [])
 
   if (!stats) {
