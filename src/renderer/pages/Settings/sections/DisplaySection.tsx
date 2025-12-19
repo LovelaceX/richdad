@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Monitor, LayoutGrid, Eye, TrendingUp, X, Plus } from 'lucide-react'
+import { Monitor, LayoutGrid, Eye, TrendingUp, X, Plus, Snail, Rabbit } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { getSettings, updateSettings } from '../../../lib/db'
 
@@ -276,16 +276,31 @@ export function DisplaySection() {
           </p>
 
           <div className="flex items-center gap-3">
-            <span className="text-xl" title="Slow">🐢</span>
-            <input
-              type="range"
-              min="10"
-              max="60"
-              value={tickerSpeed}
-              onChange={(e) => setTickerSpeed(Number(e.target.value))}
-              className="flex-1 h-2 bg-terminal-border rounded-lg appearance-none cursor-pointer accent-terminal-amber"
-            />
-            <span className="text-xl" title="Fast">🐇</span>
+            <span title="Slow">
+              <Snail size={20} className="text-gray-400" />
+            </span>
+            <div className="flex-1 flex flex-col gap-1">
+              <input
+                type="range"
+                min="10"
+                max="60"
+                step="10"
+                value={tickerSpeed}
+                onChange={(e) => setTickerSpeed(Number(e.target.value))}
+                className="w-full h-2 bg-terminal-border rounded-lg appearance-none cursor-pointer accent-terminal-amber"
+              />
+              {/* Tick marks */}
+              <div className="flex justify-between px-0.5">
+                {[10, 20, 30, 40, 50, 60].map((val) => (
+                  <div key={val} className="flex flex-col items-center">
+                    <div className="w-0.5 h-1.5 bg-terminal-border rounded" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <span title="Fast">
+              <Rabbit size={20} className="text-gray-400" />
+            </span>
           </div>
         </div>
 
