@@ -5,6 +5,7 @@ import { AIPanel } from '../components/AIPanel'
 import { NewsTicker } from '../components/NewsTicker'
 import { EconomicCalendarTicker } from '../components/EconomicCalendarTicker'
 import { MarketOverview } from '../components/MarketOverview'
+import { ErrorBoundary } from '../components/ErrorBoundary'
 import { useSettingsStore } from '../stores/settingsStore'
 
 export function Dashboard() {
@@ -14,7 +15,9 @@ export function Dashboard() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Market Overview Bar */}
-      <MarketOverview />
+      <ErrorBoundary fallbackTitle="Market Overview Error">
+        <MarketOverview />
+      </ErrorBoundary>
 
       {/* Main Content - Resizable Panels */}
       <div className="flex-1 overflow-hidden">
@@ -25,21 +28,27 @@ export function Dashboard() {
               {/* Left: Market Watch */}
               {leftPanelVisible && (
                 <Panel defaultSize={panelSizes.leftPanel} minSize={15} maxSize={30}>
-                  <MarketWatch />
+                  <ErrorBoundary fallbackTitle="Watchlist Error">
+                    <MarketWatch />
+                  </ErrorBoundary>
                 </Panel>
               )}
 
               {/* Center: Chart */}
               {chartVisible && (
                 <Panel defaultSize={leftPanelVisible && rightPanelVisible ? 55 : leftPanelVisible || rightPanelVisible ? 75 : 100} minSize={30}>
-                  <ChartPanel />
+                  <ErrorBoundary fallbackTitle="Chart Error">
+                    <ChartPanel />
+                  </ErrorBoundary>
                 </Panel>
               )}
 
               {/* Right: AI Copilot */}
               {rightPanelVisible && (
                 <Panel defaultSize={panelSizes.rightPanel} minSize={20} maxSize={40}>
-                  <AIPanel />
+                  <ErrorBoundary fallbackTitle="AI Panel Error">
+                    <AIPanel />
+                  </ErrorBoundary>
                 </Panel>
               )}
 
@@ -49,14 +58,18 @@ export function Dashboard() {
           {/* Bottom: News Ticker */}
           {newsTickerVisible && (
             <Panel defaultSize={panelSizes.bottomPanel} minSize={3} maxSize={15}>
-              <NewsTicker />
+              <ErrorBoundary fallbackTitle="News Ticker Error">
+                <NewsTicker />
+              </ErrorBoundary>
             </Panel>
           )}
 
           {/* Bottom: Economic Calendar Ticker */}
           {economicCalendarTickerVisible && (
             <Panel defaultSize={panelSizes.bottomPanel} minSize={3} maxSize={15}>
-              <EconomicCalendarTicker />
+              <ErrorBoundary fallbackTitle="Calendar Error">
+                <EconomicCalendarTicker />
+              </ErrorBoundary>
             </Panel>
           )}
         </PanelGroup>

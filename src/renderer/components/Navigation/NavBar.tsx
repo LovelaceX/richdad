@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { LayoutDashboard, Newspaper, Calendar, FlaskConical, Settings } from 'lucide-react'
 import { useNavigationStore } from '../../stores/navigationStore'
 import type { PageId } from '../../types'
@@ -10,7 +11,11 @@ interface NavItemProps {
   shortcut: string
 }
 
-function NavItem({ id, icon, label, shortcut }: NavItemProps) {
+/**
+ * NavItem - Memoized since props (id, icon, label, shortcut) are static
+ * Only re-renders when currentPage changes for THIS item
+ */
+const NavItem = memo(function NavItem({ id, icon, label, shortcut }: NavItemProps) {
   const currentPage = useNavigationStore(state => state.currentPage)
   const setPage = useNavigationStore(state => state.setPage)
   const isActive = currentPage === id
@@ -27,6 +32,8 @@ function NavItem({ id, icon, label, shortcut }: NavItemProps) {
         }
       `}
       title={`${label} (${shortcut})`}
+      aria-label={`Navigate to ${label}`}
+      aria-current={isActive ? 'page' : undefined}
     >
       {icon}
 
@@ -43,7 +50,7 @@ function NavItem({ id, icon, label, shortcut }: NavItemProps) {
       </div>
     </button>
   )
-}
+})
 
 export function NavBar() {
   return (

@@ -1,26 +1,49 @@
 import { pipeline } from '@xenova/transformers'
 
 let classifier: any = null
+let modelLoading: Promise<void> | null = null
+let modelReady = false
 
-// Initialize FinBERT model
-async function initializeModel() {
-  if (!classifier) {
-    console.log('Loading FinBERT sentiment model...')
+// Initialize FinBERT model (called once at worker startup)
+async function initializeModel(): Promise<void> {
+  if (classifier) return
+  if (modelLoading) return modelLoading
+
+  modelLoading = (async () => {
+    console.log('[Sentiment Worker] Loading FinBERT model at startup...')
+    const startTime = Date.now()
     classifier = await pipeline(
       'sentiment-analysis',
       'Xenova/finbert',
-      { quantized: true } // Use quantized ONNX model
+      { quantized: true } // Use quantized ONNX model for faster loading
     )
-    console.log('FinBERT model loaded')
-  }
+    modelReady = true
+    console.log(`[Sentiment Worker] FinBERT model loaded in ${Date.now() - startTime}ms`)
+  })()
+
+  return modelLoading
 }
+
+// Load model immediately when worker starts (not on first message)
+initializeModel().catch(err => {
+  console.error('[Sentiment Worker] Failed to pre-load model:', err)
+})
 
 // Handle messages from main thread
 self.onmessage = async (e) => {
-  const { headlines } = e.data
+  const { type, headlines } = e.data
+
+  // Handle ready check
+  if (type === 'check_ready') {
+    self.postMessage({ type: 'ready_status', ready: modelReady })
+    return
+  }
 
   try {
-    await initializeModel()
+    // Wait for model if not yet ready (should be rare after startup)
+    if (!modelReady) {
+      await initializeModel()
+    }
 
     const sentiments = new Map<string, 'positive' | 'negative' | 'neutral'>()
 
@@ -32,10 +55,10 @@ self.onmessage = async (e) => {
       sentiments.set(headline.id, sentiment)
     }
 
-    self.postMessage({ sentiments: Array.from(sentiments.entries()) })
+    self.postMessage({ type: 'result', sentiments: Array.from(sentiments.entries()) })
 
   } catch (error: any) {
-    console.error('Sentiment analysis failed:', error)
-    self.postMessage({ error: error.message })
+    console.error('[Sentiment Worker] Analysis failed:', error)
+    self.postMessage({ type: 'error', error: error.message })
   }
 }

@@ -35,8 +35,10 @@ function ToastItem({ toast }: { toast: Toast }) {
         ${colors[toast.type]}
         animate-slide-in
       `}
+      role="alert"
+      aria-live="polite"
     >
-      <Icon size={18} className={iconColors[toast.type]} />
+      <Icon size={18} className={iconColors[toast.type]} aria-hidden="true" />
       <div className="flex-1 min-w-0">
         {toast.provider && (
           <span className="text-xs text-gray-400 font-medium">
@@ -48,8 +50,9 @@ function ToastItem({ toast }: { toast: Toast }) {
       <button
         onClick={() => removeToast(toast.id)}
         className="text-gray-400 hover:text-white transition-colors"
+        aria-label="Dismiss notification"
       >
-        <X size={14} />
+        <X size={14} aria-hidden="true" />
       </button>
     </div>
   )

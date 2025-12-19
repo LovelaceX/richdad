@@ -43,8 +43,11 @@ export function NotificationBell() {
           }
         `}
         title={`Pending Recommendations (${pendingCount})`}
+        aria-label={`Notifications${unviewedCount > 0 ? `, ${unviewedCount} unread` : ''}`}
+        aria-expanded={isOpen}
+        aria-haspopup="true"
       >
-        <Bell size={18} />
+        <Bell size={18} aria-hidden="true" />
 
         {/* Badge */}
         {unviewedCount > 0 && (

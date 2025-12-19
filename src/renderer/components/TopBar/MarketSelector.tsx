@@ -68,6 +68,9 @@ export function MarketSelector() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-terminal-border transition-colors"
         title="Select market index"
+        aria-label={`Market: ${selectedMarket.name}, click to change`}
+        aria-expanded={isOpen}
+        aria-haspopup="listbox"
       >
         <span className="text-terminal-amber font-medium text-sm">
           {selectedMarket.etf}
@@ -78,11 +81,16 @@ export function MarketSelector() {
         <ChevronDown
           size={14}
           className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          aria-hidden="true"
         />
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-1 w-48 bg-terminal-panel border border-terminal-border rounded-lg shadow-xl z-50">
+        <div
+          className="absolute top-full left-0 mt-1 w-48 bg-terminal-panel border border-terminal-border rounded-lg shadow-xl z-50"
+          role="listbox"
+          aria-label="Select market index"
+        >
           {MARKETS.map((market) => (
             <button
               key={market.etf}
@@ -90,13 +98,15 @@ export function MarketSelector() {
               className={`w-full px-3 py-2 text-left hover:bg-terminal-border transition-colors first:rounded-t-lg last:rounded-b-lg flex items-center justify-between ${
                 selectedMarket.etf === market.etf ? 'bg-terminal-border/50' : ''
               }`}
+              role="option"
+              aria-selected={selectedMarket.etf === market.etf}
             >
               <div>
                 <span className="text-white font-medium text-sm">{market.etf}</span>
                 <span className="text-gray-400 text-xs ml-2">{market.name}</span>
               </div>
               {selectedMarket.etf === market.etf && (
-                <div className="w-1.5 h-1.5 rounded-full bg-terminal-amber" />
+                <div className="w-1.5 h-1.5 rounded-full bg-terminal-amber" aria-hidden="true" />
               )}
             </button>
           ))}

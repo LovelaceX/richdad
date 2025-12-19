@@ -8,7 +8,147 @@ import type { NewsIntelReport, NewsAlert } from './types'
 import { HIGH_IMPACT_KEYWORDS, VELOCITY_SPIKE_THRESHOLD } from './types'
 
 // Track historical article counts for velocity detection
-const articleHistory: Map<string, number[]> = new Map()
+// Limited to prevent unbounded memory growth
+const MAX_TRACKED_SYMBOLS = 100
+const MAX_HISTORY_ENTRIES = 1000 // Hard cap on total entries across all symbols
+const ARTICLE_HISTORY_TTL = 6 * 60 * 60 * 1000 // 6 hours - evict entries older than this
+
+// Store article counts with timestamps for TTL-based cleanup
+interface ArticleHistoryEntry {
+  count: number
+  timestamp: number
+}
+const articleHistory: Map<string, ArticleHistoryEntry[]> = new Map()
+const articleHistoryLRU: string[] = [] // Track access order for LRU eviction
+let lastCleanupTime = 0
+const CLEANUP_INTERVAL = 10 * 60 * 1000 // Run cleanup at most every 10 minutes
+
+/**
+ * Clean up articleHistory to prevent memory leaks
+ * Uses LRU eviction when limit is exceeded
+ */
+function trackSymbolAccess(symbol: string): void {
+  // Remove from current position if exists
+  const idx = articleHistoryLRU.indexOf(symbol)
+  if (idx !== -1) {
+    articleHistoryLRU.splice(idx, 1)
+  }
+  // Add to end (most recently used)
+  articleHistoryLRU.push(symbol)
+
+  // Evict oldest if over limit
+  while (articleHistoryLRU.length > MAX_TRACKED_SYMBOLS) {
+    const evict = articleHistoryLRU.shift()
+    if (evict) {
+      articleHistory.delete(evict)
+    }
+  }
+
+  // Run TTL cleanup periodically
+  const now = Date.now()
+  if (now - lastCleanupTime > CLEANUP_INTERVAL) {
+    cleanupArticleHistory()
+    lastCleanupTime = now
+  }
+}
+
+/**
+ * Clean up stale article history entries (older than TTL)
+ * Also enforces hard cap on total entries
+ */
+function cleanupArticleHistory(): void {
+  const now = Date.now()
+  const cutoff = now - ARTICLE_HISTORY_TTL
+  let entriesRemoved = 0
+  let symbolsRemoved = 0
+
+  // Remove stale entries from each symbol
+  for (const [symbol, entries] of articleHistory) {
+    const freshEntries = entries.filter(e => e.timestamp > cutoff)
+
+    if (freshEntries.length === 0) {
+      // No fresh entries, remove entire symbol
+      articleHistory.delete(symbol)
+      const lruIdx = articleHistoryLRU.indexOf(symbol)
+      if (lruIdx !== -1) {
+        articleHistoryLRU.splice(lruIdx, 1)
+      }
+      symbolsRemoved++
+      entriesRemoved += entries.length
+    } else if (freshEntries.length < entries.length) {
+      // Some entries were stale
+      entriesRemoved += entries.length - freshEntries.length
+      articleHistory.set(symbol, freshEntries)
+    }
+  }
+
+  // Enforce hard cap on total entries (keep newest)
+  let totalEntries = 0
+  for (const entries of articleHistory.values()) {
+    totalEntries += entries.length
+  }
+
+  if (totalEntries > MAX_HISTORY_ENTRIES) {
+    // Collect all entries with their symbols
+    const allEntries: { symbol: string; entry: ArticleHistoryEntry; idx: number }[] = []
+    for (const [symbol, entries] of articleHistory) {
+      entries.forEach((entry, idx) => allEntries.push({ symbol, entry, idx }))
+    }
+
+    // Sort by timestamp (oldest first) and remove excess
+    allEntries.sort((a, b) => a.entry.timestamp - b.entry.timestamp)
+    const toRemove = totalEntries - MAX_HISTORY_ENTRIES
+    const removeSet = new Set(allEntries.slice(0, toRemove).map(e => `${e.symbol}:${e.idx}`))
+
+    // Filter each symbol's entries
+    for (const [symbol, entries] of articleHistory) {
+      const filtered = entries.filter((_, idx) => !removeSet.has(`${symbol}:${idx}`))
+      if (filtered.length === 0) {
+        articleHistory.delete(symbol)
+      } else {
+        articleHistory.set(symbol, filtered)
+      }
+    }
+
+    entriesRemoved += toRemove
+  }
+
+  if (entriesRemoved > 0 || symbolsRemoved > 0) {
+    console.log('[NewsIntel] Cleanup complete:', {
+      entriesRemoved,
+      symbolsRemoved,
+      symbolsTracked: articleHistory.size,
+      totalEntries: Array.from(articleHistory.values()).reduce((sum, e) => sum + e.length, 0)
+    })
+  }
+}
+
+/**
+ * Get article history stats for debugging/monitoring
+ */
+export function getArticleHistoryStats(): {
+  symbolsTracked: number
+  totalEntries: number
+  oldestEntry: number | null
+} {
+  let totalEntries = 0
+  let oldestTimestamp: number | null = null
+
+  for (const entries of articleHistory.values()) {
+    totalEntries += entries.length
+    for (const entry of entries) {
+      if (oldestTimestamp === null || entry.timestamp < oldestTimestamp) {
+        oldestTimestamp = entry.timestamp
+      }
+    }
+  }
+
+  return {
+    symbolsTracked: articleHistory.size,
+    totalEntries,
+    oldestEntry: oldestTimestamp
+  }
+}
 
 /**
  * Generate News Intelligence Report from current news
@@ -233,19 +373,22 @@ function detectVelocitySpikes(
   symbolData: Record<string, { recentArticles: number }>
 ): NewsIntelReport['velocitySpikes'] {
   const spikes: NewsIntelReport['velocitySpikes'] = []
+  const now = Date.now()
 
   for (const [symbol, data] of Object.entries(symbolData)) {
     // Get historical average for this symbol
     const history = articleHistory.get(symbol) || []
 
-    // Calculate average (default to 1 if no history)
+    // Calculate average from historical entries (default to 1 if no history)
     const avgArticles = history.length > 0
-      ? history.reduce((sum, n) => sum + n, 0) / history.length
+      ? history.reduce((sum, entry) => sum + entry.count, 0) / history.length
       : 1
 
-    // Update history with current count
-    const newHistory = [...history.slice(-11), data.recentArticles] // Keep last 12 readings
+    // Update history with current count (include timestamp for TTL)
+    const newEntry: ArticleHistoryEntry = { count: data.recentArticles, timestamp: now }
+    const newHistory = [...history.slice(-11), newEntry] // Keep last 12 readings
     articleHistory.set(symbol, newHistory)
+    trackSymbolAccess(symbol) // Track for LRU eviction
 
     // Check for spike
     if (data.recentArticles >= VELOCITY_SPIKE_THRESHOLD &&

@@ -42,24 +42,26 @@ export function WindowControls() {
   }
 
   return (
-    <div className="flex items-center gap-1 no-drag">
+    <div className="flex items-center gap-1 no-drag" role="group" aria-label="Window controls">
       <button
         onClick={handleMinimize}
         className="p-2 hover:bg-terminal-border rounded transition-colors"
         title="Minimize"
+        aria-label="Minimize window"
       >
-        <Minus size={14} className="text-gray-400" />
+        <Minus size={14} className="text-gray-400" aria-hidden="true" />
       </button>
 
       <button
         onClick={handleMaximize}
         className="p-2 hover:bg-terminal-border rounded transition-colors"
         title={isMaximized ? 'Restore' : 'Maximize'}
+        aria-label={isMaximized ? 'Restore window' : 'Maximize window'}
       >
         {isMaximized ? (
-          <Maximize2 size={14} className="text-gray-400" />
+          <Maximize2 size={14} className="text-gray-400" aria-hidden="true" />
         ) : (
-          <Square size={12} className="text-gray-400" />
+          <Square size={12} className="text-gray-400" aria-hidden="true" />
         )}
       </button>
 
@@ -67,8 +69,9 @@ export function WindowControls() {
         onClick={handleClose}
         className="p-2 hover:bg-red-600 rounded transition-colors group"
         title="Close"
+        aria-label="Close window"
       >
-        <X size={14} className="text-gray-400 group-hover:text-white" />
+        <X size={14} className="text-gray-400 group-hover:text-white" aria-hidden="true" />
       </button>
     </div>
   )

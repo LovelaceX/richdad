@@ -71,9 +71,6 @@ const TWELVEDATA_LIMITS = {
   pro: { callsPerMinute: 80, callsPerDay: Infinity }  // Unlimited daily
 } as const
 
-// Legacy constant for backward compatibility
-const MAX_FINNHUB_CALLS_PER_MINUTE = 60
-
 // Type for tier keys
 export type PolygonTier = keyof typeof POLYGON_LIMITS
 export type TwelveDataTier = keyof typeof TWELVEDATA_LIMITS
@@ -110,18 +107,29 @@ function getCurrentMinuteWindow(): number {
   return Math.floor(Date.now() / 60000)
 }
 
+// ==========================================
+// IN-MEMORY SINGLETON WITH ATOMIC OPERATIONS
+// Fixes race condition where concurrent calls could lose updates
+// ==========================================
+
+let budgetSingleton: BudgetTracker | null = null
+let persistTimeout: ReturnType<typeof setTimeout> | null = null
+const PERSIST_DEBOUNCE_MS = 100 // Debounce localStorage writes
+
 /**
- * Load budget from localStorage, auto-reset if new day
+ * Initialize the in-memory budget singleton from localStorage
+ * Called once on first access
  */
-function loadBudget(): BudgetTracker {
+function initializeBudget(): BudgetTracker {
+  const today = new Date().toISOString().split('T')[0]
+  const currentMinute = getCurrentMinuteWindow()
+
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
-    const today = new Date().toISOString().split('T')[0]
-    const currentMinute = getCurrentMinuteWindow()
 
     if (!stored) {
       // First time, create fresh budget
-      const freshBudget: BudgetTracker = {
+      return {
         marketCallsToday: 0,
         chartCallsToday: 0,
         newsCallsToday: 0,
@@ -134,49 +142,11 @@ function loadBudget(): BudgetTracker {
         twelveDataMinuteWindow: currentMinute,
         twelveDataCallsToday: 0
       }
-      saveBudget(freshBudget)
-      return freshBudget
     }
 
     const budget: BudgetTracker = JSON.parse(stored)
 
-    // Check if date has changed (midnight reset)
-    if (budget.lastResetDate !== today) {
-      console.log('[API Budget] New day detected, resetting daily counters')
-      budget.marketCallsToday = 0
-      budget.chartCallsToday = 0
-      budget.newsCallsToday = 0
-      budget.twelveDataCallsToday = 0
-      budget.lastResetDate = today
-      saveBudget(budget)
-    }
-
-    // Reset minute windows if we've moved to a new minute
-    let needsSave = false
-
-    if (budget.finnhubMinuteWindow !== currentMinute) {
-      budget.finnhubCallsThisMinute = 0
-      budget.finnhubMinuteWindow = currentMinute
-      needsSave = true
-    }
-
-    if (budget.polygonMinuteWindow !== currentMinute) {
-      budget.polygonCallsThisMinute = 0
-      budget.polygonMinuteWindow = currentMinute
-      needsSave = true
-    }
-
-    if (budget.twelveDataMinuteWindow !== currentMinute) {
-      budget.twelveDataCallsThisMinute = 0
-      budget.twelveDataMinuteWindow = currentMinute
-      needsSave = true
-    }
-
-    if (needsSave) {
-      saveBudget(budget)
-    }
-
-    // Ensure new fields exist (for migration from old budget format)
+    // Ensure all fields exist (migration from old format)
     if (budget.polygonCallsThisMinute === undefined) {
       budget.polygonCallsThisMinute = 0
       budget.polygonMinuteWindow = currentMinute
@@ -189,10 +159,7 @@ function loadBudget(): BudgetTracker {
 
     return budget
   } catch (error) {
-    console.error('[API Budget] Failed to load budget from localStorage:', error)
-    // Return fresh budget on error
-    const today = new Date().toISOString().split('T')[0]
-    const currentMinute = getCurrentMinuteWindow()
+    console.error('[API Budget] Failed to load from localStorage:', error)
     return {
       marketCallsToday: 0,
       chartCallsToday: 0,
@@ -210,14 +177,99 @@ function loadBudget(): BudgetTracker {
 }
 
 /**
- * Save budget to localStorage
+ * Get the budget singleton, applying time-based resets atomically
+ * This is the ONLY way to access the budget - ensures consistency
  */
-function saveBudget(budget: BudgetTracker): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(budget))
-  } catch (error) {
-    console.error('[API Budget] Failed to save budget to localStorage:', error)
+function getBudget(): BudgetTracker {
+  // Initialize on first access
+  if (!budgetSingleton) {
+    budgetSingleton = initializeBudget()
+    schedulePersist() // Persist initial state
   }
+
+  const today = new Date().toISOString().split('T')[0]
+  const currentMinute = getCurrentMinuteWindow()
+
+  // Check for daily reset (midnight)
+  if (budgetSingleton.lastResetDate !== today) {
+    console.log('[API Budget] New day detected, resetting daily counters')
+    budgetSingleton.marketCallsToday = 0
+    budgetSingleton.chartCallsToday = 0
+    budgetSingleton.newsCallsToday = 0
+    budgetSingleton.twelveDataCallsToday = 0
+    budgetSingleton.lastResetDate = today
+    schedulePersist()
+  }
+
+  // Check for minute window resets
+  if (budgetSingleton.finnhubMinuteWindow !== currentMinute) {
+    budgetSingleton.finnhubCallsThisMinute = 0
+    budgetSingleton.finnhubMinuteWindow = currentMinute
+  }
+
+  if (budgetSingleton.polygonMinuteWindow !== currentMinute) {
+    budgetSingleton.polygonCallsThisMinute = 0
+    budgetSingleton.polygonMinuteWindow = currentMinute
+  }
+
+  if (budgetSingleton.twelveDataMinuteWindow !== currentMinute) {
+    budgetSingleton.twelveDataCallsThisMinute = 0
+    budgetSingleton.twelveDataMinuteWindow = currentMinute
+  }
+
+  return budgetSingleton
+}
+
+/**
+ * Schedule a debounced persist to localStorage
+ * Multiple rapid updates will only trigger one write
+ */
+function schedulePersist(): void {
+  if (persistTimeout) {
+    clearTimeout(persistTimeout)
+  }
+  persistTimeout = setTimeout(() => {
+    if (budgetSingleton) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(budgetSingleton))
+      } catch (error) {
+        console.error('[API Budget] Failed to persist to localStorage:', error)
+      }
+    }
+    persistTimeout = null
+  }, PERSIST_DEBOUNCE_MS)
+}
+
+/**
+ * Force immediate persist (used before page unload)
+ */
+function forcePersist(): void {
+  if (persistTimeout) {
+    clearTimeout(persistTimeout)
+    persistTimeout = null
+  }
+  if (budgetSingleton) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(budgetSingleton))
+    } catch (error) {
+      console.error('[API Budget] Failed to persist to localStorage:', error)
+    }
+  }
+}
+
+// Persist on page unload to avoid losing recent updates
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', forcePersist)
+}
+
+// Legacy aliases for backward compatibility
+function loadBudget(): BudgetTracker {
+  return getBudget()
+}
+
+function saveBudget(_budget: BudgetTracker): void {
+  // Now handled by schedulePersist() - this is a no-op for compatibility
+  schedulePersist()
 }
 
 /**
@@ -335,7 +387,9 @@ export function getBudgetStatus(): {
 export function __resetBudgetForTesting(): void {
   const today = new Date().toISOString().split('T')[0]
   const currentMinute = getCurrentMinuteWindow()
-  const freshBudget: BudgetTracker = {
+
+  // Reset the singleton directly
+  budgetSingleton = {
     marketCallsToday: 0,
     chartCallsToday: 0,
     newsCallsToday: 0,
@@ -348,7 +402,9 @@ export function __resetBudgetForTesting(): void {
     twelveDataMinuteWindow: currentMinute,
     twelveDataCallsToday: 0
   }
-  saveBudget(freshBudget)
+
+  // Force immediate persist
+  forcePersist()
   console.log('[API Budget] Budget manually reset (testing mode)')
 }
 

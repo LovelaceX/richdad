@@ -105,7 +105,7 @@ export function TermsStep({ stepNumber, totalSteps, accepted, onAcceptChange }: 
       </div>
 
       {/* Privacy Highlights */}
-      <div className="bg-terminal-up/5 border border-terminal-up/20 rounded-lg p-4">
+      <div className="bg-terminal-up/5 rounded-lg p-4">
         <div className="flex items-center gap-2 mb-3">
           <Shield className="w-4 h-4 text-terminal-up" />
           <span className="text-terminal-up text-sm font-medium">Privacy Promise</span>

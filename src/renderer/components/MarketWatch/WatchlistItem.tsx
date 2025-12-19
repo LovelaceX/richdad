@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { X } from 'lucide-react'
 import type { WatchlistItem as WatchlistItemType } from '../../types'
 import { formatPrice, formatChange, formatPercent, getColorClass } from '../../lib/utils'
@@ -10,7 +11,11 @@ interface WatchlistItemProps {
   isTop10?: boolean  // Top 10 items cannot be removed
 }
 
-export function WatchlistItem({ item, isSelected, onClick, isTop10 = false }: WatchlistItemProps) {
+/**
+ * WatchlistItem - Memoized to prevent re-renders when other items in the list change
+ * Only re-renders when its specific props (item, isSelected, onClick, isTop10) change
+ */
+export const WatchlistItem = memo(function WatchlistItem({ item, isSelected, onClick, isTop10 = false }: WatchlistItemProps) {
   const { quote } = item
   const colorClass = getColorClass(quote.change)
   const removeFromWatchlist = useMarketStore(state => state.removeFromWatchlist)
@@ -57,10 +62,11 @@ export function WatchlistItem({ item, isSelected, onClick, isTop10 = false }: Wa
           onClick={handleDelete}
           className="p-1 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all flex-shrink-0"
           title="Remove from watchlist"
+          aria-label={`Remove ${item.symbol} from watchlist`}
         >
           <X size={14} />
         </button>
       )}
     </div>
   )
-}
+})

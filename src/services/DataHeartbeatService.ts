@@ -5,14 +5,52 @@ import { generateRecommendation, isMarketOpen } from './aiRecommendationEngine'
 import { outcomeTracker } from './outcomeTracker'
 import { generateNewsIntelReport } from './agents/newsIntelAgent'
 import { generatePatternScanReport } from './agents/patternScanAgent'
-import { db } from '../renderer/lib/db'
+import { websocketService, type WebSocketState } from './websocketService'
+import { db, getSettings } from '../renderer/lib/db'
 import type { Quote, NewsItem, AnalysisPhase } from '../renderer/types'
 import type { NewsIntelReport, PatternScanReport } from './agents/types'
 
+// Event types for callbacks
+// Note: Using generic payload type as events have varying structures
+// A full discriminated union would require updating all callback handlers
+export type DataUpdateType =
+  | 'market'
+  | 'news'
+  | 'sentiment'
+  | 'ai_recommendation'
+  | 'alert_triggered'
+  | 'ai_analysis_start'
+  | 'ai_phase_update'
+  | 'ai_analysis_end'
+  | 'news_intel'
+  | 'pattern_scan'
+  | 'websocket_status'
+  | 'realtime_quote'
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type DataUpdateCallback = (data: {
-  type: 'market' | 'news' | 'sentiment' | 'ai_recommendation' | 'alert_triggered' | 'ai_analysis_start' | 'ai_phase_update' | 'ai_analysis_end' | 'news_intel' | 'pattern_scan'
-  payload: any
+  type: DataUpdateType
+  payload: any  // TODO: Replace with discriminated union when refactoring hooks
 }) => void
+
+// Memory limits to prevent unbounded growth
+const MAX_CACHED_NEWS = 500
+const MAX_TRACKED_PRICES = 200
+
+// Jitter configuration to prevent thundering herd
+// Adds randomness to polling intervals so multiple clients don't hit API at same time
+const JITTER_PERCENT = 0.15 // ±15% jitter
+
+/**
+ * Add random jitter to an interval to prevent thundering herd
+ * @param baseMs - Base interval in milliseconds
+ * @returns Jittered interval (baseMs ± JITTER_PERCENT)
+ */
+function addJitter(baseMs: number): number {
+  const jitterRange = baseMs * JITTER_PERCENT
+  const jitter = (Math.random() * 2 - 1) * jitterRange // Random between -jitterRange and +jitterRange
+  return Math.round(baseMs + jitter)
+}
 
 class DataHeartbeatService {
   private marketInterval: NodeJS.Timeout | null = null
@@ -20,11 +58,15 @@ class DataHeartbeatService {
   private sentimentInterval: NodeJS.Timeout | null = null
   private aiAnalysisInterval: NodeJS.Timeout | null = null
   private patternScanInterval: NodeJS.Timeout | null = null
+  private cleanupInterval: NodeJS.Timeout | null = null
   private callbacks: Set<DataUpdateCallback> = new Set()
   private isRunning = false
   private cachedNews: NewsItem[] = []
   private newsSourceMetadata: { source: string; hasSentiment: boolean } | null = null
-  private lastPrices: Map<string, number> = new Map() // For percentage-based alerts
+  private lastPrices: Map<string, { price: number; timestamp: number }> = new Map() // For percentage-based alerts
+  private lastPricesLRU: string[] = [] // Track access order for cleanup
+  private websocketEnabled = false
+  private websocketUnsubscribe: (() => void) | null = null
 
   // Intervals (configurable)
   private MARKET_UPDATE_INTERVAL = 60000 // 1 minute (but respects 1-hour cache)
@@ -32,6 +74,8 @@ class DataHeartbeatService {
   private SENTIMENT_UPDATE_INTERVAL = 600000 // 10 minutes
   private AI_ANALYSIS_INTERVAL = 900000 // Default 15 minutes (overridden in start() from AISettings)
   private PATTERN_SCAN_INTERVAL = 900000 // 15 minutes (pattern scanner runs during market hours)
+  private CLEANUP_INTERVAL = 600000 // 10 minutes - run memory cleanup
+  private PRICE_MAX_AGE = 24 * 60 * 60 * 1000 // 24 hours - evict prices older than this
 
   /**
    * Start the heartbeat service
@@ -45,7 +89,8 @@ class DataHeartbeatService {
     console.log('[Heartbeat] Starting data heartbeat service...')
     this.isRunning = true
 
-    // Load AI settings and set interval
+    // Load settings
+    const settings = await getSettings()
     const { getAISettings } = await import('../renderer/lib/db')
     const aiSettings = await getAISettings()
     this.AI_ANALYSIS_INTERVAL = (aiSettings.recommendationInterval ?? 15) * 60000
@@ -56,12 +101,21 @@ class DataHeartbeatService {
     // Start outcome tracker (for AI performance monitoring)
     outcomeTracker.start().catch(console.error)
 
+    // Try to connect WebSocket if enabled and API key is available
+    if (settings.enableWebsocket && settings.polygonApiKey) {
+      await this.initializeWebSocket(settings.polygonApiKey)
+    }
+
     // Start periodic updates
     this.startMarketUpdates()
     this.startNewsUpdates()
     this.startSentimentUpdates()
     this.startAIAnalysis()
     this.startPatternScanning()
+    this.startCleanupRoutine()
+
+    // Listen for WebSocket fallback event
+    window.addEventListener('websocket-fallback', this.handleWebSocketFallback.bind(this))
 
     console.log('[Heartbeat] Service started')
   }
@@ -80,12 +134,25 @@ class DataHeartbeatService {
     if (this.sentimentInterval) clearInterval(this.sentimentInterval)
     if (this.aiAnalysisInterval) clearInterval(this.aiAnalysisInterval)
     if (this.patternScanInterval) clearInterval(this.patternScanInterval)
+    if (this.cleanupInterval) clearInterval(this.cleanupInterval)
 
     this.marketInterval = null
     this.newsInterval = null
     this.sentimentInterval = null
     this.aiAnalysisInterval = null
     this.patternScanInterval = null
+    this.cleanupInterval = null
+
+    // Disconnect WebSocket
+    if (this.websocketUnsubscribe) {
+      this.websocketUnsubscribe()
+      this.websocketUnsubscribe = null
+    }
+    websocketService.disconnect()
+    this.websocketEnabled = false
+
+    // Remove event listener
+    window.removeEventListener('websocket-fallback', this.handleWebSocketFallback.bind(this))
 
     // Stop outcome tracker
     outcomeTracker.stop()
@@ -181,17 +248,17 @@ class DataHeartbeatService {
             shouldTrigger = currentPrice < alert.value
             break
           case 'percent_up': {
-            const lastPrice = this.lastPrices.get(alert.symbol)
-            if (lastPrice) {
-              const percentChange = ((currentPrice - lastPrice) / lastPrice) * 100
+            const priceData = this.lastPrices.get(alert.symbol)
+            if (priceData) {
+              const percentChange = ((currentPrice - priceData.price) / priceData.price) * 100
               shouldTrigger = percentChange >= alert.value
             }
             break
           }
           case 'percent_down': {
-            const lastPrice = this.lastPrices.get(alert.symbol)
-            if (lastPrice) {
-              const percentChange = ((lastPrice - currentPrice) / lastPrice) * 100
+            const priceData = this.lastPrices.get(alert.symbol)
+            if (priceData) {
+              const percentChange = ((priceData.price - currentPrice) / priceData.price) * 100
               shouldTrigger = percentChange >= alert.value
             }
             break
@@ -220,15 +287,36 @@ class DataHeartbeatService {
         }
       }
 
-      // Update last prices for percentage calculations
+      // Update last prices for percentage calculations (with LRU cleanup)
+      const now = Date.now()
       quotes.forEach(q => {
         if (q.price) {
-          this.lastPrices.set(q.symbol, q.price)
+          this.lastPrices.set(q.symbol, { price: q.price, timestamp: now })
+          this.trackPriceAccess(q.symbol)
         }
       })
 
     } catch (error) {
       console.error('[Heartbeat] Price alert check failed:', error)
+    }
+  }
+
+  /**
+   * Track price symbol access for LRU cleanup
+   */
+  private trackPriceAccess(symbol: string): void {
+    const idx = this.lastPricesLRU.indexOf(symbol)
+    if (idx !== -1) {
+      this.lastPricesLRU.splice(idx, 1)
+    }
+    this.lastPricesLRU.push(symbol)
+
+    // Evict oldest if over limit
+    while (this.lastPricesLRU.length > MAX_TRACKED_PRICES) {
+      const evict = this.lastPricesLRU.shift()
+      if (evict) {
+        this.lastPrices.delete(evict)
+      }
     }
   }
 
@@ -239,7 +327,8 @@ class DataHeartbeatService {
     try {
       const newsResponse = await fetchNews()
 
-      this.cachedNews = newsResponse.articles
+      // Limit cached news to prevent unbounded memory growth
+      this.cachedNews = newsResponse.articles.slice(0, MAX_CACHED_NEWS)
       this.newsSourceMetadata = {
         source: newsResponse.source,
         hasSentiment: newsResponse.hasSentiment
@@ -480,59 +569,63 @@ class DataHeartbeatService {
   // Private methods
 
   private startMarketUpdates(): void {
-    // Initial update
-    this.updateMarketData([])
+    // Initial update with slight random delay to prevent thundering herd on startup
+    setTimeout(() => {
+      this.updateMarketData([])
+    }, addJitter(1000))
 
-    // Periodic updates
+    // Periodic updates with jitter
     this.marketInterval = setInterval(() => {
       this.updateMarketData([])
-    }, this.MARKET_UPDATE_INTERVAL)
+    }, addJitter(this.MARKET_UPDATE_INTERVAL))
   }
 
   private startNewsUpdates(): void {
-    // Initial update
-    this.updateNews()
+    // Initial update with jitter
+    setTimeout(() => {
+      this.updateNews()
+    }, addJitter(2000))
 
-    // Periodic updates
+    // Periodic updates with jitter
     this.newsInterval = setInterval(() => {
       this.updateNews()
-    }, this.NEWS_UPDATE_INTERVAL)
+    }, addJitter(this.NEWS_UPDATE_INTERVAL))
   }
 
   private startSentimentUpdates(): void {
-    // Initial sentiment analysis (after first news fetch)
+    // Initial sentiment analysis (after first news fetch) with jitter
     setTimeout(() => {
       this.updateSentiment()
-    }, 5000) // Wait 5s for first news fetch
+    }, addJitter(5000))
 
-    // Periodic updates
+    // Periodic updates with jitter
     this.sentimentInterval = setInterval(() => {
       this.updateSentiment()
-    }, this.SENTIMENT_UPDATE_INTERVAL)
+    }, addJitter(this.SENTIMENT_UPDATE_INTERVAL))
   }
 
   private startAIAnalysis(): void {
-    // Initial AI analysis (after first market data fetch)
+    // Initial AI analysis (after first market data fetch) with jitter
     setTimeout(() => {
       this.updateAIAnalysis('SPY')
-    }, 10000) // Wait 10s for market data to load
+    }, addJitter(10000))
 
-    // Periodic updates (every 15 minutes)
+    // Periodic updates with jitter
     this.aiAnalysisInterval = setInterval(() => {
       this.updateAIAnalysis('SPY')
-    }, this.AI_ANALYSIS_INTERVAL)
+    }, addJitter(this.AI_ANALYSIS_INTERVAL))
   }
 
   private startPatternScanning(): void {
-    // Initial pattern scan (after market data loads)
+    // Initial pattern scan (after market data loads) with jitter
     setTimeout(() => {
       this.updatePatternScan()
-    }, 15000) // Wait 15s for market data to load
+    }, addJitter(15000))
 
-    // Periodic updates (every 15 minutes during market hours)
+    // Periodic updates with jitter
     this.patternScanInterval = setInterval(() => {
       this.updatePatternScan()
-    }, this.PATTERN_SCAN_INTERVAL)
+    }, addJitter(this.PATTERN_SCAN_INTERVAL))
   }
 
   private notifyCallbacks(data: Parameters<DataUpdateCallback>[0]): void {
@@ -543,6 +636,224 @@ class DataHeartbeatService {
         console.error('[Heartbeat] Callback error:', error)
       }
     })
+  }
+
+  /**
+   * Start periodic memory cleanup routine
+   */
+  private startCleanupRoutine(): void {
+    // Initial cleanup after 1 minute
+    setTimeout(() => {
+      this.runCleanup()
+    }, 60000)
+
+    // Periodic cleanup with jitter
+    this.cleanupInterval = setInterval(() => {
+      this.runCleanup()
+    }, addJitter(this.CLEANUP_INTERVAL))
+  }
+
+  /**
+   * Run memory cleanup routine
+   * - Evicts stale price data (older than 24 hours)
+   * - Trims news cache to limit
+   * - Clears any other stale data
+   */
+  private runCleanup(): void {
+    const now = Date.now()
+    let evictedPrices = 0
+    let evictedNews = 0
+
+    // Clean old prices (older than 24 hours)
+    for (const [symbol, data] of this.lastPrices) {
+      if (now - data.timestamp > this.PRICE_MAX_AGE) {
+        this.lastPrices.delete(symbol)
+        // Also remove from LRU list
+        const lruIdx = this.lastPricesLRU.indexOf(symbol)
+        if (lruIdx !== -1) {
+          this.lastPricesLRU.splice(lruIdx, 1)
+        }
+        evictedPrices++
+      }
+    }
+
+    // Trim news to limit (keep most recent)
+    if (this.cachedNews.length > MAX_CACHED_NEWS) {
+      evictedNews = this.cachedNews.length - MAX_CACHED_NEWS
+      // Sort by timestamp (newest first) and keep only the limit
+      this.cachedNews = this.cachedNews
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .slice(0, MAX_CACHED_NEWS)
+    }
+
+    // Log cleanup stats (only if something was evicted)
+    if (evictedPrices > 0 || evictedNews > 0) {
+      console.log('[Heartbeat] Cleanup complete:', {
+        pricesEvicted: evictedPrices,
+        newsEvicted: evictedNews,
+        pricesTracked: this.lastPrices.size,
+        newsArticles: this.cachedNews.length
+      })
+    }
+  }
+
+  /**
+   * Get memory stats for debugging/monitoring
+   */
+  getMemoryStats(): {
+    pricesTracked: number
+    newsArticles: number
+    callbacks: number
+  } {
+    return {
+      pricesTracked: this.lastPrices.size,
+      newsArticles: this.cachedNews.length,
+      callbacks: this.callbacks.size
+    }
+  }
+
+  // ==========================================
+  // WEBSOCKET METHODS
+  // ==========================================
+
+  /**
+   * Initialize WebSocket connection for real-time streaming
+   */
+  private async initializeWebSocket(apiKey: string): Promise<void> {
+    console.log('[Heartbeat] Initializing WebSocket connection...')
+
+    try {
+      // Initialize the service with API key
+      await websocketService.initialize(apiKey)
+
+      // Subscribe to status changes
+      this.websocketUnsubscribe = websocketService.onStatusChange((state, message) => {
+        this.notifyCallbacks({
+          type: 'websocket_status',
+          payload: { state, message }
+        })
+
+        // If connected, subscribe to watchlist symbols
+        if (state === 'connected') {
+          this.subscribeWatchlistToWebSocket()
+        }
+      })
+
+      // Attempt connection
+      const connected = await websocketService.connect()
+
+      if (connected) {
+        this.websocketEnabled = true
+        console.log('[Heartbeat] WebSocket connected successfully')
+      } else {
+        console.warn('[Heartbeat] WebSocket connection failed, using polling')
+        this.websocketEnabled = false
+      }
+
+    } catch (error) {
+      console.error('[Heartbeat] WebSocket initialization failed:', error)
+      this.websocketEnabled = false
+    }
+  }
+
+  /**
+   * Subscribe watchlist symbols to WebSocket for real-time updates
+   */
+  private async subscribeWatchlistToWebSocket(): Promise<void> {
+    try {
+      const { useMarketStore } = await import('../renderer/stores/marketStore')
+      const watchlist = useMarketStore.getState().watchlist
+      const symbols = watchlist.map(item => item.symbol)
+
+      if (symbols.length === 0) {
+        console.log('[Heartbeat] No watchlist symbols to subscribe')
+        return
+      }
+
+      console.log(`[Heartbeat] Subscribing ${symbols.length} symbols to WebSocket`)
+
+      // Subscribe to all watchlist symbols
+      websocketService.subscribeMultiple(symbols, (quote) => {
+        this.handleRealtimeQuote(quote)
+      })
+
+    } catch (error) {
+      console.error('[Heartbeat] Failed to subscribe watchlist:', error)
+    }
+  }
+
+  /**
+   * Handle real-time quote from WebSocket
+   */
+  private handleRealtimeQuote(quote: Quote): void {
+    const now = Date.now()
+
+    // Update last prices for alert tracking
+    this.lastPrices.set(quote.symbol, { price: quote.price, timestamp: now })
+    this.trackPriceAccess(quote.symbol)
+
+    // Notify callbacks of real-time update
+    this.notifyCallbacks({
+      type: 'realtime_quote',
+      payload: quote
+    })
+
+    // Also update market data (so UI gets it through normal channels)
+    this.notifyCallbacks({
+      type: 'market',
+      payload: {
+        quotes: [quote],
+        cacheStatus: getCacheStatus(),
+        isRealtime: true
+      }
+    })
+  }
+
+  /**
+   * Handle WebSocket fallback event (when connection fails permanently)
+   */
+  private handleWebSocketFallback(): void {
+    console.log('[Heartbeat] WebSocket fallback triggered, relying on polling')
+    this.websocketEnabled = false
+
+    // Notify UI that we're now using polling
+    this.notifyCallbacks({
+      type: 'websocket_status',
+      payload: { state: 'failed', message: 'Falling back to polling' }
+    })
+  }
+
+  /**
+   * Get WebSocket status
+   */
+  getWebSocketStatus(): {
+    enabled: boolean
+    state: WebSocketState
+    subscribedSymbols: number
+  } {
+    return {
+      enabled: this.websocketEnabled,
+      state: websocketService.getState(),
+      subscribedSymbols: websocketService.getSubscribedSymbols().length
+    }
+  }
+
+  /**
+   * Manually enable/disable WebSocket (for settings toggle)
+   */
+  async toggleWebSocket(enable: boolean, apiKey?: string): Promise<boolean> {
+    if (enable && apiKey) {
+      await this.initializeWebSocket(apiKey)
+      return this.websocketEnabled
+    } else {
+      if (this.websocketUnsubscribe) {
+        this.websocketUnsubscribe()
+        this.websocketUnsubscribe = null
+      }
+      websocketService.disconnect()
+      this.websocketEnabled = false
+      return false
+    }
   }
 }
 

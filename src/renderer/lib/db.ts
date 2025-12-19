@@ -80,6 +80,9 @@ export interface UserSettings {
   // Performance
   performanceMode: boolean
 
+  // Real-time Data Streaming
+  enableWebsocket?: boolean  // Use WebSocket for real-time quotes (requires Polygon paid tier)
+
   // News Ticker
   tickerSpeed: 'slow' | 'normal' | 'fast'
 
@@ -88,6 +91,15 @@ export interface UserSettings {
     name: string   // "S&P 500", "NASDAQ-100", etc.
     etf: string    // "SPY", "QQQ", etc.
     index: string  // "^GSPC", "^NDX", etc.
+  }
+
+  // Configurable Trading Thresholds
+  tradingThresholds?: {
+    vixLow: number           // VIX below this = low volatility (default: 15)
+    vixHigh: number          // VIX above this = high volatility (default: 25)
+    sidewaysPercent: number  // SPY within this % of MA50 = sideways (default: 0.5)
+    patternHighScore: number // Pattern score >= this = High reliability (default: 70)
+    patternMediumScore: number // Pattern score >= this = Medium reliability (default: 50)
   }
 }
 
@@ -277,6 +289,8 @@ export interface TradeMemory {
     daysHeld: number
     exitPrice?: number
   }
+  // Flat field for indexing (Dexie can't index nested properties)
+  outcomeResult?: 'win' | 'loss' | 'pending'
 }
 
 // Database class
@@ -390,6 +404,31 @@ class DadAppDatabase extends Dexie {
       holdings: '++id, symbol, entryDate',
       tradeMemories: '++id, timestamp, symbol, outcome.result'
     })
+
+    // v8: Fix indexing - Dexie can't index nested properties
+    // Added outcomeResult as flat field, compound indexes for common queries
+    this.version(8).stores({
+      tradeDecisions: '++id, timestamp, symbol, action, decision, source, [symbol+timestamp]',
+      userSettings: '++id',
+      newsSources: '++id, name, type, enabled, category',
+      proTraders: '++id, handle, source, enabled',
+      priceAlerts: '++id, symbol, triggered, createdAt',
+      pnlEntries: '++id, date',
+      userProfile: '++id',
+      aiSettings: '++id, provider',
+      watchlist: '++id, symbol, addedAt',
+      holdings: '++id, symbol, entryDate',
+      tradeMemories: '++id, timestamp, symbol, outcomeResult, [symbol+timestamp]'
+    }).upgrade(async tx => {
+      // Migrate existing tradeMemories to populate outcomeResult from nested outcome.result
+      const memories = tx.table('tradeMemories')
+      await memories.toCollection().modify((memory: any) => {
+        if (memory.outcome?.result && !memory.outcomeResult) {
+          memory.outcomeResult = memory.outcome.result
+        }
+      })
+      console.log('[DB] Migrated tradeMemories to use flat outcomeResult field')
+    })
   }
 }
 
@@ -457,6 +496,15 @@ export const DEFAULT_SETTINGS: UserSettings = {
     name: 'S&P 500',
     etf: 'SPY',
     index: '^GSPC'
+  },
+
+  // Trading Thresholds (used by market regime & pattern detection)
+  tradingThresholds: {
+    vixLow: 15,           // VIX below this = low volatility
+    vixHigh: 25,          // VIX above this = high volatility
+    sidewaysPercent: 0.5, // SPY within this % of MA50 = sideways
+    patternHighScore: 70, // Pattern score >= this = High reliability
+    patternMediumScore: 50 // Pattern score >= this = Medium reliability
   }
 }
 
@@ -555,6 +603,34 @@ export async function updateSettings(updates: Partial<UserSettings>): Promise<vo
   }
 }
 
+/**
+ * Trading thresholds type for external use
+ */
+export type TradingThresholds = NonNullable<UserSettings['tradingThresholds']>
+
+/**
+ * Default trading thresholds
+ */
+export const DEFAULT_TRADING_THRESHOLDS: TradingThresholds = {
+  vixLow: 15,
+  vixHigh: 25,
+  sidewaysPercent: 0.5,
+  patternHighScore: 70,
+  patternMediumScore: 50
+}
+
+/**
+ * Get trading thresholds with defaults
+ * Use this in services to access configurable threshold values
+ */
+export async function getTradingThresholds(): Promise<TradingThresholds> {
+  const settings = await getSettings()
+  return {
+    ...DEFAULT_TRADING_THRESHOLDS,
+    ...settings.tradingThresholds
+  }
+}
+
 export async function logTradeDecision(decision: Omit<TradeDecision, 'id'>): Promise<number> {
   const id = await db.tradeDecisions.add(decision as TradeDecision)
   return id as number
@@ -569,16 +645,30 @@ export async function getTradeDecisions(limit = 100): Promise<TradeDecision[]> {
 }
 
 export async function getDecisionStats() {
-  const decisions = await db.tradeDecisions.toArray()
-  const total = decisions.length
-  const executed = decisions.filter(d => d.decision === 'execute').length
-  const skipped = decisions.filter(d => d.decision === 'skip').length
+  // Use indexed queries instead of loading all records
+  // This is O(1) for count queries on indexed fields
+  const total = await db.tradeDecisions.count()
+  const executed = await db.tradeDecisions.where('decision').equals('execute').count()
+  const skipped = await db.tradeDecisions.where('decision').equals('skip').count()
 
-  const byAction = {
-    BUY: decisions.filter(d => d.action === 'BUY'),
-    SELL: decisions.filter(d => d.action === 'SELL'),
-    HOLD: decisions.filter(d => d.action === 'HOLD')
-  }
+  // Use indexed action queries
+  const buyTotal = await db.tradeDecisions.where('action').equals('BUY').count()
+  const sellTotal = await db.tradeDecisions.where('action').equals('SELL').count()
+  const holdTotal = await db.tradeDecisions.where('action').equals('HOLD').count()
+
+  // For executed counts by action, we need to filter (action index narrows first)
+  const buyExecuted = await db.tradeDecisions
+    .where('action').equals('BUY')
+    .filter(d => d.decision === 'execute')
+    .count()
+  const sellExecuted = await db.tradeDecisions
+    .where('action').equals('SELL')
+    .filter(d => d.decision === 'execute')
+    .count()
+  const holdExecuted = await db.tradeDecisions
+    .where('action').equals('HOLD')
+    .filter(d => d.decision === 'execute')
+    .count()
 
   return {
     total,
@@ -586,9 +676,9 @@ export async function getDecisionStats() {
     skipped,
     executeRate: total > 0 ? (executed / total) * 100 : 0,
     byAction: {
-      BUY: { total: byAction.BUY.length, executed: byAction.BUY.filter(d => d.decision === 'execute').length },
-      SELL: { total: byAction.SELL.length, executed: byAction.SELL.filter(d => d.decision === 'execute').length },
-      HOLD: { total: byAction.HOLD.length, executed: byAction.HOLD.filter(d => d.decision === 'execute').length }
+      BUY: { total: buyTotal, executed: buyExecuted },
+      SELL: { total: sellTotal, executed: sellExecuted },
+      HOLD: { total: holdTotal, executed: holdExecuted }
     }
   }
 }

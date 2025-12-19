@@ -1,30 +1,18 @@
 import { useState, useEffect } from 'react'
+import { networkMonitor } from '../lib/utils'
 
 /**
  * Hook to track network connectivity status
  * Returns true if online, false if offline
+ * Uses the global networkMonitor for consistent status across the app
  */
 export function useNetworkStatus(): boolean {
-  const [isOnline, setIsOnline] = useState(navigator.onLine)
+  const [isOnline, setIsOnline] = useState(networkMonitor.isOnline)
 
   useEffect(() => {
-    const handleOnline = () => {
-      console.log('[Network] Connection restored')
-      setIsOnline(true)
-    }
-
-    const handleOffline = () => {
-      console.log('[Network] Connection lost')
-      setIsOnline(false)
-    }
-
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-
-    return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
+    // Subscribe to network status changes from the global monitor
+    const unsubscribe = networkMonitor.subscribe(setIsOnline)
+    return unsubscribe
   }, [])
 
   return isOnline

@@ -3,6 +3,7 @@ import { generateQuote } from '../renderer/lib/mockData'
 import type { Quote } from '../renderer/types'
 import type { Timeframe } from '../renderer/lib/mockData'
 import type { DataProvider, DataSource } from '../renderer/stores/marketStore'
+import type { CandleData } from './technicalIndicators'
 import {
   canUseAlphaVantageForMarket,
   canUseAlphaVantageForCharts,
@@ -21,7 +22,7 @@ const ALPHA_VANTAGE_BASE_URL = 'https://www.alphavantage.co/query'
 
 // Result type with source metadata for transparency
 export interface FetchHistoricalResult {
-  candles: any[]
+  candles: CandleData[]
   source: DataSource
 }
 
@@ -41,22 +42,116 @@ function createDataSource(
 
 const CACHE_DURATION_MS = 3600000 // 1 hour (3600 seconds)
 const RATE_LIMIT_DELAY_MS = 12000 // 5 calls/min = 12s between calls
+const FRESH_THRESHOLD_MS = 60000 // Data older than 1 minute is not "fresh"
 
 let lastCallTime = 0
 let cachedQuotes: Quote[] = []
 let cacheTimestamp = 0
 
+// ==========================================
+// REQUEST DEDUPLICATION
+// ==========================================
+
+/**
+ * In-flight request tracking for deduplication
+ * Prevents duplicate API calls when multiple components request same data simultaneously
+ */
+const pendingQuoteRequests = new Map<string, Promise<Quote[]>>()
+const pendingHistoricalRequests = new Map<string, Promise<FetchHistoricalResult>>()
+
+/**
+ * Create a normalized cache key from symbols array
+ */
+function createQuoteCacheKey(symbols: string[]): string {
+  return [...symbols].sort().join(',')
+}
+
+/**
+ * Create cache key for historical data
+ */
+function createHistoricalCacheKey(symbol: string, interval: string): string {
+  return `${symbol}_${interval}`
+}
+
+/**
+ * Add cache metadata to quotes for UI transparency
+ */
+function addCacheMetadata(
+  quotes: Quote[],
+  source: 'api' | 'cache' | 'stale' | 'mock',
+  cacheAge: number = 0
+): Quote[] {
+  const isFresh = source === 'api' || (source === 'cache' && cacheAge < FRESH_THRESHOLD_MS)
+
+  return quotes.map(q => ({
+    ...q,
+    dataSource: source,
+    cacheAge,
+    isFresh
+  }))
+}
+
 // Historical data cache (for candlestick charts)
-let cachedHistoricalData: Map<string, any[]> = new Map()
+// Limited to prevent unbounded memory growth
+const MAX_HISTORICAL_CACHE_ENTRIES = 50
+let cachedHistoricalData: Map<string, CandleData[]> = new Map()
 let historicalCacheTimestamps: Map<string, number> = new Map()
+let historicalCacheLRU: string[] = [] // Track access order for LRU eviction
 const HISTORICAL_CACHE_DURATION_MS = 86400000 // 24 hours
+
+/**
+ * Track historical cache access for LRU cleanup
+ */
+function trackHistoricalCacheAccess(cacheKey: string): void {
+  const idx = historicalCacheLRU.indexOf(cacheKey)
+  if (idx !== -1) {
+    historicalCacheLRU.splice(idx, 1)
+  }
+  historicalCacheLRU.push(cacheKey)
+
+  // Evict oldest entries if over limit
+  while (historicalCacheLRU.length > MAX_HISTORICAL_CACHE_ENTRIES) {
+    const evict = historicalCacheLRU.shift()
+    if (evict) {
+      cachedHistoricalData.delete(evict)
+      historicalCacheTimestamps.delete(evict)
+    }
+  }
+}
 
 /**
  * Fetch live prices from configured provider (Polygon or Alpha Vantage)
  * Uses caching to minimize API calls
  * Falls back to mock data on error
+ *
+ * DEDUPLICATION: If an identical request is already in flight, returns the same promise
  */
 export async function fetchLivePrices(symbols: string[]): Promise<Quote[]> {
+  // Create cache key for deduplication
+  const dedupeKey = createQuoteCacheKey(symbols)
+
+  // Check for in-flight request with same symbols
+  const pendingRequest = pendingQuoteRequests.get(dedupeKey)
+  if (pendingRequest) {
+    console.log('[MarketData] Deduplicating quote request for:', symbols.length, 'symbols')
+    return pendingRequest
+  }
+
+  // Create new request and track it
+  const request = fetchLivePricesInternal(symbols).finally(() => {
+    // Clean up tracking once request completes (success or failure)
+    pendingQuoteRequests.delete(dedupeKey)
+  })
+
+  pendingQuoteRequests.set(dedupeKey, request)
+  return request
+}
+
+/**
+ * Internal implementation of fetchLivePrices
+ * Separated for deduplication wrapper
+ */
+async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
   const settings = await getSettings()
   const provider = settings.marketDataProvider || 'polygon'
 
@@ -65,17 +160,19 @@ export async function fetchLivePrices(symbols: string[]): Promise<Quote[]> {
     const polygonKey = settings.polygonApiKey
     if (!polygonKey) {
       console.warn('[Market Data] No Polygon API key configured, using mock data')
-      return symbols.map(symbol => generateQuote(symbol))
+      return addCacheMetadata(symbols.map(symbol => generateQuote(symbol)), 'mock')
     }
 
     // Check budget before making API call
     if (!canUsePolygon()) {
       console.warn('[Market Data] Polygon rate limit reached, using cached/mock data')
       // Try to return cached data if available
-      if (cachedQuotes.length > 0 && Date.now() - cacheTimestamp < CACHE_DURATION_MS * 2) {
-        return cachedQuotes.filter(q => symbols.includes(q.symbol))
+      const age = Date.now() - cacheTimestamp
+      if (cachedQuotes.length > 0 && age < CACHE_DURATION_MS * 2) {
+        const filtered = cachedQuotes.filter(q => symbols.includes(q.symbol))
+        return addCacheMetadata(filtered, age > CACHE_DURATION_MS ? 'stale' : 'cache', age)
       }
-      return symbols.map(symbol => generateQuote(symbol))
+      return addCacheMetadata(symbols.map(symbol => generateQuote(symbol)), 'mock')
     }
 
     try {
@@ -85,13 +182,19 @@ export async function fetchLivePrices(symbols: string[]): Promise<Quote[]> {
         // Update cache
         cachedQuotes = quotes
         cacheTimestamp = Date.now()
-        return quotes
+        return addCacheMetadata(quotes, 'api', 0)
       }
     } catch (error) {
       console.error('[Market Data] Polygon fetch failed:', error)
+      // Try cache on error
+      const age = Date.now() - cacheTimestamp
+      if (cachedQuotes.length > 0) {
+        const filtered = cachedQuotes.filter(q => symbols.includes(q.symbol))
+        return addCacheMetadata(filtered, 'stale', age)
+      }
     }
     // Fallback to mock if Polygon fails
-    return symbols.map(symbol => generateQuote(symbol))
+    return addCacheMetadata(symbols.map(symbol => generateQuote(symbol)), 'mock')
   }
 
   // Route to TwelveData if configured
@@ -99,16 +202,18 @@ export async function fetchLivePrices(symbols: string[]): Promise<Quote[]> {
     const twelveDataKey = settings.twelvedataApiKey
     if (!twelveDataKey) {
       console.warn('[Market Data] No TwelveData API key configured, using mock data')
-      return symbols.map(symbol => generateQuote(symbol))
+      return addCacheMetadata(symbols.map(symbol => generateQuote(symbol)), 'mock')
     }
 
     // Check budget before making API call
     if (!canUseTwelveData()) {
       console.warn('[Market Data] TwelveData rate limit reached, using cached/mock data')
-      if (cachedQuotes.length > 0 && Date.now() - cacheTimestamp < CACHE_DURATION_MS * 2) {
-        return cachedQuotes.filter(q => symbols.includes(q.symbol))
+      const age = Date.now() - cacheTimestamp
+      if (cachedQuotes.length > 0 && age < CACHE_DURATION_MS * 2) {
+        const filtered = cachedQuotes.filter(q => symbols.includes(q.symbol))
+        return addCacheMetadata(filtered, age > CACHE_DURATION_MS ? 'stale' : 'cache', age)
       }
-      return symbols.map(symbol => generateQuote(symbol))
+      return addCacheMetadata(symbols.map(symbol => generateQuote(symbol)), 'mock')
     }
 
     try {
@@ -132,12 +237,21 @@ export async function fetchLivePrices(symbols: string[]): Promise<Quote[]> {
         }
         return generateQuote(symbol)
       })
-      return quotes
+      // Update cache
+      cachedQuotes = quotes
+      cacheTimestamp = Date.now()
+      return addCacheMetadata(quotes, 'api', 0)
     } catch (error) {
       console.error('[Market Data] TwelveData fetch failed:', error)
+      // Try cache on error
+      const age = Date.now() - cacheTimestamp
+      if (cachedQuotes.length > 0) {
+        const filtered = cachedQuotes.filter(q => symbols.includes(q.symbol))
+        return addCacheMetadata(filtered, 'stale', age)
+      }
     }
     // Fallback to mock if TwelveData fails
-    return symbols.map(symbol => generateQuote(symbol))
+    return addCacheMetadata(symbols.map(symbol => generateQuote(symbol)), 'mock')
   }
 
   // Alpha Vantage path
@@ -146,25 +260,25 @@ export async function fetchLivePrices(symbols: string[]): Promise<Quote[]> {
   // Fallback to mock if no API key
   if (!apiKey) {
     console.warn('[Market Data] No Alpha Vantage API key configured, using mock data')
-    return symbols.map(symbol => generateQuote(symbol))
+    return addCacheMetadata(symbols.map(symbol => generateQuote(symbol)), 'mock')
   }
 
   // Check cache first (1-hour cache)
   const now = Date.now()
-  const cacheAge = now - cacheTimestamp
+  const currentCacheAge = now - cacheTimestamp
 
-  if (cachedQuotes.length > 0 && cacheAge < CACHE_DURATION_MS) {
-    console.log(`[Market Data] Serving from cache (age: ${Math.round(cacheAge / 60000)}m ${Math.round((cacheAge % 60000) / 1000)}s)`)
-    return cachedQuotes
+  if (cachedQuotes.length > 0 && currentCacheAge < CACHE_DURATION_MS) {
+    console.log(`[Market Data] Serving from cache (age: ${Math.round(currentCacheAge / 60000)}m ${Math.round((currentCacheAge % 60000) / 1000)}s)`)
+    return addCacheMetadata(cachedQuotes, 'cache', currentCacheAge)
   }
 
   // Check API budget before making call
   if (!canUseAlphaVantageForMarket()) {
     console.warn('[Market Data] Budget exhausted, serving from stale cache or mock')
     if (cachedQuotes.length > 0) {
-      return cachedQuotes
+      return addCacheMetadata(cachedQuotes, 'stale', currentCacheAge)
     }
-    return symbols.map(symbol => generateQuote(symbol))
+    return addCacheMetadata(symbols.map(symbol => generateQuote(symbol)), 'mock')
   }
 
   try {
@@ -218,16 +332,17 @@ export async function fetchLivePrices(symbols: string[]): Promise<Quote[]> {
     // Record API call in budget tracker
     recordMarketCall()
 
-    return quotes
+    return addCacheMetadata(quotes, 'api', 0)
 
   } catch (error) {
     console.error('Failed to fetch live prices, falling back to mock:', error)
     // If we have stale cache, return it instead of mock
     if (cachedQuotes.length > 0) {
       console.warn('[Market Data] Using stale cache due to API error')
-      return cachedQuotes
+      const staleCacheAge = Date.now() - cacheTimestamp
+      return addCacheMetadata(cachedQuotes, 'stale', staleCacheAge)
     }
-    return symbols.map(symbol => generateQuote(symbol))
+    return addCacheMetadata(symbols.map(symbol => generateQuote(symbol)), 'mock')
   }
 }
 
@@ -268,10 +383,10 @@ const INTERVAL_MAPPING: Record<string, { baseInterval: string; aggregateCount: n
 /**
  * Aggregate candles into larger timeframes
  */
-function aggregateCandles(candles: any[], count: number): any[] {
+function aggregateCandles(candles: CandleData[], count: number): CandleData[] {
   if (count <= 1) return candles
 
-  const aggregated: any[] = []
+  const aggregated: CandleData[] = []
 
   for (let i = 0; i < candles.length; i += count) {
     const group = candles.slice(i, i + count)
@@ -283,7 +398,7 @@ function aggregateCandles(candles: any[], count: number): any[] {
       high: Math.max(...group.map(c => c.high)),
       low: Math.min(...group.map(c => c.low)),
       close: group[group.length - 1].close,
-      volume: group.reduce((sum, c) => sum + c.volume, 0)
+      volume: group.reduce((sum, c) => sum + (c.volume ?? 0), 0)
     })
   }
 
@@ -293,8 +408,37 @@ function aggregateCandles(candles: any[], count: number): any[] {
 /**
  * Fetch historical OHLCV data for charts
  * Returns candles AND source metadata for transparency
+ *
+ * DEDUPLICATION: If an identical request is already in flight, returns the same promise
  */
 export async function fetchHistoricalData(
+  symbol: string,
+  interval: string = 'daily'
+): Promise<FetchHistoricalResult> {
+  // Create cache key for deduplication
+  const dedupeKey = createHistoricalCacheKey(symbol, interval)
+
+  // Check for in-flight request
+  const pendingRequest = pendingHistoricalRequests.get(dedupeKey)
+  if (pendingRequest) {
+    console.log(`[MarketData] Deduplicating historical request for: ${symbol} (${interval})`)
+    return pendingRequest
+  }
+
+  // Create new request and track it
+  const request = fetchHistoricalDataInternal(symbol, interval).finally(() => {
+    pendingHistoricalRequests.delete(dedupeKey)
+  })
+
+  pendingHistoricalRequests.set(dedupeKey, request)
+  return request
+}
+
+/**
+ * Internal implementation of fetchHistoricalData
+ * Separated for deduplication wrapper
+ */
+async function fetchHistoricalDataInternal(
   symbol: string,
   interval: string = 'daily'
 ): Promise<FetchHistoricalResult> {
@@ -340,6 +484,7 @@ export async function fetchHistoricalData(
         const cacheKey = `${symbol}_${interval}`
         cachedHistoricalData.set(cacheKey, candles)
         historicalCacheTimestamps.set(cacheKey, Date.now())
+        trackHistoricalCacheAccess(cacheKey) // LRU tracking
         return {
           candles,
           source: createDataSource('polygon', true, 0) // Polygon free tier is 15-min delayed
@@ -515,6 +660,7 @@ export async function fetchHistoricalData(
     // Cache the result for 24 hours
     cachedHistoricalData.set(cacheKey, filtered)
     historicalCacheTimestamps.set(cacheKey, Date.now())
+    trackHistoricalCacheAccess(cacheKey) // LRU tracking
     console.log(`[Market Data] Cached ${filtered.length} candles for ${symbol} (${interval})`)
 
     // Record API call in budget tracker
@@ -554,7 +700,7 @@ export async function fetchHistoricalDataRange(
   endDate: number,
   timeframe: '1d' | '1h' | '15m' = '1d',
   includeIndicatorLookback: number = 200
-): Promise<any[]> {
+): Promise<CandleData[]> {
   const settings = await getSettings()
 
   // Calculate adjusted start date to include lookback for indicators
@@ -613,7 +759,7 @@ export async function fetchHistoricalDataRange(
  * Validate candle data for backtest
  * Checks for gaps, anomalies, and data quality issues
  */
-export function validateCandleData(candles: any[]): {
+export function validateCandleData(candles: CandleData[]): {
   valid: boolean
   issues: string[]
 } {

@@ -110,6 +110,8 @@ export function IntelPanel() {
       <button
         onClick={togglePanel}
         className="w-full px-3 py-2 flex items-center justify-between hover:bg-terminal-bg transition-colors"
+        aria-expanded={expanded}
+        aria-label={`${activeIntelTab === 'news' ? 'News Intel' : 'Pattern Scanner'} panel, ${expanded ? 'collapse' : 'expand'}`}
       >
         <div className="flex items-center gap-2">
           {activeIntelTab === 'news' ? (
@@ -153,7 +155,7 @@ export function IntelPanel() {
             className="overflow-hidden"
           >
             {/* Top-level Intel Type Toggle */}
-            <div className="border-t border-terminal-border flex">
+            <div className="border-t border-terminal-border flex" role="tablist" aria-label="Intelligence type">
               <button
                 onClick={() => setActiveIntelTab('news')}
                 className={`flex-1 text-[10px] py-1.5 flex items-center justify-center gap-1 transition-colors ${
@@ -161,11 +163,14 @@ export function IntelPanel() {
                     ? 'bg-purple-900/30 text-purple-400 border-b border-purple-400'
                     : 'text-gray-400 hover:text-white'
                 }`}
+                role="tab"
+                aria-selected={activeIntelTab === 'news'}
+                aria-label={`News Intel${activeAlerts.length > 0 ? `, ${activeAlerts.length} alerts` : ''}`}
               >
-                <Brain size={10} />
+                <Brain size={10} aria-hidden="true" />
                 News
                 {activeAlerts.length > 0 && (
-                  <span className="bg-red-500 text-white text-[8px] px-1 rounded-full">
+                  <span className="bg-red-500 text-white text-[8px] px-1 rounded-full" aria-hidden="true">
                     {activeAlerts.length}
                   </span>
                 )}
@@ -177,11 +182,14 @@ export function IntelPanel() {
                     ? 'bg-cyan-900/30 text-cyan-400 border-b border-cyan-400'
                     : 'text-gray-400 hover:text-white'
                 }`}
+                role="tab"
+                aria-selected={activeIntelTab === 'patterns'}
+                aria-label={`Pattern Scanner${hasPatternAlerts ? ', has alerts' : ''}`}
               >
-                <ScanLine size={10} />
+                <ScanLine size={10} aria-hidden="true" />
                 Patterns
                 {hasPatternAlerts && (
-                  <span className="bg-cyan-500 text-black text-[8px] px-1 rounded-full">!</span>
+                  <span className="bg-cyan-500 text-black text-[8px] px-1 rounded-full" aria-hidden="true">!</span>
                 )}
               </button>
             </div>

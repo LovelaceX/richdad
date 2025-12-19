@@ -15,6 +15,10 @@ export interface Quote {
   open: number
   previousClose: number
   timestamp: number
+  // Cache metadata - helps UI show data freshness
+  cacheAge?: number        // How old is this data in ms (0 = fresh from API)
+  dataSource?: 'api' | 'cache' | 'stale' | 'mock'  // Where the data came from
+  isFresh?: boolean        // Quick check: is this recent enough for trading?
 }
 
 export interface CandleData {

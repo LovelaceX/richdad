@@ -1,6 +1,11 @@
 /**
  * AI Recommendation Engine
  * Automatically generates trading recommendations by analyzing market data with AI
+ *
+ * PERFORMANCE: Uses context caching to avoid redundant calculations:
+ * - Market regime: cached for 5 minutes
+ * - Technical indicators: cached for 1 minute per symbol
+ * - Candlestick patterns: cached for 15 minutes per symbol
  */
 
 import { getAISettings } from '../renderer/lib/db'
@@ -13,6 +18,167 @@ import type { CandleData } from './technicalIndicators'
 import { generateId } from '../renderer/lib/utils'
 import { canMakeAICall, recordAICall, getAIBudgetStatus } from './aiBudgetTracker'
 import { findSimilarScenarios, extractSignature, buildMemoryContext } from './memoryStore'
+
+// ==========================================
+// CONTEXT CACHING
+// ==========================================
+
+/**
+ * Cache TTLs (in milliseconds)
+ */
+const REGIME_CACHE_TTL = 5 * 60 * 1000 // 5 minutes - regime changes slowly
+const INDICATOR_CACHE_TTL = 60 * 1000 // 1 minute - indicators based on price
+const PATTERN_CACHE_TTL = 15 * 60 * 1000 // 15 minutes - patterns are slow-changing
+
+/**
+ * Cached context data
+ */
+interface CachedData<T> {
+  data: T
+  timestamp: number
+}
+
+const regimeCache: { data: MarketRegime | null; timestamp: number } = { data: null, timestamp: 0 }
+const indicatorCache = new Map<string, CachedData<any>>()
+const patternCache = new Map<string, CachedData<DetectedPattern[]>>()
+
+/**
+ * Get cached market regime or calculate fresh
+ */
+async function getCachedMarketRegime(): Promise<MarketRegime | null> {
+  const now = Date.now()
+
+  // Check cache validity
+  if (regimeCache && regimeCache.data && (now - regimeCache.timestamp) < REGIME_CACHE_TTL) {
+    console.log('[AI Engine] Using cached market regime')
+    return regimeCache.data
+  }
+
+  // Calculate fresh regime
+  try {
+    const regime = await calculateMarketRegime()
+    regimeCache.data = regime
+    regimeCache.timestamp = now
+    return regime
+  } catch (err) {
+    console.warn('[AI Engine] Failed to calculate market regime:', err)
+    // Return stale cache if available
+    if (regimeCache && regimeCache.data) {
+      return regimeCache.data
+    }
+    return null
+  }
+}
+
+/**
+ * Get cached indicators or calculate fresh
+ */
+function getCachedIndicators(symbol: string, candles: CandleData[]): any {
+  const now = Date.now()
+  const cached = indicatorCache.get(symbol)
+
+  // Check cache validity
+  if (cached && (now - cached.timestamp) < INDICATOR_CACHE_TTL) {
+    console.log(`[AI Engine] Using cached indicators for ${symbol}`)
+    return cached.data
+  }
+
+  // Calculate fresh indicators
+  const indicators = calculateIndicators(candles)
+  indicatorCache.set(symbol, { data: indicators, timestamp: now })
+  return indicators
+}
+
+/**
+ * Get cached patterns or detect fresh
+ */
+function getCachedPatterns(symbol: string, candles: CandleData[]): DetectedPattern[] {
+  const now = Date.now()
+  const cached = patternCache.get(symbol)
+
+  // Check cache validity
+  if (cached && (now - cached.timestamp) < PATTERN_CACHE_TTL) {
+    console.log(`[AI Engine] Using cached patterns for ${symbol}`)
+    return cached.data
+  }
+
+  // Detect fresh patterns
+  const patterns = detectPatterns(candles)
+  patternCache.set(symbol, { data: patterns, timestamp: now })
+  return patterns
+}
+
+/**
+ * Invalidate AI context caches
+ * Call this when significant market events occur or user changes settings
+ *
+ * @param type - Optional type to invalidate ('regime' | 'indicators' | 'patterns')
+ *               If not specified, invalidates all caches
+ */
+export function invalidateAIContext(type?: 'regime' | 'indicators' | 'patterns'): void {
+  if (!type || type === 'regime') {
+    regimeCache.data = null
+    regimeCache.timestamp = 0
+    console.log('[AI Engine] Regime cache invalidated')
+  }
+  if (!type || type === 'indicators') {
+    indicatorCache.clear()
+    console.log('[AI Engine] Indicator cache cleared')
+  }
+  if (!type || type === 'patterns') {
+    patternCache.clear()
+    console.log('[AI Engine] Pattern cache cleared')
+  }
+}
+
+/**
+ * Get cache statistics for debugging/monitoring
+ */
+export function getAIContextCacheStats(): {
+  regimeCacheAge: number | null
+  indicatorCacheSize: number
+  patternCacheSize: number
+} {
+  return {
+    regimeCacheAge: regimeCache?.timestamp ? Date.now() - regimeCache.timestamp : null,
+    indicatorCacheSize: indicatorCache.size,
+    patternCacheSize: patternCache.size
+  }
+}
+
+/**
+ * Sanitize text for safe inclusion in AI prompts
+ * Prevents prompt injection attacks by:
+ * - Limiting length
+ * - Removing control characters
+ * - Escaping special prompt delimiters
+ */
+function sanitizeForPrompt(text: string, maxLength: number = 500): string {
+  if (!text || typeof text !== 'string') return ''
+
+  return text
+    // Remove control characters (except newlines/tabs)
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    // Remove potential prompt injection patterns
+    .replace(/\b(IGNORE|DISREGARD|SYSTEM|ASSISTANT|USER|HUMAN)[\s:]+/gi, '')
+    // Escape potential JSON breaking characters in string context
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    // Limit length
+    .slice(0, maxLength)
+    .trim()
+}
+
+/**
+ * Sanitize stock ticker symbol
+ * Valid symbols are 1-5 uppercase letters (or digits for some)
+ */
+function sanitizeSymbol(symbol: string): string {
+  if (!symbol || typeof symbol !== 'string') return 'UNKNOWN'
+  // Only allow alphanumeric and common symbol characters (., -, ^)
+  const cleaned = symbol.toUpperCase().replace(/[^A-Z0-9.\-^]/g, '')
+  return cleaned.slice(0, 10) || 'UNKNOWN'
+}
 
 interface RecommendationResponse {
   action: 'BUY' | 'SELL' | 'HOLD'
@@ -68,9 +234,9 @@ export async function generateRecommendation(
       return null
     }
 
-    // Phase 1: Market Regime
+    // Phase 1: Market Regime (uses cache)
     updatePhase('regime', 'active')
-    const marketRegime = await calculateMarketRegime()
+    const marketRegime = await getCachedMarketRegime()
     const regimeLabel = marketRegime?.regime?.replace(/_/g, ' ') || 'Unknown'
     updatePhase('regime', 'complete', regimeLabel)
 
@@ -98,13 +264,13 @@ export async function generateRecommendation(
       return null
     }
 
-    const indicators = calculateIndicators(candles)
+    const indicators = getCachedIndicators(symbol, candles)
     const rsiLabel = indicators.rsi14 ? `RSI ${indicators.rsi14}` : 'Calculating...'
     updatePhase('technicals', 'complete', rsiLabel)
 
-    // Phase 4: Detect candlestick patterns
+    // Phase 4: Detect candlestick patterns (uses cache)
     updatePhase('patterns', 'active')
-    const allPatterns = detectPatterns(candles)
+    const allPatterns = getCachedPatterns(symbol, candles)
     const recentPatterns = allPatterns
       .filter(p => p.reliabilityScore >= 50)
       .slice(-5)
@@ -214,23 +380,28 @@ function buildAnalysisPrompt(
   memoryContext: string = '',
   includeOptionsLanguage: boolean = false
 ): string {
+  // Sanitize all external inputs before including in prompt
+  const safeSymbol = sanitizeSymbol(symbol)
+  const safeHeadlines = newsHeadlines.map(h => sanitizeForPrompt(h, 200))
+  const safeMemoryContext = sanitizeForPrompt(memoryContext, 1000)
+
   const regimeSection = marketRegime
     ? formatRegimeForPrompt(marketRegime)
     : '**MARKET REGIME:** Unable to calculate (insufficient data)'
 
-  // Format candlestick patterns for the prompt
+  // Format candlestick patterns for the prompt (pattern names are internal, safe)
   const patternSection = patterns.length > 0
     ? patterns.map(p =>
         `- ${p.pattern} (${p.type}, ${p.reliability} reliability, score: ${p.reliabilityScore})`
       ).join('\n')
     : 'No significant patterns detected'
 
-  const prompt = `You are a professional trading analyst. Analyze the following data for ${symbol} and provide a trading recommendation.
+  const prompt = `You are a professional trading analyst. Analyze the following data for ${safeSymbol} and provide a trading recommendation.
 
 ${regimeSection}
 
 **CURRENT PRICE DATA:**
-- Symbol: ${symbol}
+- Symbol: ${safeSymbol}
 - Current Price: $${quote.price}
 - Change: ${quote.change > 0 ? '+' : ''}$${quote.change} (${quote.changePercent > 0 ? '+' : ''}${quote.changePercent}%)
 - Volume: ${quote.volume.toLocaleString()}
@@ -254,8 +425,8 @@ Pattern guidance:
 - Bullish patterns in bearish regime (or vice versa) may indicate reversal
 
 **RECENT NEWS (Last 24 hours):**
-${newsHeadlines.length > 0 ? newsHeadlines.map((h, i) => `${i + 1}. ${h}`).join('\n') : 'No recent news available'}
-${memoryContext}
+${safeHeadlines.length > 0 ? safeHeadlines.map((h, i) => `${i + 1}. ${h}`).join('\n') : 'No recent news available'}
+${safeMemoryContext}
 **INSTRUCTIONS:**
 Based on this data AND THE MARKET REGIME, provide a trading recommendation. The market regime is critical context:
 - In HIGH_VOL_BEARISH (Fear Mode): Be very cautious, favor HOLD or defensive positions

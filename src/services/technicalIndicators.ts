@@ -23,7 +23,7 @@ export interface CandleData {
   high: number
   low: number
   close: number
-  volume: number
+  volume?: number  // Optional since some data sources may not provide volume
 }
 
 // ============================================
@@ -80,28 +80,44 @@ export function calculateRSI(candles: CandleData[], period: number = 14): number
 /**
  * Calculate MACD (Moving Average Convergence Divergence)
  * Fast: 12, Slow: 26, Signal: 9 (standard)
+ *
+ * MACD Line = EMA(12) - EMA(26)
+ * Signal Line = EMA(9) of MACD Line
+ * Histogram = MACD Line - Signal Line
  */
 export function calculateMACD(candles: CandleData[]): {
   value: number
   signal: number
   histogram: number
 } | null {
-  if (candles.length < 26) return null
+  // Need enough data for slow EMA (26) + signal period (9) = 35 candles minimum
+  if (candles.length < 35) return null
 
   const closes = candles.map(c => c.close)
 
-  // Calculate EMA
-  const ema12 = calculateEMA(closes, 12)
-  const ema26 = calculateEMA(closes, 26)
+  // Calculate full EMA series for both periods
+  const ema12Series = calculateEMASeriesInternal(closes, 12)
+  const ema26Series = calculateEMASeriesInternal(closes, 26)
 
-  if (!ema12 || !ema26) return null
+  // Build MACD line series (only where both EMAs are valid)
+  const macdSeries: number[] = []
+  for (let i = 0; i < closes.length; i++) {
+    if (!isNaN(ema12Series[i]) && !isNaN(ema26Series[i])) {
+      macdSeries.push(ema12Series[i] - ema26Series[i])
+    }
+  }
 
-  const macdLine = ema12 - ema26
+  // Need at least 9 MACD values to calculate signal line
+  if (macdSeries.length < 9) return null
 
-  // Calculate MACD signal line (9-period EMA of MACD line)
-  // Simplified: use SMA instead of EMA for signal
-  const macdValues = [macdLine]
-  const signalLine = macdValues[0] // Simplified - would need historical MACD for true signal
+  // Calculate signal line (9-period EMA of MACD line)
+  const signalSeries = calculateEMASeriesInternal(macdSeries, 9)
+
+  // Get the latest values
+  const macdLine = macdSeries[macdSeries.length - 1]
+  const signalLine = signalSeries[signalSeries.length - 1]
+
+  if (isNaN(macdLine) || isNaN(signalLine)) return null
 
   const histogram = macdLine - signalLine
 
@@ -113,19 +129,30 @@ export function calculateMACD(candles: CandleData[]): {
 }
 
 /**
- * Calculate EMA (Exponential Moving Average)
+ * Internal EMA series calculation (returns array with NaN for warmup period)
  */
-function calculateEMA(values: number[], period: number): number | null {
-  if (values.length < period) return null
+function calculateEMASeriesInternal(values: number[], period: number): number[] {
+  if (values.length < period) return values.map(() => NaN)
 
+  const result: number[] = []
   const k = 2 / (period + 1)
-  let ema = values.slice(0, period).reduce((a, b) => a + b, 0) / period
 
-  for (let i = period; i < values.length; i++) {
-    ema = values[i] * k + ema * (1 - k)
+  // Fill warmup period with NaN
+  for (let i = 0; i < period - 1; i++) {
+    result.push(NaN)
   }
 
-  return ema
+  // First EMA value is SMA of first period
+  let ema = values.slice(0, period).reduce((a, b) => a + b, 0) / period
+  result.push(ema)
+
+  // Calculate remaining EMA values
+  for (let i = period; i < values.length; i++) {
+    ema = values[i] * k + ema * (1 - k)
+    result.push(ema)
+  }
+
+  return result
 }
 
 /**

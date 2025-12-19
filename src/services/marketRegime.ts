@@ -14,6 +14,7 @@
 
 import { fetchHistoricalData, fetchLivePrices } from './marketData'
 import { calculateSMA } from './technicalIndicators'
+import { getTradingThresholds, DEFAULT_TRADING_THRESHOLDS, type TradingThresholds } from '../renderer/lib/db'
 
 export type MarketRegimeType =
   | 'LOW_VOL_BULLISH'
@@ -35,13 +36,6 @@ export interface MarketRegime {
   riskLevel: 'low' | 'moderate' | 'high' | 'extreme'
   timestamp: number
 }
-
-// VIX thresholds
-const VIX_LOW = 15
-const VIX_HIGH = 25
-
-// Sideways threshold - SPY within this % of MA50 is considered "no clear trend"
-const SIDEWAYS_THRESHOLD = 0.005 // 0.5%
 
 // Cache to avoid excessive API calls
 let cachedRegime: MarketRegime | null = null
@@ -119,6 +113,19 @@ export async function calculateMarketRegime(forceRefresh = false): Promise<Marke
   try {
     console.log('[Market Regime] Calculating market regime...')
 
+    // Get configurable thresholds (with fallback to defaults)
+    let thresholds: TradingThresholds
+    try {
+      thresholds = await getTradingThresholds()
+    } catch {
+      // Fallback if DB not initialized
+      thresholds = DEFAULT_TRADING_THRESHOLDS
+    }
+
+    const VIX_LOW = thresholds.vixLow
+    const VIX_HIGH = thresholds.vixHigh
+    const SIDEWAYS_THRESHOLD = thresholds.sidewaysPercent / 100 // Convert percent to decimal
+
     // Fetch current VIX price
     // Note: Alpha Vantage uses ^VIX or VIX for volatility index
     const vixQuotes = await fetchLivePrices(['VIX'])
@@ -161,7 +168,7 @@ export async function calculateMarketRegime(forceRefresh = false): Promise<Marke
         // High volatility
         regime = spyAboveMA50 ? 'HIGH_VOL_BULLISH' : 'HIGH_VOL_BEARISH'
       } else {
-        // Elevated volatility (15-25)
+        // Elevated volatility (VIX between thresholds)
         regime = spyAboveMA50 ? 'ELEVATED_VOL_BULLISH' : 'ELEVATED_VOL_BEARISH'
       }
     }
@@ -194,11 +201,13 @@ export async function calculateMarketRegime(forceRefresh = false): Promise<Marke
 
 /**
  * Get regime for AI prompt context
+ * Uses default thresholds for labeling (actual classification used user's settings)
  */
 export function formatRegimeForPrompt(regime: MarketRegime): string {
+  const { vixLow, vixHigh } = DEFAULT_TRADING_THRESHOLDS
   return `**MARKET REGIME:**
 - Current Regime: ${regime.regime.replace(/_/g, ' ')}
-- VIX Level: ${regime.vix.toFixed(2)} (${regime.vix < VIX_LOW ? 'Low' : regime.vix > VIX_HIGH ? 'High' : 'Elevated'} volatility)
+- VIX Level: ${regime.vix.toFixed(2)} (${regime.vix < vixLow ? 'Low' : regime.vix > vixHigh ? 'High' : 'Elevated'} volatility)
 - SPY vs MA(50): ${regime.spyMA50 ? (regime.spyPrice > regime.spyMA50 ? 'Above' : 'Below') : 'N/A'} ($${regime.spyPrice.toFixed(2)} vs $${regime.spyMA50?.toFixed(2) ?? 'N/A'})
 - Risk Level: ${regime.riskLevel.toUpperCase()}
 - Trading Guidance: ${regime.tradingGuidance}`

@@ -1,11 +1,14 @@
 /**
  * Pattern Scanner Agent
  * Scans watchlist symbols for actionable technical setups
+ *
+ * Uses a Web Worker for off-main-thread pattern detection to prevent UI blocking.
  */
 
 import { fetchHistoricalData, fetchLivePrices } from '../marketData'
-import { detectPatterns, type DetectedPattern } from '../candlestickPatterns'
+import { type DetectedPattern } from '../candlestickPatterns'
 import { calculateMarketRegime, type MarketRegime } from '../marketRegime'
+import { getTradingThresholds, DEFAULT_TRADING_THRESHOLDS } from '../../renderer/lib/db'
 import type { PatternScanReport, PatternSetup } from './types'
 
 // Minimum reliability score to include in report
@@ -13,6 +16,96 @@ const MIN_RELIABILITY_SCORE = 50
 
 // Maximum age of pattern to consider "recent" (in candles)
 const RECENT_PATTERN_LOOKBACK = 3
+
+// ==========================================
+// WEB WORKER MANAGEMENT
+// ==========================================
+
+let patternWorker: Worker | null = null
+
+/**
+ * Get or create the pattern scanner worker
+ */
+function getPatternWorker(): Worker {
+  if (!patternWorker) {
+    patternWorker = new Worker(
+      new URL('../patternScannerWorker.ts', import.meta.url),
+      { type: 'module' }
+    )
+    console.log('[PatternScanner] Web Worker initialized')
+  }
+  return patternWorker
+}
+
+/**
+ * Terminate the worker (call on app shutdown if needed)
+ */
+export function terminatePatternWorker(): void {
+  if (patternWorker) {
+    patternWorker.terminate()
+    patternWorker = null
+    console.log('[PatternScanner] Web Worker terminated')
+  }
+}
+
+/**
+ * Run pattern detection in Web Worker
+ */
+async function detectPatternsInWorker(
+  candleData: Record<string, any[]>,
+  thresholds: { patternHighScore: number; patternMediumScore: number }
+): Promise<Record<string, DetectedPattern[]>> {
+  return new Promise((resolve, reject) => {
+    const worker = getPatternWorker()
+    const timeout = setTimeout(() => {
+      reject(new Error('Pattern scanner worker timeout'))
+    }, 30000) // 30 second timeout
+
+    worker.onmessage = (e) => {
+      clearTimeout(timeout)
+      if (e.data.type === 'result') {
+        console.log(`[PatternScanner] Worker completed in ${e.data.duration.toFixed(0)}ms`)
+        resolve(e.data.patterns)
+      } else if (e.data.type === 'error') {
+        reject(new Error(e.data.error))
+      }
+    }
+
+    worker.onerror = (err) => {
+      clearTimeout(timeout)
+      reject(err)
+    }
+
+    worker.postMessage({
+      type: 'scan',
+      candleData,
+      thresholds
+    })
+  })
+}
+
+/**
+ * Fallback: detect patterns on main thread (if worker fails)
+ */
+async function detectPatternsOnMainThread(
+  candleData: Record<string, any[]>
+): Promise<Record<string, DetectedPattern[]>> {
+  // Dynamic import to avoid loading unless needed
+  const { detectPatterns, refreshPatternThresholds } = await import('../candlestickPatterns')
+  await refreshPatternThresholds()
+
+  const results: Record<string, DetectedPattern[]> = {}
+  for (const [symbol, candles] of Object.entries(candleData)) {
+    if (candles && candles.length >= 10) {
+      results[symbol] = detectPatterns(candles)
+    }
+  }
+  return results
+}
+
+// ==========================================
+// MAIN REPORT GENERATION
+// ==========================================
 
 /**
  * Generate Pattern Scan Report for watchlist symbols
@@ -24,6 +117,21 @@ export async function generatePatternScanReport(
   const setupsFound: PatternSetup[] = []
   const failedSymbols: string[] = []
 
+  // Get trading thresholds from user settings
+  let thresholds: { patternHighScore: number; patternMediumScore: number }
+  try {
+    const fullThresholds = await getTradingThresholds()
+    thresholds = {
+      patternHighScore: fullThresholds.patternHighScore,
+      patternMediumScore: fullThresholds.patternMediumScore
+    }
+  } catch {
+    thresholds = {
+      patternHighScore: DEFAULT_TRADING_THRESHOLDS.patternHighScore,
+      patternMediumScore: DEFAULT_TRADING_THRESHOLDS.patternMediumScore
+    }
+  }
+
   // Get current market regime for context
   let marketRegime: MarketRegime | null = null
   try {
@@ -33,7 +141,7 @@ export async function generatePatternScanReport(
   }
 
   // Get current prices for all symbols
-  let priceMap: Map<string, number> = new Map()
+  const priceMap: Map<string, number> = new Map()
   try {
     const quotes = await fetchLivePrices(symbols)
     quotes.forEach(q => priceMap.set(q.symbol, q.price))
@@ -41,42 +149,52 @@ export async function generatePatternScanReport(
     console.warn('[PatternScanner] Could not fetch prices:', err)
   }
 
-  // Scan each symbol
+  // Fetch historical data for all symbols (main thread - respects API limits)
+  const candleData: Record<string, any[]> = {}
   for (const symbol of symbols) {
     try {
-      // Fetch historical data (use daily for most symbols, 5min for SPY)
       const interval = symbol === 'SPY' ? '5min' : 'daily'
       const historyResult = await fetchHistoricalData(symbol, interval)
-      const candles = historyResult.candles
-
-      if (candles.length < 10) {
+      if (historyResult.candles.length >= 10) {
+        candleData[symbol] = historyResult.candles
+      } else {
         console.warn(`[PatternScanner] Insufficient data for ${symbol}`)
         failedSymbols.push(symbol)
-        continue
       }
-
-      // Detect patterns
-      const patterns = detectPatterns(candles)
-
-      // Filter to recent patterns with good reliability
-      const recentPatterns = patterns
-        .slice(-RECENT_PATTERN_LOOKBACK * 5) // Last few candles worth of patterns
-        .filter(p => p.reliabilityScore >= MIN_RELIABILITY_SCORE)
-
-      // Convert to PatternSetup format
-      for (const pattern of recentPatterns) {
-        const setup = createPatternSetup(
-          symbol,
-          pattern,
-          marketRegime,
-          priceMap.get(symbol) || candles[candles.length - 1].close
-        )
-        setupsFound.push(setup)
-      }
-
     } catch (err) {
-      console.warn(`[PatternScanner] Failed to scan ${symbol}:`, err)
+      console.warn(`[PatternScanner] Failed to fetch ${symbol}:`, err)
       failedSymbols.push(symbol)
+    }
+  }
+
+  // Detect patterns using Web Worker (or fallback to main thread)
+  let allPatterns: Record<string, DetectedPattern[]>
+  try {
+    allPatterns = await detectPatternsInWorker(candleData, thresholds)
+  } catch (err) {
+    console.warn('[PatternScanner] Worker failed, falling back to main thread:', err)
+    allPatterns = await detectPatternsOnMainThread(candleData)
+  }
+
+  // Process patterns into setups
+  for (const [symbol, patterns] of Object.entries(allPatterns)) {
+    const candles = candleData[symbol]
+    if (!candles || !patterns) continue
+
+    // Filter to recent patterns with good reliability
+    const recentPatterns = patterns
+      .slice(-RECENT_PATTERN_LOOKBACK * 5)
+      .filter(p => p.reliabilityScore >= MIN_RELIABILITY_SCORE)
+
+    // Convert to PatternSetup format
+    for (const pattern of recentPatterns) {
+      const setup = createPatternSetup(
+        symbol,
+        pattern,
+        marketRegime,
+        priceMap.get(symbol) || candles[candles.length - 1].close
+      )
+      setupsFound.push(setup)
     }
   }
 
@@ -100,11 +218,12 @@ export async function generatePatternScanReport(
     highReliabilityCount: setupsFound.filter(s => s.reliability === 'High').length
   }
 
-  console.log(`[PatternScanner] Scanned ${symbols.length} symbols, found ${setupsFound.length} setups`)
+  const scannedCount = Object.keys(candleData).length
+  console.log(`[PatternScanner] Scanned ${scannedCount} symbols, found ${setupsFound.length} setups`)
 
   return {
     timestamp: now,
-    scannedSymbols: symbols.length - failedSymbols.length,
+    scannedSymbols: scannedCount,
     failedSymbols,
     setupsFound,
     topBullishSetups,
