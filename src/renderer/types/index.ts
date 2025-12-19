@@ -65,7 +65,7 @@ export interface AIMessage {
 }
 
 export interface WatchlistItem extends Ticker {
-  quote: Quote
+  quote?: Quote  // Optional - undefined until real data is fetched
   inAlert?: boolean
 }
 

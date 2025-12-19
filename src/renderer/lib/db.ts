@@ -93,6 +93,9 @@ export interface UserSettings {
     index: string  // "^GSPC", "^NDX", etc.
   }
 
+  // Market Overview Bar Symbols (customizable)
+  marketOverviewSymbols?: string[]  // Default: ['SPY', 'QQQ', 'DIA', 'VXX']
+
   // Configurable Trading Thresholds
   tradingThresholds?: {
     vixLow: number           // VIX below this = low volatility (default: 15)

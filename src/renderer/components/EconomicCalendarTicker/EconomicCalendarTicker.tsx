@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Calendar, Loader2 } from 'lucide-react'
 import { useEconomicCalendarStore, formatEventForTicker } from '../../stores/economicCalendarStore'
 import { useSettingsStore } from '../../stores/settingsStore'
+import { SetupPrompt } from '../common/SetupPrompt'
 
 export function EconomicCalendarTicker() {
   const events = useEconomicCalendarStore(state => state.events)
@@ -59,9 +60,15 @@ export function EconomicCalendarTicker() {
           <span className="text-[11px] font-semibold tracking-wider text-white uppercase">Economic Calendar</span>
           <span className="text-terminal-border text-lg font-light">|</span>
         </div>
-        <span className="text-xs text-gray-500">
-          {error ? 'Configure FRED API key in Settings' : 'No upcoming events'}
-        </span>
+        {error ? (
+          <SetupPrompt
+            compact
+            title="FRED API needed"
+            helpSection="api-limits"
+          />
+        ) : (
+          <span className="text-xs text-gray-500">No upcoming events</span>
+        )}
       </div>
     )
   }

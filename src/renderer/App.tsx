@@ -16,12 +16,19 @@ import { useDataHeartbeat } from './hooks/useDataHeartbeat'
 import { initializeDatabase, getSettings } from './lib/db'
 import { OnboardingWizard } from './components/Onboarding/OnboardingWizard'
 import { FloatingHelp } from './components/Help/FloatingHelp'
+import { HelpModal } from './components/Help/HelpModal'
 import { ToastContainer } from './components/Toast/ToastContainer'
 import { applyTheme } from './lib/themes'
+import { useHelpStore } from './stores/helpStore'
 
 export default function App() {
   const cvdMode = useSettingsStore(state => state.cvdMode)
   const theme = useSettingsStore(state => state.theme)
+
+  // Global Help Modal state
+  const helpIsOpen = useHelpStore(state => state.isOpen)
+  const helpInitialSection = useHelpStore(state => state.initialSection)
+  const closeHelp = useHelpStore(state => state.closeHelp)
   const currentPage = useNavigationStore(state => state.currentPage)
   const zoomLevel = useSettingsStore(state => state.zoomLevel)
   const zoomScale = zoomLevel / 100
@@ -145,6 +152,13 @@ export default function App() {
 
       {/* Floating Help Button */}
       <FloatingHelp />
+
+      {/* Global Help Modal (controlled by helpStore) */}
+      <HelpModal
+        isOpen={helpIsOpen}
+        onClose={closeHelp}
+        initialSection={helpInitialSection}
+      />
 
       {/* Toast Notifications (for API limit warnings, etc.) */}
       <ToastContainer />

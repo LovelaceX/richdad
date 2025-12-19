@@ -111,7 +111,7 @@ class WebSocketService {
         }
 
         // Set up a timeout for connection
-        setTimeout(() => {
+        const connectionTimeout = setTimeout(() => {
           if (this.state === 'connecting' || this.state === 'authenticating') {
             console.warn('[WebSocket] Connection timeout')
             this.ws?.close()
@@ -124,9 +124,11 @@ class WebSocketService {
         const checkAuth = setInterval(() => {
           if (this.state === 'connected') {
             clearInterval(checkAuth)
+            clearTimeout(connectionTimeout)
             resolve(true)
           } else if (this.state === 'failed' || this.state === 'disconnected') {
             clearInterval(checkAuth)
+            clearTimeout(connectionTimeout)
             resolve(false)
           }
         }, 100)

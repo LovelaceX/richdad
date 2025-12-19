@@ -68,6 +68,8 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
   // Handler for API key changes with auto-save
   const handleKeyChange = (key: keyof UserSettings) => async (value: string) => {
     await onSave({ [key]: value })
+    // Notify heartbeat service to refresh data immediately
+    window.dispatchEvent(new Event('api-settings-updated'))
   }
 
   return (

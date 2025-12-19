@@ -29,7 +29,7 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
     decision: 'execute' | 'skip'
   ) => {
     const watchlistItem = watchlist.find(w => w.symbol === rec.ticker)
-    const currentPrice = watchlistItem?.quote.price
+    const currentPrice = watchlistItem?.quote?.price
 
     await logTradeDecision({
       timestamp: Date.now(),

@@ -7,23 +7,28 @@ import type { NewsItem } from '../types'
 
 type FilterType = 'all' | 'watchlist' | 'positive' | 'negative' | 'neutral'
 
+// Selector to extract only symbols (stable when quotes change)
+const selectWatchlistSymbols = (state: { watchlist: Array<{ symbol: string }> }) =>
+  state.watchlist.map(w => w.symbol)
+
 export function News() {
   const [filter, setFilter] = useState<FilterType>('all')
   const headlines = useNewsStore(state => state.headlines)
-  const watchlist = useMarketStore(state => state.watchlist)
+  // Only re-render when watchlist symbols change, not when quotes update
+  const watchlistSymbols = useMarketStore(selectWatchlistSymbols)
 
   const filteredNews = useMemo(() => {
     return headlines.filter((item: NewsItem) => {
       if (filter === 'all') return true
       if (filter === 'watchlist') {
-        return item.ticker && watchlist.some(w => w.symbol === item.ticker)
+        return item.ticker && watchlistSymbols.includes(item.ticker)
       }
       if (filter === 'positive') return item.sentiment === 'positive'
       if (filter === 'negative') return item.sentiment === 'negative'
       if (filter === 'neutral') return item.sentiment === 'neutral'
       return true
     })
-  }, [headlines, filter, watchlist])
+  }, [headlines, filter, watchlistSymbols])
 
   const getSentimentIcon = (sentiment?: 'positive' | 'negative' | 'neutral') => {
     switch (sentiment) {

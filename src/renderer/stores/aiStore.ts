@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import type { AIRecommendation, AIMessage, AnalysisProgress, AnalysisPhase, MorningBriefing } from '../types'
-import { MOCK_AI_MESSAGES } from '../lib/mockData'
 import { generateId } from '../lib/utils'
 import { sendChatMessage } from '../lib/ai'
 import { playSound } from '../lib/sounds'
@@ -54,7 +53,7 @@ interface AIState {
 
 export const useAIStore = create<AIState>((set, get) => ({
   currentRecommendation: null, // Will be populated by AI engine
-  messages: MOCK_AI_MESSAGES,
+  messages: [],  // Empty until real AI interactions occur
   isAnalyzing: false,
 
   // Analysis progress state

@@ -50,10 +50,10 @@ export const useSettingsStore = create<SettingsState>()(
       showVolume: true,
       refreshInterval: 5000,
       zoomLevel: 100,
-      tickerSpeed: 180,  // Default 3 minutes
+      tickerSpeed: 90,  // Default 1.5 minutes (normal speed)
       theme: getSavedTheme(),
       panelSizes: {
-        leftPanel: 20,
+        leftPanel: 15,  // Reduced from 20% to give more space to chart
         rightPanel: 25,
         bottomPanel: 5,
       },
@@ -62,8 +62,8 @@ export const useSettingsStore = create<SettingsState>()(
         rightPanelVisible: true,
         chartVisible: true,
         newsTickerVisible: true,
-        aiPerformanceVisible: true,
-        economicCalendarTickerVisible: true,
+        aiPerformanceVisible: false,  // OFF by default for new users
+        economicCalendarTickerVisible: false,  // OFF by default for new users
       },
 
       setTheme: (theme: ThemeId) => {

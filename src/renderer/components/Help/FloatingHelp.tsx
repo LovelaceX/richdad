@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { HelpCircle, X, Maximize2, Keyboard, Zap, Gauge, BookOpen } from 'lucide-react'
-import { HelpModal } from './HelpModal'
+import { useHelpStore, type HelpSection } from '../../stores/helpStore'
 
 interface QuickLink {
   icon: React.ReactNode
   label: string
-  section: string
+  section: HelpSection | 'full'
 }
 
 const quickLinks: QuickLink[] = [
@@ -17,9 +17,11 @@ const quickLinks: QuickLink[] = [
 ]
 
 export function FloatingHelp() {
+  // Local state for mini panel only
   const [isOpen, setIsOpen] = useState(false)
-  const [showModal, setShowModal] = useState(false)
-  const [initialSection, setInitialSection] = useState<string | undefined>()
+
+  // Global help modal state
+  const openHelp = useHelpStore(state => state.openHelp)
 
   // Keyboard shortcut: Cmd+? to open help
   useEffect(() => {
@@ -27,7 +29,7 @@ export function FloatingHelp() {
       // Cmd/Ctrl + Shift + / (which is ?)
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === '/') {
         e.preventDefault()
-        setShowModal(true)
+        openHelp()
         setIsOpen(false)
       }
       // Escape to close mini panel
@@ -38,21 +40,19 @@ export function FloatingHelp() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen])
+  }, [isOpen, openHelp])
 
-  const handleQuickLink = (section: string) => {
+  const handleQuickLink = (section: HelpSection | 'full') => {
     if (section === 'full') {
-      setInitialSection(undefined)
+      openHelp()
     } else {
-      setInitialSection(section)
+      openHelp(section)
     }
-    setShowModal(true)
     setIsOpen(false)
   }
 
   const handleExpand = () => {
-    setInitialSection(undefined)
-    setShowModal(true)
+    openHelp()
     setIsOpen(false)
   }
 
@@ -131,15 +131,7 @@ export function FloatingHelp() {
         </motion.button>
       </div>
 
-      {/* Full Help Modal */}
-      <HelpModal
-        isOpen={showModal}
-        onClose={() => {
-          setShowModal(false)
-          setInitialSection(undefined)
-        }}
-        initialSection={initialSection}
-      />
+      {/* HelpModal is now rendered in App.tsx and controlled by helpStore */}
     </>
   )
 }

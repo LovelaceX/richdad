@@ -4,9 +4,14 @@
  * Settings section for visual accessibility and interface scaling.
  */
 
-// React import not needed for JSX in modern TypeScript
-import { Monitor, LayoutGrid, Eye } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Monitor, LayoutGrid, Eye, TrendingUp, X, Plus } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settingsStore'
+import { getSettings, updateSettings } from '../../../lib/db'
+
+// Default market symbols
+const DEFAULT_MARKET_SYMBOLS = ['SPY', 'QQQ', 'DIA', 'VXX']
+const MAX_SYMBOLS = 8
 
 export function DisplaySection() {
   // Get state and actions from Zustand store
@@ -23,6 +28,59 @@ export function DisplaySection() {
   const toggleNewsTicker = useSettingsStore((state) => state.toggleNewsTicker)
   const toggleAIPerformance = useSettingsStore((state) => state.toggleAIPerformance)
   const toggleEconomicCalendarTicker = useSettingsStore((state) => state.toggleEconomicCalendarTicker)
+
+  // Market Overview Symbols state
+  const [marketSymbols, setMarketSymbols] = useState<string[]>(DEFAULT_MARKET_SYMBOLS)
+  const [newSymbol, setNewSymbol] = useState('')
+
+  // Load market symbols from settings
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const settings = await getSettings()
+        if (settings.marketOverviewSymbols?.length) {
+          setMarketSymbols(settings.marketOverviewSymbols)
+        }
+      } catch (error) {
+        console.error('Failed to load market symbols:', error)
+      }
+    }
+    loadSettings()
+  }, [])
+
+  // Save market symbols to settings
+  const saveMarketSymbols = async (symbols: string[]) => {
+    setMarketSymbols(symbols)
+    await updateSettings({ marketOverviewSymbols: symbols })
+    // Notify other components
+    window.dispatchEvent(new Event('settings-updated'))
+  }
+
+  // Add a new symbol
+  const handleAddSymbol = () => {
+    const symbol = newSymbol.toUpperCase().trim()
+    if (!symbol) return
+    if (marketSymbols.includes(symbol)) {
+      setNewSymbol('')
+      return
+    }
+    if (marketSymbols.length >= MAX_SYMBOLS) return
+
+    const updated = [...marketSymbols, symbol]
+    saveMarketSymbols(updated)
+    setNewSymbol('')
+  }
+
+  // Remove a symbol
+  const handleRemoveSymbol = (symbol: string) => {
+    const updated = marketSymbols.filter(s => s !== symbol)
+    saveMarketSymbols(updated)
+  }
+
+  // Reset to defaults
+  const handleResetSymbols = () => {
+    saveMarketSymbols(DEFAULT_MARKET_SYMBOLS)
+  }
 
   return (
     <div>
@@ -133,6 +191,74 @@ export function DisplaySection() {
               enabled={panelVisibility.aiPerformanceVisible}
               onToggle={toggleAIPerformance}
             />
+          </div>
+        </div>
+
+        <div className="border-t border-terminal-border" />
+
+        {/* Market Overview Symbols */}
+        <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="w-4 h-4 text-terminal-amber" />
+            <span className="text-white text-sm font-medium">Market Overview Symbols</span>
+          </div>
+
+          <p className="text-gray-400 text-xs mb-4">
+            Customize which symbols appear in the market overview bar at the top. Add any stock or ETF symbol.
+          </p>
+
+          {/* Current Symbols */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {marketSymbols.map((symbol) => (
+              <div
+                key={symbol}
+                className="flex items-center gap-1.5 bg-terminal-bg border border-terminal-border rounded px-2.5 py-1.5"
+              >
+                <span className="text-terminal-amber font-mono text-sm">{symbol}</span>
+                <button
+                  onClick={() => handleRemoveSymbol(symbol)}
+                  className="text-gray-500 hover:text-red-400 transition-colors"
+                  title="Remove symbol"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Add Symbol Input */}
+          <div className="flex gap-2 mb-3">
+            <input
+              type="text"
+              value={newSymbol}
+              onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddSymbol()}
+              placeholder="Enter symbol (e.g., AAPL)"
+              maxLength={10}
+              className="flex-1 bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-terminal-amber/50"
+              disabled={marketSymbols.length >= MAX_SYMBOLS}
+            />
+            <button
+              onClick={handleAddSymbol}
+              disabled={!newSymbol.trim() || marketSymbols.length >= MAX_SYMBOLS}
+              className="px-4 py-2 bg-terminal-amber text-black rounded text-sm font-medium hover:bg-terminal-amber/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+            >
+              <Plus size={14} />
+              Add
+            </button>
+          </div>
+
+          {/* Reset & Limit Info */}
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-gray-500">
+              {marketSymbols.length}/{MAX_SYMBOLS} symbols
+            </span>
+            <button
+              onClick={handleResetSymbols}
+              className="text-gray-400 hover:text-terminal-amber transition-colors"
+            >
+              Reset to defaults
+            </button>
           </div>
         </div>
 

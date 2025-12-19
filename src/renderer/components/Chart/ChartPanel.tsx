@@ -10,6 +10,7 @@ import { MarketContextPanel } from './MarketContextPanel'
 import { ChartSyncProvider } from './ChartSyncContext'
 import { IndicatorSelector } from './IndicatorSelector'
 import { IndicatorPanelGroup } from './IndicatorPanelGroup'
+import { MarketSelector } from '../TopBar/MarketSelector'
 import { useMarketStore } from '../../stores/marketStore'
 import { useAIStore } from '../../stores/aiStore'
 import { usePatternStore } from '../../stores/patternStore'
@@ -130,6 +131,11 @@ export function ChartPanel() {
               </span>
             </div>
           )}
+
+          {/* Market Index Selector */}
+          <div className="border-l border-terminal-border pl-3">
+            <MarketSelector />
+          </div>
 
           {/* Quick Buy/Sell Buttons */}
           <QuickTradeButtons />

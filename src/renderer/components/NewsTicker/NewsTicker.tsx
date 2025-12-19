@@ -3,6 +3,7 @@ import { Newspaper, Loader2 } from 'lucide-react'
 import { useNewsStore } from '../../stores/newsStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { NewsItem } from './NewsItem'
+import { SetupPrompt } from '../common/SetupPrompt'
 
 export function NewsTicker() {
   const headlines = useNewsStore(state => state.headlines)
@@ -39,7 +40,11 @@ export function NewsTicker() {
           <span className="text-[11px] font-semibold tracking-wider text-white uppercase">News Feed</span>
           <span className="text-terminal-border text-lg font-light">|</span>
         </div>
-        <span className="text-xs text-gray-500">No news available</span>
+        <SetupPrompt
+          compact
+          title="News will appear once you connect a data source"
+          helpSection="api-limits"
+        />
       </div>
     )
   }

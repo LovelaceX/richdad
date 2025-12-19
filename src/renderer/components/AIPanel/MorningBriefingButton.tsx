@@ -7,7 +7,9 @@ import { useState } from 'react'
 import { Sun, Loader2 } from 'lucide-react'
 import { useMarketStore } from '../../stores/marketStore'
 import { useAIStore } from '../../stores/aiStore'
+import { useToastStore } from '../../stores/toastStore'
 import { generateMorningBriefing, estimateBriefingDuration } from '../../../services/morningBriefingService'
+import { formatApiError } from '../../../services/marketData'
 import { BriefingModal } from './BriefingModal'
 
 export function MorningBriefingButton() {
@@ -21,6 +23,7 @@ export function MorningBriefingButton() {
   const setBriefingRunning = useAIStore(state => state.setBriefingRunning)
   const setBriefingProgress = useAIStore(state => state.setBriefingProgress)
   const setMorningBriefing = useAIStore(state => state.setMorningBriefing)
+  const addToast = useToastStore(state => state.addToast)
 
   const handleGenerateBriefing = async () => {
     if (isBriefingRunning) return
@@ -46,6 +49,13 @@ export function MorningBriefingButton() {
       setShowModal(true)
     } catch (error) {
       console.error('[MorningBriefing] Generation failed:', error)
+      // Show user-friendly error toast
+      const errorMessage = formatApiError(error, 'AI')
+      addToast({
+        type: 'error',
+        message: errorMessage,
+        helpSection: 'ai-copilot'
+      })
     } finally {
       setBriefingRunning(false)
       setBriefingProgress(null)

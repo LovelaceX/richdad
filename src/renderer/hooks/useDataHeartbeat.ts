@@ -27,7 +27,6 @@ export function useDataHeartbeat() {
   // Intel store actions
   const setNewsIntel = useIntelStore(state => state.setNewsIntel)
   const setPatternScan = useIntelStore(state => state.setPatternScan)
-  const activeBreakingAlerts = useIntelStore(state => state.activeBreakingAlerts)
 
   // Track previous alert count to detect new alerts
   const prevAlertCountRef = useRef(0)
@@ -60,6 +59,17 @@ export function useDataHeartbeat() {
 
     window.addEventListener('ai-settings-updated', handleAISettingsChange)
     return () => window.removeEventListener('ai-settings-updated', handleAISettingsChange)
+  }, [])
+
+  // Listen for API settings changes (when user adds/changes API keys)
+  useEffect(() => {
+    const handleApiSettingsChange = () => {
+      console.log('[useDataHeartbeat] API settings changed, triggering immediate data refresh')
+      dataHeartbeat.refreshOnApiKeyChange().catch(console.error)
+    }
+
+    window.addEventListener('api-settings-updated', handleApiSettingsChange)
+    return () => window.removeEventListener('api-settings-updated', handleApiSettingsChange)
   }, [])
 
   const handleDataUpdate: DataUpdateCallback = ({ type, payload }) => {
@@ -120,7 +130,7 @@ export function useDataHeartbeat() {
           console.log(`[useDataHeartbeat] New breaking alerts detected: ${newAlertCount - prevAlertCountRef.current}`)
           playSound('breakingNews').catch(console.error)
         }
-        prevAlertCountRef.current = activeBreakingAlerts.length
+        prevAlertCountRef.current = newAlertCount
 
         setNewsIntel(report)
         break

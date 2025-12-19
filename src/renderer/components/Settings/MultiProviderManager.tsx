@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Plus, Trash2, ChevronUp, ChevronDown, Check, AlertCircle, Cpu } from 'lucide-react'
 import { AI_PROVIDERS, type AIProvider, type AIProviderConfig } from '../../lib/db'
+import { SetupPrompt } from '../common/SetupPrompt'
 
 interface MultiProviderManagerProps {
   providers: AIProviderConfig[]
@@ -93,10 +94,14 @@ export function MultiProviderManager({ providers, onChange }: MultiProviderManag
 
       {/* Provider List */}
       {providers.length === 0 ? (
-        <div className="bg-terminal-panel border border-terminal-border rounded-lg p-6 text-center">
-          <AlertCircle className="w-8 h-8 text-gray-500 mx-auto mb-2" />
-          <p className="text-gray-400 text-sm">No AI providers configured</p>
-          <p className="text-gray-500 text-xs mt-1">Add a provider to enable AI features</p>
+        <div className="bg-terminal-panel border border-terminal-border rounded-lg">
+          <SetupPrompt
+            icon={<Cpu className="w-6 h-6 text-gray-500" />}
+            title="No AI providers configured"
+            description="Add a provider to enable AI features like recommendations and analysis"
+            helpSection="ai-copilot"
+            settingsPath="AI Copilot"
+          />
         </div>
       ) : (
         <div className="space-y-3">

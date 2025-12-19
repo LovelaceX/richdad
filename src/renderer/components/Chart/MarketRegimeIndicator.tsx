@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Activity, TrendingUp, TrendingDown, AlertTriangle, Shield } from 'lucide-react'
 import type { MarketRegime, MarketRegimeType } from '../../../services/marketRegime'
+import { SetupPrompt } from '../common/SetupPrompt'
 
 interface MarketRegimeIndicatorProps {
   compact?: boolean  // For header display
@@ -41,7 +42,21 @@ export function MarketRegimeIndicator({ compact = false }: MarketRegimeIndicator
   }
 
   if (!regime) {
-    return null
+    return compact ? (
+      <SetupPrompt
+        compact
+        title="Market data needed"
+        helpSection="api-limits"
+      />
+    ) : (
+      <SetupPrompt
+        icon={<Activity className="w-6 h-6 text-gray-500" />}
+        title="Market regime unavailable"
+        description="Connect a data source to see VIX and SPY analysis"
+        helpSection="api-limits"
+        settingsPath="Data Sources"
+      />
+    )
   }
 
   const { label, color, bgColor, icon: Icon } = getRegimeDisplay(regime.regime)

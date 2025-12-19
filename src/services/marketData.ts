@@ -120,6 +120,80 @@ function createDataSource(
   }
 }
 
+// ==========================================
+// API ERROR PARSING
+// ==========================================
+
+export interface ApiError {
+  provider: string
+  status: number
+  message: string
+  isRateLimit: boolean
+  isAuthError: boolean
+  retryAfterSeconds?: number
+}
+
+/**
+ * Parse API response errors into user-friendly messages
+ * Used for showing helpful toasts when API calls fail
+ */
+export function parseApiError(response: Response, provider: string): ApiError {
+  const status = response.status
+  const retryAfter = response.headers.get('Retry-After')
+
+  let message: string
+  let isRateLimit = false
+  let isAuthError = false
+  let retryAfterSeconds: number | undefined
+
+  if (status === 429) {
+    isRateLimit = true
+    retryAfterSeconds = retryAfter ? parseInt(retryAfter, 10) : 60
+    message = `${provider}: Rate limit reached. Try again in ${retryAfterSeconds}s.`
+  } else if (status === 401 || status === 403) {
+    isAuthError = true
+    message = `${provider}: API key doesn't have access to this data.`
+  } else if (status >= 500) {
+    message = `${provider}: Service temporarily unavailable.`
+  } else if (status === 404) {
+    message = `${provider}: Data not found for this symbol.`
+  } else {
+    message = `${provider}: Request failed (${status}).`
+  }
+
+  return {
+    provider,
+    status,
+    message,
+    isRateLimit,
+    isAuthError,
+    retryAfterSeconds
+  }
+}
+
+/**
+ * Create a user-friendly error message from a caught error
+ */
+export function formatApiError(error: unknown, provider: string): string {
+  if (error instanceof TypeError && error.message.includes('fetch')) {
+    return `${provider}: Connection failed. Check your internet.`
+  }
+  if (error instanceof Error) {
+    // Check for specific error patterns
+    if (error.message.includes('rate limit') || error.message.includes('429')) {
+      return `${provider}: Rate limit reached. Try again later.`
+    }
+    if (error.message.includes('unauthorized') || error.message.includes('401') || error.message.includes('403')) {
+      return `${provider}: Invalid or expired API key.`
+    }
+    if (error.message.includes('timeout') || error.message.includes('TIMEOUT')) {
+      return `${provider}: Request timed out. Try again.`
+    }
+    return `${provider}: ${error.message}`
+  }
+  return `${provider}: An unexpected error occurred.`
+}
+
 const CACHE_DURATION_MS = 3600000 // 1 hour (3600 seconds)
 const RATE_LIMIT_DELAY_MS = 12000 // 5 calls/min = 12s between calls
 const FRESH_THRESHOLD_MS = 60000 // Data older than 1 minute is not "fresh"

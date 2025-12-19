@@ -7,6 +7,7 @@
 // React import not needed for JSX in modern TypeScript
 import { Plus, Edit3, Trash2, Briefcase } from 'lucide-react'
 import { usePortfolioHoldings } from '../hooks/usePortfolioHoldings'
+import { useToastStore } from '../../../stores/toastStore'
 
 export function PortfolioSection() {
   const {
@@ -24,11 +25,16 @@ export function PortfolioSection() {
     saveHolding,
     removeHolding,
   } = usePortfolioHoldings()
+  const addToast = useToastStore((state) => state.addToast)
 
   const handleSave = async () => {
     const result = await saveHolding()
     if (!result.success && result.error) {
-      alert(result.error)
+      addToast({
+        message: result.error,
+        type: 'error',
+        helpSection: 'troubleshooting'
+      })
     }
   }
 

@@ -2,7 +2,7 @@ import { Minus, Plus, WifiOff } from 'lucide-react'
 import { CommandInput } from './CommandInput'
 // import { WindowControls } from './WindowControls' - Disabled: Using native OS window controls
 import { NavBar } from '../Navigation/NavBar'
-import { MarketSelector } from './MarketSelector'
+// MarketSelector moved to ChartPanel header
 import { APIBudgetAlert } from './APIBudgetAlert'
 import { AIBudgetAlert } from './AIBudgetAlert'
 import { useSettingsStore } from '../../stores/settingsStore'
@@ -46,15 +46,12 @@ export function TopBar() {
   return (
     <>
       <div className="h-12 bg-terminal-panel border-b border-terminal-border flex items-center px-2 drag-region">
-        {/* Left: Logo + Market Selector + Nav (fixed width for centering) */}
-        <div className="flex items-center gap-2 no-drag flex-shrink-0" style={{ width: '380px' }}>
+        {/* Left: Logo + Nav */}
+        <div className="flex items-center gap-2 no-drag flex-shrink-0">
           <span className="text-terminal-amber font-bold text-lg tracking-tight">
             richdad
           </span>
-          <div className="border-l border-terminal-border ml-2 pl-2">
-            <MarketSelector />
-          </div>
-          <div className="border-l border-terminal-border pl-2 min-w-fit flex-shrink-0">
+          <div className="border-l border-terminal-border ml-2 pl-2 min-w-fit flex-shrink-0">
             <NavBar />
           </div>
         </div>

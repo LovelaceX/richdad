@@ -4,7 +4,9 @@ import { useAIStore } from '../../stores/aiStore'
 
 export function ChatInput() {
   const [input, setInput] = useState('')
-  const { sendMessage, isAnalyzing } = useAIStore()
+  // Use individual selectors to prevent re-renders from unrelated store changes
+  const sendMessage = useAIStore(state => state.sendMessage)
+  const isAnalyzing = useAIStore(state => state.isAnalyzing)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -12,7 +14,11 @@ export function ChatInput() {
 
     const message = input.trim()
     setInput('')
-    await sendMessage(message)
+    try {
+      await sendMessage(message)
+    } catch (error) {
+      console.error('[ChatInput] Error sending message:', error)
+    }
   }
 
   return (

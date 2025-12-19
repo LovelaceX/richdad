@@ -18,7 +18,7 @@ export function ProactiveAlert({ recommendation }: ProactiveAlertProps) {
   const addPending = useNotificationStore(state => state.addPending)
   const watchlist = useMarketStore(state => state.watchlist)
   const watchlistItem = watchlist.find(w => w.symbol === recommendation.ticker)
-  const currentPrice = watchlistItem?.quote.price
+  const currentPrice = watchlistItem?.quote?.price
 
   // Dismiss without action - add to pending queue
   const handleDismissWithoutAction = useCallback(() => {

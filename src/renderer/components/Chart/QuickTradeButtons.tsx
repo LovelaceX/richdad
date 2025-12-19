@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ArrowUpCircle, ArrowDownCircle, X, Check } from 'lucide-react'
 import { useMarketStore } from '../../stores/marketStore'
+import { useToastStore } from '../../stores/toastStore'
 import { logTradeDecision, adjustHolding } from '../../lib/db'
 import { playSound } from '../../lib/sounds'
 
@@ -9,6 +10,7 @@ type TradeAction = 'BUY' | 'SELL' | null
 export function QuickTradeButtons() {
   const selectedTicker = useMarketStore(state => state.selectedTicker)
   const watchlist = useMarketStore(state => state.watchlist)
+  const addToast = useToastStore(state => state.addToast)
   const [expandedAction, setExpandedAction] = useState<TradeAction>(null)
   const [shares, setShares] = useState('')
   const [dollarAmount, setDollarAmount] = useState('')
@@ -16,7 +18,7 @@ export function QuickTradeButtons() {
   const [showSuccess, setShowSuccess] = useState(false)
 
   const currentItem = watchlist.find(w => w.symbol === selectedTicker)
-  const currentPrice = currentItem?.quote.price || 0
+  const currentPrice = currentItem?.quote?.price || 0
 
   const handleButtonClick = (action: TradeAction) => {
     if (expandedAction === action) {
@@ -83,6 +85,11 @@ export function QuickTradeButtons() {
 
     } catch (error) {
       console.error('[Quick Trade] Failed to log trade:', error)
+      addToast({
+        message: 'Failed to log trade. Please try again.',
+        type: 'error',
+        helpSection: 'troubleshooting'
+      })
     } finally {
       setIsLogging(false)
     }

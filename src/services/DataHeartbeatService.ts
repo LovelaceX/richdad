@@ -182,6 +182,29 @@ class DataHeartbeatService {
   }
 
   /**
+   * Refresh data immediately after API key is added/changed
+   * Called when user saves new API keys in Settings
+   */
+  async refreshOnApiKeyChange(): Promise<void> {
+    const settings = await getSettings()
+
+    console.log('[Heartbeat] API key changed, triggering immediate data refresh...')
+
+    // Re-initialize WebSocket if Polygon key is now available
+    if (settings.enableWebsocket && settings.polygonApiKey && !this.websocketEnabled) {
+      await this.initializeWebSocket(settings.polygonApiKey)
+    }
+
+    // Trigger immediate market data refresh
+    await this.updateMarketData([])
+
+    // Trigger immediate news refresh
+    await this.updateNews()
+
+    console.log('[Heartbeat] API key change refresh complete')
+  }
+
+  /**
    * Subscribe to data updates
    */
   subscribe(callback: DataUpdateCallback): () => void {

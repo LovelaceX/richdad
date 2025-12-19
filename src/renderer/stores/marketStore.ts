@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import type { Quote, CandleData, WatchlistItem } from '../types'
-import { generateQuote, generateCandleData } from '../lib/mockData'
 import { TOP_10_TICKERS, isTop10Symbol } from '../lib/constants'
 import { getUserWatchlist, addToUserWatchlist, removeFromUserWatchlist, getSettings } from '../lib/db'
 
@@ -52,10 +51,10 @@ interface MarketState {
   toggleChartExpanded: () => void
 }
 
-// Initialize Top 10 with quotes
+// Initialize Top 10 without quotes (quotes will be fetched from API)
 const initialTop10: WatchlistItem[] = TOP_10_TICKERS.map(ticker => ({
   ...ticker,
-  quote: generateQuote(ticker.symbol),
+  // quote is undefined until API data is fetched
 }))
 
 // Helper: Combine top10 and userWatchlist, removing duplicates
@@ -73,7 +72,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
 
   selectedTicker: 'SPY',
 
-  chartData: generateCandleData('SPY', '5min'),  // Match default timeframe
+  chartData: [],  // Empty until API data is fetched
 
   cacheStatus: null,
 
@@ -151,21 +150,8 @@ export const useMarketStore = create<MarketState>((set, get) => ({
   },
 
   refreshAllQuotes: () => {
-    set(state => {
-      const top10 = state.top10.map(item => ({
-        ...item,
-        quote: generateQuote(item.symbol),
-      }))
-      const userWatchlist = state.userWatchlist.map(item => ({
-        ...item,
-        quote: generateQuote(item.symbol),
-      }))
-      return {
-        top10,
-        userWatchlist,
-        watchlist: combineWatchlists(top10, userWatchlist)
-      }
-    })
+    // No-op - quote refresh is handled by DataHeartbeatService fetching real API data
+    // This function is kept for backward compatibility but does nothing
   },
 
   setTimeframe: (timeframe: Timeframe) => {
@@ -204,13 +190,12 @@ export const useMarketStore = create<MarketState>((set, get) => ({
     } catch (error) {
       console.error('[Market Store] Failed to load chart data:', error)
 
-      // Fallback to mock data
-      const { generateCandleData } = await import('../lib/mockData')
+      // Show empty state - no mock data
       set({
-        chartData: generateCandleData(symbol || get().selectedTicker, get().timeframe),
+        chartData: [],
         dataSource: {
-          provider: 'mock',
-          lastUpdated: Date.now(),
+          provider: null,
+          lastUpdated: null,
           isDelayed: false,
           cacheAge: 0
         }
@@ -228,7 +213,7 @@ export const useMarketStore = create<MarketState>((set, get) => ({
         symbol: entry.symbol,
         name: entry.name || entry.symbol,
         sector: entry.sector || 'Custom',
-        quote: generateQuote(entry.symbol)
+        // quote is undefined until API data is fetched
       }))
 
       set(state => ({
@@ -307,12 +292,12 @@ export const useMarketStore = create<MarketState>((set, get) => ({
     // Persist to IndexedDB
     await addToUserWatchlist(upperSymbol, name, sector)
 
-    // Update store
+    // Update store - quote will be fetched by DataHeartbeatService
     const newItem: WatchlistItem = {
       symbol: upperSymbol,
       name: name || upperSymbol,
       sector: sector || 'Custom',
-      quote: generateQuote(upperSymbol)
+      // quote is undefined until API data is fetched
     }
 
     set(state => {

@@ -1,9 +1,11 @@
 import { useEffect } from 'react'
-import { X, AlertTriangle, AlertCircle, CheckCircle, Info } from 'lucide-react'
+import { X, AlertTriangle, AlertCircle, CheckCircle, Info, HelpCircle } from 'lucide-react'
 import { useToastStore, type Toast } from '../../stores/toastStore'
+import { useHelpStore } from '../../stores/helpStore'
 
 function ToastItem({ toast }: { toast: Toast }) {
   const removeToast = useToastStore((state) => state.removeToast)
+  const openHelp = useHelpStore((state) => state.openHelp)
 
   const icons = {
     info: Info,
@@ -46,6 +48,18 @@ function ToastItem({ toast }: { toast: Toast }) {
           </span>
         )}
         <p className="text-sm text-white">{toast.message}</p>
+        {toast.helpSection && (
+          <button
+            onClick={() => {
+              openHelp(toast.helpSection)
+              removeToast(toast.id)
+            }}
+            className="flex items-center gap-1 text-xs text-terminal-amber hover:underline mt-1"
+          >
+            <HelpCircle size={12} />
+            Get help
+          </button>
+        )}
       </div>
       <button
         onClick={() => removeToast(toast.id)}
@@ -70,7 +84,8 @@ export function ToastContainer() {
         message,
         type: 'warning',
         provider,
-        duration: 6000
+        duration: 6000,
+        helpSection: 'api-limits'
       })
     }
 

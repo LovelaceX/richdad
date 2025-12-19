@@ -7,6 +7,7 @@
 import React, { useState } from 'react'
 import { AlertCircle, Download, Upload, Loader2 } from 'lucide-react'
 import { useAlertStore } from '../../../stores/alertStore'
+import { useToastStore } from '../../../stores/toastStore'
 import {
   clearAPICache,
   clearAIHistory,
@@ -27,6 +28,7 @@ type ResetType = 'cache' | 'ai' | 'pnl' | 'alerts' | 'factory'
 
 export function DangerZoneSection() {
   const { loadAlerts } = useAlertStore()
+  const addToast = useToastStore((state) => state.addToast)
 
   // State
   const [showResetConfirm, setShowResetConfirm] = useState<ResetType | null>(null)
@@ -71,7 +73,11 @@ export function DangerZoneSection() {
       downloadBackup(backup)
     } catch (error) {
       console.error('[DangerZone] Backup failed:', error)
-      alert('Failed to create backup')
+      addToast({
+        message: 'Failed to create backup',
+        type: 'error',
+        helpSection: 'troubleshooting'
+      })
     } finally {
       setIsCreatingBackup(false)
     }
@@ -87,7 +93,11 @@ export function DangerZoneSection() {
       const data = JSON.parse(text)
 
       if (!validateBackup(data)) {
-        alert('Invalid backup file format')
+        addToast({
+          message: 'Invalid backup file format',
+          type: 'error',
+          helpSection: 'troubleshooting'
+        })
         return
       }
 
@@ -95,7 +105,11 @@ export function DangerZoneSection() {
       setShowRestoreModal(true)
     } catch (error) {
       console.error('[DangerZone] Failed to read backup file:', error)
-      alert('Failed to read backup file. Please ensure it is a valid JSON file.')
+      addToast({
+        message: 'Failed to read backup file. Please ensure it is a valid JSON file.',
+        type: 'error',
+        helpSection: 'troubleshooting'
+      })
     }
 
     // Reset input
@@ -110,14 +124,26 @@ export function DangerZoneSection() {
     try {
       const result = await restoreFromBackup(pendingBackup)
       if (result.success) {
-        alert('Backup restored successfully! The page will reload.')
-        window.location.reload()
+        addToast({
+          message: 'Backup restored successfully! The page will reload.',
+          type: 'success',
+          duration: 2000
+        })
+        setTimeout(() => window.location.reload(), 1500)
       } else {
-        alert(`Restore failed: ${result.errors.join(', ')}`)
+        addToast({
+          message: `Restore failed: ${result.errors.join(', ')}`,
+          type: 'error',
+          helpSection: 'troubleshooting'
+        })
       }
     } catch (error) {
       console.error('[DangerZone] Restore failed:', error)
-      alert('Failed to restore backup')
+      addToast({
+        message: 'Failed to restore backup',
+        type: 'error',
+        helpSection: 'troubleshooting'
+      })
     } finally {
       setIsRestoring(false)
       setShowRestoreModal(false)

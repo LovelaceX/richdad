@@ -1,16 +1,24 @@
 import { useEffect, useState } from 'react'
-import { TrendingUp, TrendingDown, Clock, Trophy, Activity } from 'lucide-react'
-import { getAIPerformanceStats } from '../../lib/db'
+import { TrendingUp, TrendingDown, Clock, Trophy, Activity, BarChart3 } from 'lucide-react'
+import { getAIPerformanceStats, getSettings } from '../../lib/db'
 import { calculateMarketRegime, getRegimeLabel, type MarketRegime } from '../../../services/marketRegime'
-import type { MarketIndex } from '../../types'
+import { useMarketStore } from '../../stores/marketStore'
+import { SetupPrompt } from '../common/SetupPrompt'
 
-// Mock market indices data
-const MOCK_INDICES: MarketIndex[] = [
-  { symbol: 'SPX', name: 'S&P 500', price: 5234.12, change: 41.87, changePercent: 0.81 },
-  { symbol: 'NDX', name: 'NASDAQ', price: 16432.45, change: 187.23, changePercent: 1.15 },
-  { symbol: 'DJI', name: 'DOW', price: 39123.67, change: -52.34, changePercent: -0.13 },
-  { symbol: 'VIX', name: 'VIX', price: 14.23, change: -0.87, changePercent: -5.76 },
-]
+// ETF to display name mapping (common ETFs get friendly names)
+const ETF_DISPLAY_NAMES: Record<string, string> = {
+  SPY: 'S&P 500',
+  QQQ: 'NASDAQ',
+  DIA: 'DOW',
+  VXX: 'VIX',
+  IWM: 'Russell 2K',
+  GLD: 'Gold',
+  TLT: 'Bonds',
+  USO: 'Oil',
+}
+
+// Default symbols for market overview
+const DEFAULT_MARKET_SYMBOLS = ['SPY', 'QQQ', 'DIA', 'VXX']
 
 function getMarketStatus(): { isOpen: boolean; status: string } {
   const now = new Date()
@@ -56,10 +64,80 @@ function getRegimeColorClass(regime: MarketRegime | null): string {
 }
 
 export function MarketOverview() {
-  const [indices, setIndices] = useState<MarketIndex[]>(MOCK_INDICES)
   const [marketStatus, setMarketStatus] = useState(getMarketStatus())
   const [aiWinRate, setAiWinRate] = useState<{ winRate: number; record: string } | null>(null)
   const [marketRegime, setMarketRegime] = useState<MarketRegime | null>(null)
+  const [hasApiKey, setHasApiKey] = useState<boolean | null>(null)
+  const [marketSymbols, setMarketSymbols] = useState<string[]>(DEFAULT_MARKET_SYMBOLS)
+
+  // Get watchlist from market store (quotes are stored on each item)
+  const watchlist = useMarketStore(state => state.watchlist)
+
+  // Load custom market symbols from settings
+  useEffect(() => {
+    async function loadMarketSymbols() {
+      try {
+        const settings = await getSettings()
+        if (settings.marketOverviewSymbols?.length) {
+          setMarketSymbols(settings.marketOverviewSymbols)
+        }
+      } catch (error) {
+        console.error('Failed to load market symbols:', error)
+      }
+    }
+
+    loadMarketSymbols()
+
+    // Listen for settings changes
+    const handleSettingsChange = () => {
+      loadMarketSymbols()
+    }
+
+    window.addEventListener('settings-updated', handleSettingsChange)
+    return () => window.removeEventListener('settings-updated', handleSettingsChange)
+  }, [])
+
+  // Filter watchlist to configured symbols and map to display format
+  const marketIndices = marketSymbols.map(sym => {
+    const item = watchlist.find(w => w.symbol === sym)
+    if (!item?.quote) return null
+    return {
+      symbol: sym,
+      name: ETF_DISPLAY_NAMES[sym] || sym,
+      price: item.quote.price,
+      change: item.quote.change,
+      changePercent: item.quote.changePercent,
+    }
+  }).filter((idx): idx is NonNullable<typeof idx> => idx !== null)
+
+  // Check if any API key is configured
+  useEffect(() => {
+    async function checkApiKeys() {
+      try {
+        const settings = await getSettings()
+        const hasKey = !!(
+          settings.polygonApiKey ||
+          settings.alphaVantageApiKey ||
+          settings.finnhubApiKey ||
+          settings.twelvedataApiKey
+        )
+        setHasApiKey(hasKey)
+      } catch (error) {
+        console.error('Failed to check API keys:', error)
+        setHasApiKey(false)
+      }
+    }
+
+    checkApiKeys()
+
+    // Listen for API settings changes
+    const handleApiSettingsChange = () => {
+      checkApiKeys()
+    }
+
+    window.addEventListener('api-settings-updated', handleApiSettingsChange)
+    return () => window.removeEventListener('api-settings-updated', handleApiSettingsChange)
+  }, [])
 
   // Load market regime
   useEffect(() => {
@@ -100,22 +178,11 @@ export function MarketOverview() {
     return () => clearInterval(interval)
   }, [])
 
-  // Simulate real-time updates
+  // Update market status periodically
   useEffect(() => {
     const interval = setInterval(() => {
-      setIndices(prev => prev.map(idx => {
-        const change = (Math.random() - 0.5) * 2
-        const newPrice = idx.price + change
-        const newChange = idx.change + change
-        return {
-          ...idx,
-          price: newPrice,
-          change: newChange,
-          changePercent: (newChange / (newPrice - newChange)) * 100,
-        }
-      }))
       setMarketStatus(getMarketStatus())
-    }, 5000)
+    }, 60000) // Check every minute
 
     return () => clearInterval(interval)
   }, [])
@@ -129,24 +196,38 @@ export function MarketOverview() {
 
   return (
     <div className="h-8 bg-terminal-panel border-b border-terminal-border flex items-center px-4 gap-6 overflow-x-auto">
-      {indices.map(index => {
-        const isUp = index.change >= 0
+      {/* Show indices if we have data, otherwise show setup prompt */}
+      {marketIndices.length > 0 ? (
+        marketIndices.map(index => {
+          const isUp = index.change >= 0
 
-        return (
-          <div key={index.symbol} className="flex items-center gap-2 whitespace-nowrap">
-            <span className="text-gray-400 text-xs font-medium">{index.name}</span>
-            {isUp ? (
-              <TrendingUp className="w-3 h-3 text-terminal-up" />
-            ) : (
-              <TrendingDown className="w-3 h-3 text-terminal-down" />
-            )}
-            <span className="text-white text-xs font-mono">{formatPrice(index.price)}</span>
-            <span className={`text-xs font-mono ${isUp ? 'text-terminal-up' : 'text-terminal-down'}`}>
-              ({isUp ? '+' : ''}{index.changePercent.toFixed(2)}%)
-            </span>
-          </div>
-        )
-      })}
+          return (
+            <div key={index.symbol} className="flex items-center gap-2 whitespace-nowrap">
+              <span className="text-gray-400 text-xs font-medium">{index.name}</span>
+              {isUp ? (
+                <TrendingUp className="w-3 h-3 text-terminal-up" />
+              ) : (
+                <TrendingDown className="w-3 h-3 text-terminal-down" />
+              )}
+              <span className="text-white text-xs font-mono">{formatPrice(index.price)}</span>
+              <span className={`text-xs font-mono ${isUp ? 'text-terminal-up' : 'text-terminal-down'}`}>
+                ({isUp ? '+' : ''}{index.changePercent.toFixed(2)}%)
+              </span>
+            </div>
+          )
+        })
+      ) : hasApiKey === false ? (
+        <SetupPrompt
+          compact
+          icon={<BarChart3 className="w-3 h-3 text-gray-500" />}
+          title="Connect API for market indices"
+          helpSection="api-limits"
+        />
+      ) : hasApiKey === null ? (
+        <span className="text-gray-500 text-xs">Loading...</span>
+      ) : (
+        <span className="text-gray-500 text-xs">Fetching market data...</span>
+      )}
 
       {/* AI Performance Badge */}
       {aiWinRate && (

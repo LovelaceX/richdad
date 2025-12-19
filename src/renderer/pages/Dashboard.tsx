@@ -27,7 +27,7 @@ export function Dashboard() {
             <PanelGroup direction="horizontal">
               {/* Left: Market Watch */}
               {leftPanelVisible && (
-                <Panel defaultSize={panelSizes.leftPanel} minSize={15} maxSize={30}>
+                <Panel defaultSize={panelSizes.leftPanel} minSize={12} maxSize={30}>
                   <ErrorBoundary fallbackTitle="Watchlist Error">
                     <MarketWatch />
                   </ErrorBoundary>

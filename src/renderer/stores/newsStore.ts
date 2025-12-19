@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import type { NewsItem } from '../types'
-import { MOCK_NEWS } from '../lib/mockData'
 import { generateId } from '../lib/utils'
 
 interface NewsState {
@@ -16,7 +15,7 @@ interface NewsState {
 }
 
 export const useNewsStore = create<NewsState>((set) => ({
-  headlines: MOCK_NEWS,
+  headlines: [],  // Empty until real data is fetched from API
   loading: false,
 
   addHeadline: (headline) => {
@@ -47,7 +46,6 @@ export const useNewsStore = create<NewsState>((set) => ({
   },
 
   refreshNews: () => {
-    // In real app, this would fetch from API
-    set({ headlines: MOCK_NEWS })
+    // No-op - news refresh is handled by DataHeartbeatService
   },
 }))

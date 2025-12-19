@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { HelpSection } from './helpStore'
 
 export interface Toast {
   id: string
@@ -6,6 +7,7 @@ export interface Toast {
   type: 'info' | 'warning' | 'error' | 'success'
   provider?: string
   duration?: number
+  helpSection?: HelpSection  // Optional link to help section
 }
 
 interface ToastState {

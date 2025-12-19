@@ -17,7 +17,7 @@ interface WatchlistItemProps {
  */
 export const WatchlistItem = memo(function WatchlistItem({ item, isSelected, onClick, isTop10 = false }: WatchlistItemProps) {
   const { quote } = item
-  const colorClass = getColorClass(quote.change)
+  const colorClass = quote ? getColorClass(quote.change) : 'text-gray-500'
   const removeFromWatchlist = useMarketStore(state => state.removeFromWatchlist)
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -42,15 +42,15 @@ export const WatchlistItem = memo(function WatchlistItem({ item, isSelected, onC
       </span>
 
       <span className="text-right text-white tabular-nums w-16 flex-shrink-0">
-        {formatPrice(quote.price)}
+        {quote ? formatPrice(quote.price) : '—'}
       </span>
 
       <span className={`text-right tabular-nums w-14 flex-shrink-0 ${colorClass}`}>
-        {formatChange(quote.change)}
+        {quote ? formatChange(quote.change) : '—'}
       </span>
 
       <span className={`text-right tabular-nums w-14 flex-shrink-0 ${colorClass}`}>
-        {formatPercent(quote.changePercent)}
+        {quote ? formatPercent(quote.changePercent) : '—'}
       </span>
 
       {/* Spacer */}

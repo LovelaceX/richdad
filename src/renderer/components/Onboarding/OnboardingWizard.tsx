@@ -273,15 +273,14 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
                     </p>
                   )}
                 </div>
-                {currentStep !== 'terms' && currentStep !== 'welcome' && (
-                  <button
-                    onClick={handleSkip}
-                    className="p-2 hover:bg-terminal-border rounded transition-colors"
-                    title="Skip setup"
-                  >
-                    <X size={20} className="text-gray-400" />
-                  </button>
-                )}
+                {/* Close button always visible */}
+                <button
+                  onClick={handleSkip}
+                  className="p-2 hover:bg-terminal-border rounded transition-colors"
+                  title="Skip setup"
+                >
+                  <X size={20} className="text-gray-400" />
+                </button>
               </div>
 
               {/* Step Content */}
