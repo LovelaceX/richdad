@@ -644,10 +644,11 @@ class DataHeartbeatService {
   }
 
   private startPatternScanning(): void {
-    // Initial pattern scan (after market data loads) with jitter
+    // Initial pattern scan delayed to avoid rate limit on startup
+    // 90 seconds ensures we're past the first minute window (Polygon: 5 calls/min)
     setTimeout(() => {
       this.updatePatternScan()
-    }, addJitter(15000))
+    }, addJitter(90000))
 
     // Periodic updates with jitter
     this.patternScanInterval = setInterval(() => {

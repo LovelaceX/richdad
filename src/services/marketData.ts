@@ -327,6 +327,12 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
       return [] // Rate limited, no cache - UI will show error state
     }
 
+    // Skip API call if no symbols requested (prevents phantom budget usage)
+    if (symbols.length === 0) {
+      console.log('[Market Data] No symbols requested, skipping Polygon quote fetch')
+      return []
+    }
+
     try {
       recordPolygonCall()
       const quotes = await withRetry(() => fetchPolygonQuotes(symbols, polygonKey))
@@ -366,6 +372,12 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
         return addCacheMetadata(filtered, age > CACHE_DURATION_MS ? 'stale' : 'cache', age)
       }
       return [] // Rate limited, no cache - UI will show error state
+    }
+
+    // Skip API call if no symbols requested (prevents phantom budget usage)
+    if (symbols.length === 0) {
+      console.log('[Market Data] No symbols requested, skipping TwelveData quote fetch')
+      return []
     }
 
     try {

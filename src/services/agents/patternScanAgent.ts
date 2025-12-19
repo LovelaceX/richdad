@@ -17,6 +17,9 @@ const MIN_RELIABILITY_SCORE = 50
 // Maximum age of pattern to consider "recent" (in candles)
 const RECENT_PATTERN_LOOKBACK = 3
 
+// Rate limiting: Delay between historical data fetches (Polygon free tier: 5 calls/min = 12s between calls)
+const RATE_LIMIT_DELAY_MS = 13000
+
 // ==========================================
 // WEB WORKER MANAGEMENT
 // ==========================================
@@ -149,10 +152,18 @@ export async function generatePatternScanReport(
     console.warn('[PatternScanner] Could not fetch prices:', err)
   }
 
-  // Fetch historical data for all symbols (main thread - respects API limits)
+  // Fetch historical data for all symbols with rate limiting
+  // Polygon free tier: 5 calls/min, so we add delay between fetches
   const candleData: Record<string, any[]> = {}
+  let isFirstFetch = true
   for (const symbol of symbols) {
     try {
+      // Add delay between API calls to respect rate limits (skip first)
+      if (!isFirstFetch) {
+        await new Promise(resolve => setTimeout(resolve, RATE_LIMIT_DELAY_MS))
+      }
+      isFirstFetch = false
+
       const interval = symbol === 'SPY' ? '5min' : 'daily'
       const historyResult = await fetchHistoricalData(symbol, interval)
       if (historyResult.candles.length >= 10) {
