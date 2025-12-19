@@ -94,7 +94,7 @@ export function IndicatorSelector() {
       {isOpen && (
         <div
           ref={menuRef}
-          className="absolute top-full right-0 mt-2 w-64 bg-terminal-panel border border-terminal-border rounded-lg shadow-xl z-50"
+          className="absolute top-full right-0 mt-2 w-64 bg-terminal-panel border border-terminal-border rounded-lg shadow-xl z-[100]"
         >
           <div className="px-3 py-2 border-b border-terminal-border">
             <span className="text-xs text-gray-400 uppercase tracking-wider">

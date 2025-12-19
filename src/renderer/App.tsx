@@ -18,6 +18,7 @@ import { OnboardingWizard } from './components/Onboarding/OnboardingWizard'
 import { FloatingHelp } from './components/Help/FloatingHelp'
 import { HelpModal } from './components/Help/HelpModal'
 import { ToastContainer } from './components/Toast/ToastContainer'
+import { FindInPage } from './components/FindInPage'
 import { applyTheme } from './lib/themes'
 import { useHelpStore } from './stores/helpStore'
 
@@ -37,7 +38,9 @@ export default function App() {
   const resetZoom = useSettingsStore(state => state.resetZoom)
   const loadUserWatchlist = useMarketStore(state => state.loadUserWatchlist)
   const loadSelectedMarket = useMarketStore(state => state.loadSelectedMarket)
+  const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true)
   const [showWizard, setShowWizard] = useState(false)
+  const [showFindInPage, setShowFindInPage] = useState(false)
 
   // Initialize database, load user watchlist, and selected market on mount
   useEffect(() => {
@@ -58,6 +61,7 @@ export default function App() {
                              !settings.polygonApiKey &&
                              !settings.finnhubApiKey
       setShowWizard(needsOnboarding)
+      setIsCheckingOnboarding(false)
     }
     checkOnboarding()
   }, [])
@@ -93,6 +97,9 @@ export default function App() {
         } else if (e.key === 'n' || e.key === 'N') {
           e.preventDefault()
           invoke('create_new_window').catch(console.error)
+        } else if (e.key === 'f' || e.key === 'F') {
+          e.preventDefault()
+          setShowFindInPage(true)
         }
       }
     }
@@ -116,6 +123,15 @@ export default function App() {
       default:
         return <Dashboard />
     }
+  }
+
+  // Block rendering until we know if onboarding is needed (prevents dashboard flash)
+  if (isCheckingOnboarding) {
+    return (
+      <div className="h-screen w-screen bg-terminal-bg flex items-center justify-center">
+        <div className="text-terminal-amber animate-pulse">Loading...</div>
+      </div>
+    )
   }
 
   return (
@@ -162,6 +178,12 @@ export default function App() {
 
       {/* Toast Notifications (for API limit warnings, etc.) */}
       <ToastContainer />
+
+      {/* Find in Page (Ctrl+F) */}
+      <FindInPage
+        isOpen={showFindInPage}
+        onClose={() => setShowFindInPage(false)}
+      />
     </>
   )
 }

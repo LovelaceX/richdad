@@ -87,7 +87,7 @@ export function MarketSelector() {
 
       {isOpen && (
         <div
-          className="absolute top-full left-0 mt-1 w-48 bg-terminal-panel border border-terminal-border rounded-lg shadow-xl z-50"
+          className="absolute top-full left-0 mt-1 w-48 bg-terminal-panel border border-terminal-border rounded-lg shadow-xl z-[100]"
           role="listbox"
           aria-label="Select market index"
         >

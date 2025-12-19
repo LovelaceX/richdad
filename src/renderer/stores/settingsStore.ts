@@ -54,7 +54,7 @@ export const useSettingsStore = create<SettingsState>()(
       theme: getSavedTheme(),
       panelSizes: {
         leftPanel: 15,  // Reduced from 20% to give more space to chart
-        rightPanel: 25,
+        rightPanel: 20, // Reduced from 25% to give more space to chart
         bottomPanel: 5,
       },
       panelVisibility: {

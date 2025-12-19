@@ -45,7 +45,7 @@ export function Dashboard() {
 
               {/* Right: AI Copilot */}
               {rightPanelVisible && (
-                <Panel defaultSize={panelSizes.rightPanel} minSize={20} maxSize={40}>
+                <Panel defaultSize={panelSizes.rightPanel} minSize={15} maxSize={35}>
                   <ErrorBoundary fallbackTitle="AI Panel Error">
                     <AIPanel />
                   </ErrorBoundary>

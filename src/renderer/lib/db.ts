@@ -96,6 +96,14 @@ export interface UserSettings {
   // Market Overview Bar Symbols (customizable)
   marketOverviewSymbols?: string[]  // Default: ['SPY', 'QQQ', 'DIA', 'VXX']
 
+  // Price Alert Notification Settings
+  priceAlertNotifications?: {
+    enabled: boolean         // Master toggle for price alert notifications
+    sound: boolean           // Play sound when alert triggers
+    desktop: boolean         // Show desktop/system notification
+    toast: boolean           // Show in-app toast notification
+  }
+
   // Configurable Trading Thresholds
   tradingThresholds?: {
     vixLow: number           // VIX below this = low volatility (default: 15)
@@ -499,6 +507,14 @@ export const DEFAULT_SETTINGS: UserSettings = {
     name: 'S&P 500',
     etf: 'SPY',
     index: '^GSPC'
+  },
+
+  // Price Alert Notifications (all enabled by default)
+  priceAlertNotifications: {
+    enabled: true,
+    sound: true,
+    desktop: true,
+    toast: true
   },
 
   // Trading Thresholds (used by market regime & pattern detection)

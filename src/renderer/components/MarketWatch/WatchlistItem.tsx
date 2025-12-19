@@ -37,34 +37,34 @@ export const WatchlistItem = memo(function WatchlistItem({ item, isSelected, onC
         }
       `}
     >
-      <span className={`font-semibold w-14 flex-shrink-0 ${isSelected ? 'text-terminal-amber' : 'text-white'}`}>
+      <span className={`font-semibold w-12 flex-shrink-0 text-xs ${isSelected ? 'text-terminal-amber' : 'text-white'}`}>
         {item.symbol}
       </span>
 
-      <span className="text-right text-white tabular-nums w-16 flex-shrink-0">
+      <span className="text-right text-white tabular-nums w-14 flex-shrink-0 text-xs">
         {quote ? formatPrice(quote.price) : '—'}
       </span>
 
-      <span className={`text-right tabular-nums w-14 flex-shrink-0 ${colorClass}`}>
+      <span className={`text-right tabular-nums w-12 flex-shrink-0 text-xs ${colorClass}`}>
         {quote ? formatChange(quote.change) : '—'}
       </span>
 
-      <span className={`text-right tabular-nums w-14 flex-shrink-0 ${colorClass}`}>
+      <span className={`text-right tabular-nums w-12 flex-shrink-0 text-xs ${colorClass}`}>
         {quote ? formatPercent(quote.changePercent) : '—'}
       </span>
 
       {/* Spacer */}
-      <div className="flex-1 min-w-2" />
+      <div className="flex-1" />
 
-      {/* Delete button - appears on hover, hidden for Top 10 */}
+      {/* Delete button - always visible for non-Top10, red on hover */}
       {!isTop10 && (
         <button
           onClick={handleDelete}
-          className="p-1 opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all flex-shrink-0"
+          className="p-0.5 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded transition-all flex-shrink-0"
           title="Remove from watchlist"
           aria-label={`Remove ${item.symbol} from watchlist`}
         >
-          <X size={14} />
+          <X size={12} />
         </button>
       )}
     </div>

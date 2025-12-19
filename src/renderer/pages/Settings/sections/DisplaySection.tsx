@@ -275,8 +275,8 @@ export function DisplaySection() {
             Adjust the scrolling speed of the news and economic calendar tickers.
           </p>
 
-          <div className="flex items-center gap-4">
-            <span className="text-gray-400 text-xs">Slow</span>
+          <div className="flex items-center gap-3">
+            <span className="text-xl" title="Slow">🐢</span>
             <input
               type="range"
               min="10"
@@ -285,8 +285,7 @@ export function DisplaySection() {
               onChange={(e) => setTickerSpeed(Number(e.target.value))}
               className="flex-1 h-2 bg-terminal-border rounded-lg appearance-none cursor-pointer accent-terminal-amber"
             />
-            <span className="text-gray-400 text-xs">Fast</span>
-            <span className="text-terminal-amber font-mono text-sm w-8">{tickerSpeed}</span>
+            <span className="text-xl" title="Fast">🐇</span>
           </div>
         </div>
 

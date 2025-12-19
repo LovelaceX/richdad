@@ -97,7 +97,7 @@ export function ChartPanel() {
   return (
     <div className={wrapperClasses}>
       {/* Header with ticker info */}
-      <div className="panel-header flex items-center justify-between gap-4 overflow-x-auto [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-terminal-border/50 [&::-webkit-scrollbar-thumb]:rounded-full">
+      <div className="panel-header flex items-center justify-between gap-2 overflow-visible">
         {/* Essential info - always visible, never shrink */}
         <div className="flex items-center gap-3 flex-shrink-0">
           <div className="flex items-center gap-2">
