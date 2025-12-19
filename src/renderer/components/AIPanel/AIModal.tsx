@@ -1,6 +1,6 @@
 /**
- * AI Copilot Modal
- * Full-screen modal containing the AI Copilot interface
+ * AI Copilot Panel
+ * Right-side sliding panel containing the AI Copilot interface
  */
 
 import { useEffect, useRef } from 'react'
@@ -60,22 +60,22 @@ export function AIModal({ isOpen, onClose }: AIModalProps) {
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop */}
+          {/* Backdrop - subtle overlay, click to close */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+            className="fixed inset-0 bg-black/30 z-[100]"
           />
 
-          {/* Modal */}
+          {/* Sliding Panel from Right */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="fixed inset-4 md:inset-8 lg:inset-16 bg-terminal-panel border border-terminal-border rounded-lg shadow-2xl z-[101] flex flex-col overflow-hidden"
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="fixed right-0 top-12 bottom-0 w-[480px] bg-terminal-panel border-l border-terminal-border shadow-[-8px_0_24px_rgba(0,0,0,0.4)] z-[101] flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-terminal-border bg-terminal-bg/50">

@@ -561,7 +561,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             <h3 className="text-white text-lg font-semibold mb-4">Removing Stocks</h3>
             <div className="space-y-1">
               <Step>Hover over any stock in your watchlist</Step>
-              <Step>Click the <span className="text-red-400">X</span> button that appears</Step>
+              <Step>Click the <span className="text-red-400">X</span> button that appears on hover</Step>
             </div>
           </div>
 

@@ -189,9 +189,6 @@ export function MarketIndexDropdown() {
               </button>
             ))}
 
-            {/* Separator */}
-            <div className="border-t border-terminal-border my-1" />
-
             {/* Additional Markets */}
             {ADDITIONAL_MARKETS.map((market, index) => (
               <button

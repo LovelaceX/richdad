@@ -66,11 +66,11 @@ export const WatchlistItem = memo(function WatchlistItem({ item, isSelected, onC
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Delete button - always visible for non-Top10, red on hover */}
+      {/* Delete button - only visible on hover for non-Top10 items */}
       {!isTop10 && (
         <button
           onClick={handleDelete}
-          className="p-0.5 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded transition-all flex-shrink-0"
+          className="p-0.5 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded transition-all flex-shrink-0 opacity-0 group-hover:opacity-100"
           title="Remove from watchlist"
           aria-label={`Remove ${item.symbol} from watchlist`}
         >

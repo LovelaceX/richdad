@@ -15,6 +15,7 @@ import { useAIStore } from '../../stores/aiStore'
 import { usePatternStore } from '../../stores/patternStore'
 import { useDrawingStore } from '../../stores/drawingStore'
 import { formatPrice, formatChange, formatPercent, getColorClass } from '../../lib/utils'
+import { getSettings } from '../../lib/db'
 
 export function ChartPanel() {
   const selectedTicker = useMarketStore(state => state.selectedTicker)
@@ -54,6 +55,22 @@ export function ChartPanel() {
 
   // Market Context Panel toggle
   const [showMarketContext, setShowMarketContext] = useState(false)
+
+  // API tier for intraday data access (premium tiers allow historical intraday)
+  const [hasPremiumApi, setHasPremiumApi] = useState(false)
+
+  // Load API tier settings on mount
+  useEffect(() => {
+    const loadApiTier = async () => {
+      const settings = await getSettings()
+      const polygonTier = settings.apiTiers?.polygon ?? 'free'
+      const twelveDataTier = settings.apiTiers?.twelveData ?? 'free'
+      // Premium = any tier above free for either provider
+      const isPremium = polygonTier !== 'free' || twelveDataTier !== 'free'
+      setHasPremiumApi(isPremium)
+    }
+    loadApiTier()
+  }, [])
 
   // Handle chart refresh
   const handleRefreshChart = async () => {
@@ -234,25 +251,25 @@ export function ChartPanel() {
               <Calendar size={12} className="text-gray-500" />
               <input
                 type="date"
-                value={isIntraday ? today : selectedDate}
+                value={isIntraday && !hasPremiumApi ? today : selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 max={today}
                 min={ninetyDaysAgo}
-                disabled={isIntraday}
+                disabled={isIntraday && !hasPremiumApi}
                 className={`
                   bg-transparent border border-terminal-border rounded px-2 py-1 text-[11px] font-normal
                   focus:border-terminal-amber focus:outline-none
-                  ${isIntraday
+                  ${isIntraday && !hasPremiumApi
                     ? 'text-gray-500 cursor-not-allowed opacity-50'
                     : 'text-white cursor-pointer hover:border-terminal-amber/50'
                   }
                 `}
-                title={isIntraday ? 'Intraday data is today only (API limitation)' : 'Select date (last 90 days)'}
+                title={isIntraday && !hasPremiumApi ? 'Intraday data is today only (free tier)' : 'Select date (last 90 days)'}
               />
             </div>
-            {isIntraday && (
+            {isIntraday && !hasPremiumApi && (
               <div className="absolute top-full left-0 mt-1 px-2 py-1 bg-terminal-bg border border-terminal-border rounded text-[10px] text-gray-400 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                Intraday = Today only
+                Intraday = Today only (free tier)
               </div>
             )}
           </div>
