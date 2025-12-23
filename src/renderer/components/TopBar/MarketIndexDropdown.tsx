@@ -147,12 +147,10 @@ export function MarketIndexDropdown() {
           className="flex items-center gap-1.5 px-2 py-1 rounded hover:bg-terminal-border transition-colors"
           aria-expanded={isOpen}
           aria-haspopup="listbox"
+          title={selectedMarket.fullName}
         >
           <span className="text-terminal-amber font-medium text-sm">
             {selectedMarket.etf}
-          </span>
-          <span className="text-gray-400 text-xs max-w-[180px] truncate">
-            ({selectedMarket.fullName})
           </span>
           <ChevronDown
             size={14}

@@ -83,7 +83,7 @@ class DataHeartbeatService {
   private NEWS_UPDATE_INTERVAL = 300000 // 5 minutes
   private SENTIMENT_UPDATE_INTERVAL = 600000 // 10 minutes
   private AI_ANALYSIS_INTERVAL = 900000 // Default 15 minutes (overridden in start() from AISettings)
-  private PATTERN_SCAN_INTERVAL = 900000 // 15 minutes (pattern scanner runs during market hours)
+  private PATTERN_SCAN_INTERVAL = 900000 // 15 minutes - only used when autoPatternScan is enabled in settings
   private CLEANUP_INTERVAL = 600000 // 10 minutes - run memory cleanup
   private PRICE_MAX_AGE = 24 * 60 * 60 * 1000 // 24 hours - evict prices older than this
 
@@ -579,12 +579,16 @@ class DataHeartbeatService {
           type: 'ai_recommendation',
           payload: recommendation
         })
+        reportServiceHealth.success('ai')
       } else {
         console.log('[Heartbeat] No recommendation generated (AI not configured or low confidence)')
+        // Still mark as success - AI ran but confidence was low or no action needed
+        reportServiceHealth.success('ai')
       }
 
     } catch (error) {
       console.error('[Heartbeat] AI analysis failed:', error)
+      reportServiceHealth.error('ai', String(error))
 
       // Notify UI of failure
       this.notifyCallbacks({
@@ -621,13 +625,10 @@ class DataHeartbeatService {
   // Private methods
 
   private startMarketUpdates(): void {
-    // Initial update with longer delay to prevent rate limit collision with loadSelectedMarket()
-    // loadSelectedMarket() fires immediately on app start, so we wait 5s before first heartbeat update
-    setTimeout(() => {
-      this.updateMarketData([])
-    }, addJitter(5000))
+    // Skip initial update - loadSelectedMarket() already fetches quotes at t=0
+    // This saves 1 API call on startup (was previously a duplicate fetch)
 
-    // Periodic updates with jitter
+    // Periodic updates with jitter (starts at 60s)
     this.marketInterval = setInterval(() => {
       this.updateMarketData([])
     }, addJitter(this.MARKET_UPDATE_INTERVAL))
@@ -669,14 +670,30 @@ class DataHeartbeatService {
     }, addJitter(this.AI_ANALYSIS_INTERVAL))
   }
 
-  private startPatternScanning(): void {
-    // Initial pattern scan delayed to avoid rate limit on startup
-    // 90 seconds ensures we're past the first minute window (Polygon: 5 calls/min)
+  private async startPatternScanning(): Promise<void> {
+    // Always listen for manual scan trigger from UI
+    window.addEventListener('trigger-pattern-scan', () => {
+      console.log('[Heartbeat] Manual pattern scan triggered')
+      this.updatePatternScan()
+    })
+
+    // Check if automatic pattern scanning is enabled in settings
+    // Disabled by default - too expensive for free tier (1 API call per symbol)
+    const settings = await getSettings()
+    if (!settings.autoPatternScan) {
+      console.log('[Heartbeat] Automatic pattern scanning disabled - use manual scan button (enable in Settings → AI Copilot)')
+      return
+    }
+
+    // Automatic scanning enabled (paid tier users)
+    console.log('[Heartbeat] Automatic pattern scanning ENABLED - scanning every 15 minutes')
+
+    // Initial scan after 2 minutes (give time for other services to stabilize)
     setTimeout(() => {
       this.updatePatternScan()
-    }, addJitter(90000))
+    }, addJitter(120000))
 
-    // Periodic updates with jitter
+    // Periodic scans
     this.patternScanInterval = setInterval(() => {
       this.updatePatternScan()
     }, addJitter(this.PATTERN_SCAN_INTERVAL))

@@ -263,6 +263,13 @@ class WebSocketService {
     }
   }
 
+  /**
+   * Get current reconnect attempt count
+   */
+  getReconnectAttempts(): number {
+    return this.reconnectAttempts
+  }
+
   // Private methods
 
   private authenticate(): void {

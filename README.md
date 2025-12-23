@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-5.2.0-gold?style=for-the-badge" alt="Version 5.2.0"/>
+  <img src="https://img.shields.io/badge/version-5.5.0-gold?style=for-the-badge" alt="Version 5.5.0"/>
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License"/>
   <img src="https://img.shields.io/badge/tauri-2.x-blue?style=for-the-badge&logo=tauri" alt="Tauri 2.x"/>
   <img src="https://img.shields.io/badge/react-18-61DAFB?style=for-the-badge&logo=react" alt="React 18"/>
@@ -342,6 +342,83 @@ See [LICENSE](./LICENSE) for full text.
 ---
 
 ## Changelog
+
+### v5.5.0 - Service Health & Rate Limit Overhaul
+
+**Service Health Monitoring**
+- AI Copilot now properly reports success/error status (was always "idle")
+- WebSocket status updates in real-time (connecting/connected/reconnecting/failed)
+- Service Health panel shows accurate status for all background services
+
+**API Rate Limit Fixes (Critical)**
+- Removed duplicate quote fetch on startup (saved 1 API call)
+- Pattern scanning now manual by default (saves 15+ API calls on startup)
+- Added manual "Scan" button in chart toolbar for on-demand pattern detection
+- Auto Pattern Scan toggle added for paid tier users (Settings → AI Copilot)
+
+**News Feed Reliability**
+- Fixed empty news feed issue - now uses DEFAULT_NEWS_SOURCES as fallback
+- News configuration guide added to Help Modal
+
+**UI Improvements**
+- Danger Zone clear buttons now show success/error toast notifications
+- Removed redundant SPY timeframe buttons from chart
+- Removed redundant AI Copilot toggle from Display Settings
+- Error Log moved higher in Settings sidebar for visibility
+- Market Watch shows quotes on startup (initial fetch before Live Data toggle)
+
+**Help Modal Enhancements**
+- Added pattern scanning cost breakdown with API usage examples
+- Added news configuration guide (Settings → RSS Feeds steps)
+- Updated searchable keywords for better discoverability
+
+---
+
+### v5.4.0 - UI Polish & Help System
+
+**Help Modal Improvements**
+- Added "Pricing Tiers" comparison section with Free/Standard/Premium breakdown
+- Users can now see exactly what each tier provides (data sources, AI providers, intraday limits)
+- Searchable via keywords: "tier", "free", "premium", "pricing", etc.
+
+**AI Budget Protection**
+- Chat messages now respect AI budget limits (fixes critical bypass)
+- Budget check occurs before API call, with friendly message when limit reached
+- Calls only recorded after successful response
+
+**Display Settings Cleanup**
+- Removed Economic Calendar Ticker toggle (page is sufficient)
+- AI Performance Summary now always visible (removed toggle)
+- Simplified panel visibility options
+
+**UI Fixes**
+- Removed redundant ticker symbol label from chart header
+- Backtest end date now defaults to yesterday (not today)
+- Ticker speed slider now shows visual position markers
+- Default AI confidence threshold increased from 70% to 80%
+
+---
+
+### v5.3.0 - API Rate Limit Audit
+
+**Critical Fix: AI Chat Budget**
+- Added budget check to AI chat interface (was previously unlimited)
+- `canMakeAICall()` now checked before every chat message
+- `recordAICall()` called after successful responses only
+
+**Memory Management**
+- Added LRU cache with 50-symbol limit to indicator/pattern caches
+- Prevents unbounded memory growth during long sessions
+
+**Security**
+- RSS feed image URLs now validated (prevents XSS via malicious feeds)
+- Only http/https URLs accepted for feed images
+
+**Reliability**
+- WebSocket reconnect now uses ±25% jitter to prevent thundering herd
+- Better distributed reconnection attempts after network issues
+
+---
 
 ### v5.2.0 - Self-Service & Security
 

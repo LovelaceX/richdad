@@ -25,8 +25,6 @@ export function DisplaySection() {
   const toggleLeftPanel = useSettingsStore((state) => state.toggleLeftPanel)
   const toggleChart = useSettingsStore((state) => state.toggleChart)
   const toggleNewsTicker = useSettingsStore((state) => state.toggleNewsTicker)
-  const toggleAIPerformance = useSettingsStore((state) => state.toggleAIPerformance)
-  const toggleEconomicCalendarTicker = useSettingsStore((state) => state.toggleEconomicCalendarTicker)
 
   // Market Overview Symbols state
   const [marketSymbols, setMarketSymbols] = useState<string[]>(DEFAULT_MARKET_SYMBOLS)
@@ -169,20 +167,6 @@ export function DisplaySection() {
               enabled={panelVisibility.newsTickerVisible}
               onToggle={toggleNewsTicker}
             />
-
-            {/* Economic Calendar Ticker */}
-            <ToggleRow
-              label="Economic Calendar Ticker"
-              enabled={panelVisibility.economicCalendarTickerVisible}
-              onToggle={toggleEconomicCalendarTicker}
-            />
-
-            {/* AI Performance */}
-            <ToggleRow
-              label="AI Performance (in AI Panel)"
-              enabled={panelVisibility.aiPerformanceVisible}
-              onToggle={toggleAIPerformance}
-            />
           </div>
         </div>
 
@@ -281,12 +265,13 @@ export function DisplaySection() {
                 onChange={(e) => setTickerSpeed(Number(e.target.value))}
                 className="w-full h-2 bg-terminal-border rounded-lg appearance-none cursor-pointer accent-terminal-amber"
               />
-              {/* Tick marks */}
-              <div className="flex justify-between px-0.5">
+              {/* Tick marks - simple vertical lines */}
+              <div className="flex justify-between px-1 mt-1">
                 {[10, 20, 30, 40, 50, 60].map((val) => (
-                  <div key={val} className="flex flex-col items-center">
-                    <div className="w-0.5 h-1.5 bg-terminal-border rounded" />
-                  </div>
+                  <div
+                    key={val}
+                    className={`w-0.5 h-3 ${tickerSpeed === val ? 'bg-terminal-amber' : 'bg-terminal-border'}`}
+                  />
                 ))}
               </div>
             </div>

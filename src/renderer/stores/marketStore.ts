@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { Quote, CandleData, WatchlistItem } from '../types'
 import { TOP_10_TICKERS, isTop10Symbol, getIndexConstituents } from '../lib/constants'
 import { getUserWatchlist, addToUserWatchlist, removeFromUserWatchlist, getSettings } from '../lib/db'
+import { fetchLivePrices } from '../../services/marketData'
 
 // Track chart load requests to prevent stale data from race conditions
 let chartLoadSequence = 0
@@ -284,6 +285,24 @@ export const useMarketStore = create<MarketState>((set, get) => ({
       get().loadChartData(etf, '5min').catch(err => {
         console.error('[Market Store] Chart load error:', err)
       })
+
+      // Fetch initial quotes for watchlist (so Market Watch shows data on startup)
+      // This is a one-time fetch that doesn't require Live Data toggle
+      try {
+        const symbols = [etf, ...constituents.map(c => c.symbol)]
+        const quotes = await fetchLivePrices(symbols)
+        if (quotes.length > 0) {
+          console.log(`[Market Store] Initial quotes fetched: ${quotes.length} symbols`)
+          set(state => ({
+            watchlist: state.watchlist.map(item => {
+              const quote = quotes.find(q => q.symbol === item.symbol)
+              return quote ? { ...item, quote } : item
+            })
+          }))
+        }
+      } catch (err) {
+        console.warn('[Market Store] Initial quote fetch failed (non-critical):', err)
+      }
 
       // Remove old listener if exists (prevents accumulation during HMR or re-init)
       if (marketChangedHandler) {

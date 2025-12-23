@@ -44,22 +44,39 @@ export function DangerZoneSection() {
 
     setIsResetting(true)
     try {
+      let successMessage = ''
+
       if (showResetConfirm === 'cache') {
         clearAPICache()
+        successMessage = 'API cache cleared successfully'
       } else if (showResetConfirm === 'ai') {
         await clearAIHistory()
+        successMessage = 'AI history cleared successfully'
       } else if (showResetConfirm === 'pnl') {
         await clearPnLHistory()
+        successMessage = 'P&L history cleared successfully'
       } else if (showResetConfirm === 'alerts') {
         await clearPriceAlerts()
         loadAlerts()
+        successMessage = 'Price alerts cleared successfully'
       } else if (showResetConfirm === 'factory') {
         await factoryReset()
         return // Page will reload
       }
+
+      // Show success toast
+      if (successMessage) {
+        addToast({ message: successMessage, type: 'success' })
+      }
+
       setShowResetConfirm(null)
     } catch (error) {
       console.error('Reset failed:', error)
+      addToast({
+        message: `Operation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        type: 'error',
+        helpSection: 'troubleshooting'
+      })
     } finally {
       setIsResetting(false)
     }

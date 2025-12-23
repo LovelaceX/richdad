@@ -5,7 +5,7 @@
  */
 
 // React import not needed for JSX in modern TypeScript
-import { Cpu, AlertCircle, Check } from 'lucide-react'
+import { Cpu, AlertCircle, Check, Search, HelpCircle } from 'lucide-react'
 import { MultiProviderManager } from '../../../components/Settings/MultiProviderManager'
 import { AIBudgetMeter } from '../../../components/Settings/AIBudgetMeter'
 import type {
@@ -149,7 +149,7 @@ export function AICopilotSection({
           <div className="flex items-center justify-between mb-2">
             <span className="text-white text-sm">Minimum Confidence Threshold</span>
             <span className="text-terminal-amber font-mono">
-              {aiSettings.confidenceThreshold ?? 70}%
+              {aiSettings.confidenceThreshold ?? 80}%
             </span>
           </div>
           <input
@@ -157,14 +157,14 @@ export function AICopilotSection({
             min="0"
             max="100"
             step="5"
-            value={aiSettings.confidenceThreshold ?? 70}
+            value={aiSettings.confidenceThreshold ?? 80}
             onChange={(e) => onSaveAISettings({ confidenceThreshold: parseInt(e.target.value) })}
             className="w-full accent-terminal-amber"
           />
           <p className="text-gray-500 text-xs mt-2">
-            Only show AI recommendations with confidence ≥ {aiSettings.confidenceThreshold ?? 70}%
+            Only show AI recommendations with confidence ≥ {aiSettings.confidenceThreshold ?? 80}%
           </p>
-          {(aiSettings.confidenceThreshold ?? 70) < 50 && (
+          {(aiSettings.confidenceThreshold ?? 80) < 50 && (
             <p className="text-yellow-500 text-xs mt-1 flex items-center gap-1">
               <AlertCircle size={12} /> Low threshold may show unreliable signals
             </p>
@@ -189,6 +189,54 @@ export function AICopilotSection({
               className="w-5 h-5 accent-terminal-amber"
             />
           </label>
+        </div>
+
+        <div className="border-t border-terminal-border" />
+
+        {/* Automatic Pattern Scanning */}
+        <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-terminal-amber" />
+              <span className="text-white text-sm font-medium">Automatic Pattern Scanning</span>
+              <div className="relative group">
+                <HelpCircle size={14} className="text-gray-500 cursor-help" />
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-terminal-bg border border-terminal-border rounded-lg text-xs text-gray-300 w-64 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
+                  Uses 1 API call per symbol every 15 minutes. Only enable if you have a paid API tier with higher rate limits.
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => onSaveSettings({ autoPatternScan: !settings.autoPatternScan })}
+              className={`w-12 h-6 rounded-full transition-colors ${
+                settings.autoPatternScan ? 'bg-terminal-amber' : 'bg-terminal-border'
+              }`}
+            >
+              <div
+                className={`w-5 h-5 rounded-full bg-white transition-transform ${
+                  settings.autoPatternScan ? 'translate-x-6' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </div>
+
+          <p className="text-gray-400 text-xs mb-3">
+            Automatically scan all watchlist symbols for chart patterns every 15 minutes.
+            <span className="text-terminal-amber font-medium"> Disabled by default</span> to conserve API calls.
+          </p>
+
+          {!settings.autoPatternScan && (
+            <div className="p-2 bg-blue-500/10 border border-blue-500/30 rounded text-xs text-blue-400 mb-3">
+              <strong>Manual mode:</strong> Use the 🔍 button in the chart toolbar to scan patterns on-demand.
+            </div>
+          )}
+
+          {settings.autoPatternScan && (
+            <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-400">
+              <strong>⚠️ Warning:</strong> This uses ~15 API calls every 15 minutes (1 per symbol).
+              Only enable if you have Polygon Starter+ or TwelveData Pro+ tier.
+            </div>
+          )}
         </div>
 
         {/* AI Budget (Free Tier Protection) */}

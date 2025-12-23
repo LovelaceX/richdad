@@ -388,8 +388,8 @@ export async function generateRecommendation(
       return null
     }
 
-    // 10. Validate confidence threshold (configurable, default 70%)
-    const threshold = confidenceThreshold ?? 70
+    // 10. Validate confidence threshold (configurable, default 80%)
+    const threshold = confidenceThreshold ?? 80
     if (recommendation.confidence < threshold) {
       updatePhase('ai', 'complete', `Low conf: ${recommendation.confidence}%`)
       console.log(`[AI Engine] Confidence too low (${recommendation.confidence}% < ${threshold}%), skipping recommendation`)

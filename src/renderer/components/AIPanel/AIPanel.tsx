@@ -10,7 +10,6 @@ import { IntelPanel } from '../Intel'
 import { ErrorBoundary } from '../ErrorBoundary'
 import { useAIStore } from '../../stores/aiStore'
 import { useMarketStore } from '../../stores/marketStore'
-import { useSettingsStore } from '../../stores/settingsStore'
 import { useIntelStore } from '../../stores/intelStore'
 
 export function AIPanel() {
@@ -19,7 +18,6 @@ export function AIPanel() {
   const clearMessages = useAIStore(state => state.clearMessages)
   const analysisProgress = useAIStore(state => state.analysisProgress)
   const selectedTicker = useMarketStore(state => state.selectedTicker)
-  const aiPerformanceVisible = useSettingsStore(state => state.panelVisibility.aiPerformanceVisible)
   const intelPanelEnabled = useIntelStore(state => state.intelPanelEnabled)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -85,12 +83,10 @@ export function AIPanel() {
         </ErrorBoundary>
       </div>
 
-      {/* Performance Summary - collapsible */}
-      {aiPerformanceVisible && (
-        <div className="flex-shrink-0">
-          <AIPerformanceSummary />
-        </div>
-      )}
+      {/* Performance Summary - always visible */}
+      <div className="flex-shrink-0">
+        <AIPerformanceSummary />
+      </div>
 
       {/* News Intel Panel - collapsible */}
       {intelPanelEnabled && (

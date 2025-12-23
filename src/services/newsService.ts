@@ -7,7 +7,7 @@
 
 import { parseRSSFeed } from './rssParser'
 import { canUseAlphaVantageForNews, recordNewsCall, canUseFinnhub, recordFinnhubCall } from './apiBudgetTracker'
-import { getSettings, db } from '../renderer/lib/db'
+import { getSettings, db, DEFAULT_NEWS_SOURCES } from '../renderer/lib/db'
 import type { NewsItem } from '../renderer/types'
 
 const ALPHA_VANTAGE_BASE_URL = 'https://www.alphavantage.co/query'
@@ -70,10 +70,16 @@ export interface NewsResponse {
 export async function fetchNewsFromRSS(): Promise<NewsItem[]> {
   try {
     // Query database for enabled RSS feeds
-    const enabledSources = await db.newsSources
+    let enabledSources = await db.newsSources
       .where('enabled')
       .equals(1)
       .toArray()
+
+    // Fallback to DEFAULT_NEWS_SOURCES if database is empty
+    if (enabledSources.length === 0) {
+      console.log('[News Service] No sources in DB, using defaults')
+      enabledSources = DEFAULT_NEWS_SOURCES.filter(s => s.enabled).map((s, i) => ({ ...s, id: i }))
+    }
 
     if (enabledSources.length === 0) {
       console.warn('[News Service] No enabled RSS sources')

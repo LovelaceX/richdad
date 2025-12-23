@@ -65,10 +65,10 @@ const SECTIONS = [
   { id: 'risk' as const, label: 'Risk Management', icon: Shield },
   { id: 'ai-copilot' as const, label: 'AI Copilot', icon: Brain },
   { id: 'data-sources' as const, label: 'API Keys', icon: BarChart3 },
+  { id: 'error-log' as const, label: 'Error Log', icon: AlertCircle },
   { id: 'sounds' as const, label: 'Notifications', icon: Volume2 },
   { id: 'traders' as const, label: 'RSS Feeds', icon: Rss },
   { id: 'alerts' as const, label: 'Price Alerts', icon: Bell },
-  { id: 'error-log' as const, label: 'Error Log', icon: AlertCircle },
   { id: 'danger' as const, label: 'Danger Zone', icon: Trash2 },
 ]
 

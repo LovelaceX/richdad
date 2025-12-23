@@ -3,6 +3,7 @@ import type { AIRecommendation, AIMessage, AnalysisProgress, AnalysisPhase, Morn
 import { generateId } from '../lib/utils'
 import { sendChatMessage } from '../lib/ai'
 import { playSound } from '../lib/sounds'
+import { canMakeAICall, recordAICall, getAIBudgetStatus } from '../../services/aiBudgetTracker'
 
 // Memory limits to prevent unbounded growth
 const MAX_CHAT_MESSAGES = 100 // Maximum chat/info messages to keep
@@ -180,6 +181,17 @@ export const useAIStore = create<AIState>((set, get) => ({
   sendMessage: async (content: string) => {
     const { addMessage, setAnalyzing, messages } = get()
 
+    // Check AI budget BEFORE making API call
+    if (!canMakeAICall()) {
+      const { used, limit } = getAIBudgetStatus()
+      addMessage({
+        type: 'info',
+        role: 'assistant',
+        content: `AI budget limit reached (${used}/${limit} calls today). Please wait until midnight for reset, or increase your limit in Settings → AI Copilot.`,
+      })
+      return
+    }
+
     // Add user message
     addMessage({
       type: 'chat',
@@ -193,6 +205,9 @@ export const useAIStore = create<AIState>((set, get) => ({
       // Get chat history for context (last 10 messages)
       const recentMessages = messages.slice(0, 10).reverse()
       const response = await sendChatMessage(content, recentMessages)
+
+      // Record the AI call AFTER successful response
+      recordAICall()
 
       // Add AI response
       addMessage({

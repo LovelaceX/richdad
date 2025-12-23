@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, BookOpen, Zap, BarChart3, Keyboard, HelpCircle, Shield, FileText, Mail,
-  Search, Gauge, AlertTriangle, Database, TrendingUp, Bell, Eye, Check, Calendar, ExternalLink, Bug, Sparkles, Activity
+  Search, Gauge, AlertTriangle, Database, TrendingUp, Bell, Eye, Check, Calendar, ExternalLink, Bug, Sparkles, Activity,
+  Crown, Star, Leaf
 } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 
@@ -15,6 +16,7 @@ interface HelpModalProps {
 type Section =
   | 'get-started'
   | 'whats-new'
+  | 'tiers'
   | 'dashboard'
   | 'watchlist'
   | 'news'
@@ -33,26 +35,88 @@ type Section =
   | 'about'
   | 'report-issue'
 
-const sectionContent: Record<Section, { title: string; keywords: string[] }> = {
-  'get-started': { title: 'Get Started', keywords: ['setup', 'api key', 'configure', 'begin', 'first', 'install'] },
-  'whats-new': { title: "What's New", keywords: ['new', 'features', 'update', 'release', 'latest', 'backtest', 'macd', 'stochastic', 'indicators', 'calendar', 'briefing'] },
-  'dashboard': { title: 'Dashboard', keywords: ['home', 'main', 'overview', 'layout', 'panels'] },
-  'watchlist': { title: 'Watchlist', keywords: ['market watch', 'stocks', 'symbols', 'add', 'remove', 'track'] },
-  'news': { title: 'Market News', keywords: ['headlines', 'feed', 'sentiment', 'filter', 'rss'] },
-  'economic-calendar': { title: 'Economic Calendar', keywords: ['fred', 'cpi', 'jobs', 'fed', 'gdp', 'fomc', 'economic events', 'calendar'] },
-  'intel-panel': { title: 'Intelligence Panel', keywords: ['intel', 'pattern', 'scanner', 'news', 'sentiment', 'breaking', 'alerts', 'bullish', 'bearish', 'setup'] },
-  'price-alerts': { title: 'Price Alerts', keywords: ['notification', 'alert', 'trigger', 'above', 'below'] },
-  'chart-guide': { title: 'Chart Controls', keywords: ['candlestick', 'timeframe', 'zoom', 'pan', 'daily', 'intraday'] },
-  'ai-copilot': { title: 'AI Copilot', keywords: ['openai', 'claude', 'gemini', 'grok', 'recommendation', 'chat', 'provider', 'morning briefing', 'briefing', 'thinking', 'animation', 'phases', 'finnhub', 'news'] },
-  'api-limits': { title: 'API Limits & Usage', keywords: ['rate limit', 'quota', 'calls', 'daily', 'budget', 'alpha vantage', 'polygon', 'massive', 'twelvedata', 'finnhub', 'fasttrack', 'fallback'] },
-  'shortcuts': { title: 'Keyboard Shortcuts', keywords: ['hotkey', 'cmd', 'ctrl', 'key'] },
-  'troubleshooting': { title: 'Troubleshooting', keywords: ['error', 'fix', 'problem', 'not working', 'issue', 'help'] },
-  'faq': { title: 'FAQ', keywords: ['question', 'answer', 'common', 'frequently'] },
-  'terms': { title: 'Terms of Service', keywords: ['legal', 'tos', 'agreement'] },
-  'privacy': { title: 'Privacy Policy', keywords: ['data', 'collection', 'storage'] },
-  'security': { title: 'Security', keywords: ['safe', 'key', 'protection'] },
-  'about': { title: 'About RichDad', keywords: ['version', 'developer', 'contact', 'lovelacex'] },
-  'report-issue': { title: 'Report Issue', keywords: ['bug', 'problem', 'feedback', 'github', 'issue', 'report'] },
+// Searchable content for each section - includes all important words and phrases
+const sectionContent: Record<Section, { title: string; searchableText: string }> = {
+  'get-started': {
+    title: 'Get Started',
+    searchableText: 'setup api key configure begin first install alpha vantage openai claude gemini grok deepseek llama groq settings dashboard news watchlist price alerts chart controls keyboard shortcuts api limits troubleshooting quick links step by step guide free account paste copy'
+  },
+  'whats-new': {
+    title: "What's New",
+    searchableText: 'new features update release latest backtest macd stochastic indicators calendar briefing v5.2.0 v5.1.0 v5.0.0 error log service health api key encryption watchlist news lru cache websocket reconnect jitter data freshness badges hover tooltips request cancellation loading state error state empty state race condition vti smh vxx market indices type safe event system crash isolation ai copilot backtesting historical data win rate profit factor sharpe ratio csv export technical indicator panels momentum trend direction rsi oscillator volume profile'
+  },
+  'tiers': {
+    title: 'Pricing Tiers',
+    searchableText: 'tier tiers free standard premium pricing cost plan subscription upgrade downgrade polygon twelvedata groq openai claude anthropic intraday data market history real-time delayed 15 minute delay rss finnhub alpha vantage news sources ai provider llama gpt-4 budget calls per day historical backtest'
+  },
+  'dashboard': {
+    title: 'Dashboard',
+    searchableText: 'home main overview layout panels chart watchlist news ticker ai panel market data live prices real-time trading view candlestick technical analysis top bar navigation sidebar'
+  },
+  'watchlist': {
+    title: 'Watchlist',
+    searchableText: 'market watch stocks symbols add remove track ticker price change percent volume favorite save delete edit search filter sort'
+  },
+  'news': {
+    title: 'Market News',
+    searchableText: 'headlines feed sentiment filter rss sources finnhub alpha vantage breaking news articles positive negative neutral bullish bearish market sentiment analysis ticker relevance'
+  },
+  'economic-calendar': {
+    title: 'Economic Calendar',
+    searchableText: 'finnhub cpi jobs fed gdp fomc economic events calendar interest rate inflation employment nonfarm payroll consumer price index federal reserve meeting minutes pmi manufacturing services housing starts retail sales'
+  },
+  'intel-panel': {
+    title: 'Intelligence Panel',
+    searchableText: 'intel pattern scanner news sentiment breaking alerts bullish bearish setup engulfing doji hammer shooting star morning star evening star three white soldiers technical patterns candlestick patterns chart patterns automatic pattern scan auto scan manual scan api calls per symbol watchlist scan 15 minutes free tier paid tier polygon starter twelvedata pro'
+  },
+  'price-alerts': {
+    title: 'Price Alerts',
+    searchableText: 'notification alert trigger above below target price stop loss take profit sound notification push alert email sms crosses reaches hits'
+  },
+  'chart-guide': {
+    title: 'Chart Controls',
+    searchableText: 'candlestick timeframe zoom pan daily intraday weekly monthly 1 minute 5 minute 15 minute 1 hour 4 hour drawing tools trendline support resistance fibonacci moving average bollinger bands volume indicator overlay'
+  },
+  'ai-copilot': {
+    title: 'AI Copilot',
+    searchableText: 'openai claude gemini grok deepseek groq llama recommendation chat provider morning briefing briefing thinking animation phases finnhub news buy call buy put options options-aware call put leverage buy sell hold confidence technical analysis sentiment market regime risk management position size stop loss take profit price target rationale explanation ai analysis automatic manual trigger chat interface conversation history performance tracking win rate accuracy options trading suggestions'
+  },
+  'api-limits': {
+    title: 'API Limits & Usage',
+    searchableText: 'rate limit quota calls daily budget alpha vantage polygon massive twelvedata finnhub fasttrack fallback free tier starter developer professional 5 calls per minute 25 calls per day usage tracking budget warning exceeded throttle'
+  },
+  'shortcuts': {
+    title: 'Keyboard Shortcuts',
+    searchableText: 'hotkey cmd ctrl key command control alt shift meta keyboard navigation dashboard news settings backtest zoom in zoom out reset new window find search focus'
+  },
+  'troubleshooting': {
+    title: 'Troubleshooting',
+    searchableText: 'error fix problem not working issue help debug crash freeze slow loading blank screen no data connection failed timeout api error rate limit exceeded invalid key authentication failed network error clear cache reset refresh restart reinstall'
+  },
+  'faq': {
+    title: 'FAQ',
+    searchableText: 'question answer common frequently asked questions how do i what is why does can i should i when will how to'
+  },
+  'terms': {
+    title: 'Terms of Service',
+    searchableText: 'legal tos agreement terms conditions acceptance investment disclaimer risk acknowledgment limitation liability license updates changes api keys privacy trading software warranty financial advice educational purposes'
+  },
+  'privacy': {
+    title: 'Privacy Policy',
+    searchableText: 'data collection storage local first indexeddb no cloud no server no tracking no ads no telemetry privacy promise your data stays on your machine'
+  },
+  'security': {
+    title: 'Security',
+    searchableText: 'safe key protection encryption encrypted secure api key keychain local storage aes-256 web crypto api session storage never transmitted secure storage password protect secrets credentials'
+  },
+  'about': {
+    title: 'About RichDad',
+    searchableText: 'version developer contact lovelacex trading intelligence tauri react typescript mit license open source desktop application'
+  },
+  'report-issue': {
+    title: 'Report Issue',
+    searchableText: 'bug problem feedback github issue report feature request enhancement suggestion error message screenshot steps to reproduce expected behavior actual behavior'
+  },
 }
 
 export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
@@ -69,6 +133,7 @@ export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
   const sections: { id: Section; label: string; icon: any }[] = [
     { id: 'get-started', label: 'Get Started', icon: BookOpen },
     { id: 'whats-new', label: "What's New", icon: Sparkles },
+    { id: 'tiers', label: 'Pricing Tiers', icon: Crown },
     { id: 'dashboard', label: 'Dashboard', icon: Eye },
     { id: 'watchlist', label: 'Watchlist', icon: TrendingUp },
     { id: 'news', label: 'Market News', icon: FileText },
@@ -88,17 +153,17 @@ export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
     { id: 'report-issue', label: 'Report Issue', icon: Bug },
   ]
 
-  // Filter sections based on search
+  // Filter sections based on search - searches title, label, and full content text
   const filteredSections = useMemo(() => {
     if (!searchQuery.trim()) return sections
-    const query = searchQuery.toLowerCase()
+    const query = searchQuery.toLowerCase().trim()
+    // Split query into words for better matching (e.g., "buy call" matches "buy call")
+    const queryWords = query.split(/\s+/)
     return sections.filter(section => {
       const content = sectionContent[section.id]
-      return (
-        content.title.toLowerCase().includes(query) ||
-        content.keywords.some(k => k.includes(query)) ||
-        section.label.toLowerCase().includes(query)
-      )
+      const searchText = `${content.title} ${section.label} ${content.searchableText}`.toLowerCase()
+      // Match if ALL query words are found (for multi-word searches like "buy call")
+      return queryWords.every(word => searchText.includes(word))
     })
   }, [searchQuery, sections])
 
@@ -759,7 +824,8 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               <span className="text-purple-400">Pattern Scanner</span>
             </h3>
             <p className="text-gray-300 text-sm mb-3">
-              Automatically scans your watchlist for candlestick patterns every 15 minutes.
+              Scans your watchlist for candlestick patterns. Automatic scanning is disabled by default
+              to conserve API calls. Use the manual scan button or enable auto-scan in Settings if you have a paid API tier.
             </p>
             <ul className="text-gray-400 text-sm space-y-1">
               <li>• Detects 18+ candlestick patterns (Engulfing, Hammer, Doji, etc.)</li>
@@ -768,6 +834,47 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               <li>• Volume confirmation indicators</li>
               <li>• Only runs during market hours</li>
             </ul>
+
+            {/* API Cost Breakdown */}
+            <div className="mt-4 pt-4 border-t border-terminal-border">
+              <h4 className="text-terminal-amber text-sm font-medium mb-2">API Usage</h4>
+              <p className="text-gray-400 text-xs mb-2">
+                Pattern scanning uses <strong className="text-white">1 API call per symbol</strong>.
+                Automatic scanning every 15 minutes would use 4 scans/hour.
+              </p>
+              <div className="bg-terminal-panel rounded p-3 text-xs space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">5 symbols × 4/hour =</span>
+                  <span className="text-terminal-amber">20 calls/hour</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">15 symbols × 4/hour =</span>
+                  <span className="text-red-400">60 calls/hour (exceeds free limits)</span>
+                </div>
+              </div>
+              <p className="text-gray-500 text-xs mt-2">
+                Free tier limits: Polygon 5/min, TwelveData 8/min. Enable auto-scan in Settings → AI Copilot only with paid tier.
+              </p>
+            </div>
+          </div>
+
+          {/* Configuring News Sources */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
+              <span className="text-blue-400">Configuring News Sources</span>
+            </h3>
+            <p className="text-gray-300 text-sm mb-3">
+              Customize which news sources appear in your feed.
+            </p>
+            <ol className="text-gray-400 text-sm space-y-2 list-decimal list-inside">
+              <li>Go to <span className="text-terminal-amber">Settings → RSS Feeds</span></li>
+              <li>Toggle sources ON/OFF to customize your feed</li>
+              <li>Add custom RSS feed URLs (e.g., Yahoo Finance, Seeking Alpha)</li>
+              <li>News updates every 5 minutes when Live Data is ON</li>
+            </ol>
+            <p className="text-gray-500 text-xs mt-3">
+              Default sources include TradingView Ideas, Bloomberg, and Investing.com. All sources are free.
+            </p>
           </div>
 
           {/* Urgency Indicators */}
@@ -1018,21 +1125,115 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             </p>
           </div>
 
+          {/* Options-Aware AI */}
+          <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-5">
+            <h3 className="text-purple-400 font-semibold mb-3">Options-Aware Mode</h3>
+            <p className="text-gray-300 text-sm mb-3">
+              When enabled, AI recommendations include options trading suggestions for high-confidence signals:
+            </p>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-3">
+                <span className="text-terminal-up font-medium w-24">BUY Signal</span>
+                <span className="text-gray-400">→</span>
+                <span className="text-gray-300">"BUY (or Buy Call for leverage)"</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-terminal-down font-medium w-24">SELL Signal</span>
+                <span className="text-gray-400">→</span>
+                <span className="text-gray-300">"SELL (or Buy Put for protection)"</span>
+              </div>
+            </div>
+            <p className="text-gray-500 text-xs mt-3">
+              Enable in Settings → AI Copilot → Include Options Suggestions
+            </p>
+          </div>
+
+          {/* How Confidence is Calculated */}
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-5">
+            <h3 className="text-blue-400 font-semibold mb-3">How Confidence is Calculated</h3>
+            <p className="text-gray-300 text-sm mb-4">
+              The AI synthesizes multiple data points to generate a confidence score (0-100%):
+            </p>
+            <div className="space-y-3 text-sm">
+              <div className="bg-terminal-bg/50 rounded p-3">
+                <p className="text-white font-medium mb-1">Technical Indicators (40%)</p>
+                <p className="text-gray-400 text-xs">RSI, MACD, Moving Averages, Bollinger Bands alignment</p>
+              </div>
+              <div className="bg-terminal-bg/50 rounded p-3">
+                <p className="text-white font-medium mb-1">Market Regime (25%)</p>
+                <p className="text-gray-400 text-xs">VIX level, SPY trend, overall market direction</p>
+              </div>
+              <div className="bg-terminal-bg/50 rounded p-3">
+                <p className="text-white font-medium mb-1">Candlestick Patterns (20%)</p>
+                <p className="text-gray-400 text-xs">Engulfing, Doji, Hammer, Star patterns detected</p>
+              </div>
+              <div className="bg-terminal-bg/50 rounded p-3">
+                <p className="text-white font-medium mb-1">News Sentiment (15%)</p>
+                <p className="text-gray-400 text-xs">Recent news sentiment for the ticker (bullish/bearish/neutral)</p>
+              </div>
+            </div>
+            <p className="text-gray-500 text-xs mt-4">
+              Higher confidence = more indicators align in the same direction. Default threshold is 80%.
+            </p>
+          </div>
+
+          {/* Acting on Recommendations */}
           <div>
             <h3 className="text-white text-lg font-semibold mb-4">Acting on Recommendations</h3>
-            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5 space-y-3">
-              <div className="flex items-center gap-3">
-                <kbd className="bg-terminal-border px-3 py-1 rounded">E</kbd>
-                <span className="text-gray-300">Execute - Log trade for performance tracking</span>
+            <p className="text-gray-300 text-sm mb-4">
+              When an AI recommendation appears, you have three choices:
+            </p>
+
+            {/* Execute */}
+            <div className="bg-semantic-up/10 border border-semantic-up/30 rounded-lg p-4 mb-3">
+              <div className="flex items-center gap-3 mb-2">
+                <kbd className="bg-terminal-border px-3 py-1 rounded text-white font-mono">E</kbd>
+                <span className="text-semantic-up font-semibold">Execute</span>
               </div>
-              <div className="flex items-center gap-3">
-                <kbd className="bg-terminal-border px-3 py-1 rounded">S</kbd>
-                <span className="text-gray-300">Skip - Dismiss without logging</span>
+              <p className="text-gray-300 text-sm">
+                Logs the trade to your decision history with "Executed" status. The system will:
+              </p>
+              <ul className="text-gray-400 text-sm mt-2 space-y-1">
+                <li>• Track the price at decision time</li>
+                <li>• Monitor price target and stop loss</li>
+                <li>• Calculate profit/loss when targets hit</li>
+                <li>• Update your AI win rate in Performance Summary</li>
+              </ul>
+            </div>
+
+            {/* Skip */}
+            <div className="bg-terminal-border/30 border border-terminal-border rounded-lg p-4 mb-3">
+              <div className="flex items-center gap-3 mb-2">
+                <kbd className="bg-terminal-border px-3 py-1 rounded text-white font-mono">S</kbd>
+                <span className="text-gray-300 font-semibold">Skip</span>
               </div>
-              <div className="flex items-center gap-3">
-                <kbd className="bg-terminal-border px-3 py-1 rounded">Esc</kbd>
-                <span className="text-gray-300">Close - Dismiss modal</span>
+              <p className="text-gray-300 text-sm">
+                Logs the trade as "Skipped" (you chose not to act). Useful for:
+              </p>
+              <ul className="text-gray-400 text-sm mt-2 space-y-1">
+                <li>• Tracking recommendations you disagreed with</li>
+                <li>• Comparing "what if I had executed" scenarios</li>
+                <li>• Learning from trades you passed on</li>
+              </ul>
+            </div>
+
+            {/* X / Esc - Dismiss */}
+            <div className="bg-terminal-amber/10 border border-terminal-amber/30 rounded-lg p-4">
+              <div className="flex items-center gap-3 mb-2">
+                <kbd className="bg-terminal-border px-3 py-1 rounded text-white font-mono">Esc</kbd>
+                <span className="text-gray-400 mx-1">or</span>
+                <kbd className="bg-terminal-border px-3 py-1 rounded text-white font-mono">X</kbd>
+                <span className="text-terminal-amber font-semibold">Dismiss (Save for Later)</span>
               </div>
+              <p className="text-gray-300 text-sm">
+                Closes the modal without logging. The recommendation is <span className="text-white">saved to your Notification Bell</span>:
+              </p>
+              <ul className="text-gray-400 text-sm mt-2 space-y-1">
+                <li>• Click the bell icon in the top bar to review later</li>
+                <li>• Bulk "Execute All" or "Skip All" from the panel</li>
+                <li>• Individual recommendations can still be acted upon</li>
+                <li>• Cleared when you make a decision or manually remove</li>
+              </ul>
             </div>
           </div>
 
@@ -1627,39 +1828,87 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
       return (
         <div className="space-y-8">
           <div>
-            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Terms of Service</h2>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Terms & Conditions</h2>
             <p className="text-gray-400">Last updated: {new Date().toLocaleDateString()}</p>
           </div>
 
           <div className="space-y-6 text-gray-300">
             <div>
               <h3 className="text-white font-semibold mb-2">1. Acceptance of Terms</h3>
-              <p>By using RichDad, you agree to these Terms of Service.</p>
+              <p>By using RichDad, you agree to these terms and conditions. This software is provided "as is" without warranty of any kind. Trading involves risk and you should never invest more than you can afford to lose.</p>
             </div>
 
             <div>
-              <h3 className="text-white font-semibold mb-2">2. No Financial Advice</h3>
-              <p>RichDad and its AI recommendations are for <span className="text-terminal-amber">informational purposes only</span>. This is NOT financial advice. You are solely responsible for your trading decisions.</p>
+              <h3 className="text-white font-semibold mb-2">2. Investment Disclaimer</h3>
+              <p>RichDad is an <span className="text-terminal-amber">informational tool</span> and does not provide financial advice. All AI-generated recommendations are for educational purposes only. You are solely responsible for your trading decisions. Past performance does not guarantee future results.</p>
             </div>
 
             <div>
-              <h3 className="text-white font-semibold mb-2">3. No Warranty</h3>
-              <p>RichDad is provided "as is" without warranty of any kind. We do not guarantee accuracy, uptime, or profitability.</p>
+              <h3 className="text-white font-semibold mb-2">3. API Keys & Privacy</h3>
+              <p>Your API keys are stored locally on your device using IndexedDB with AES-256 encryption. We never transmit your keys to external servers. You are responsible for keeping your API keys secure and complying with each provider's terms of service.</p>
             </div>
 
             <div>
-              <h3 className="text-white font-semibold mb-2">4. Limitation of Liability</h3>
-              <p>The developer (LovelaceX) shall not be liable for any losses incurred from using RichDad.</p>
+              <h3 className="text-white font-semibold mb-2">4. Data Usage</h3>
+              <p>RichDad operates in a local-first manner. Market data and news are fetched from your configured API providers. We do not collect, store, or share your trading data, decisions, or personal information on any remote servers.</p>
             </div>
 
             <div>
-              <h3 className="text-white font-semibold mb-2">5. Third-Party Services</h3>
-              <p>RichDad relies on third-party APIs (Alpha Vantage, AI providers). We are not responsible for their availability or accuracy.</p>
+              <h3 className="text-white font-semibold mb-2">5. Risk Acknowledgment</h3>
+              <p>Trading stocks, options, and other financial instruments involves <span className="text-terminal-down">substantial risk of loss</span>. You acknowledge that you understand these risks and that RichDad's AI recommendations should not be your sole basis for making investment decisions.</p>
             </div>
 
             <div>
-              <h3 className="text-white font-semibold mb-2">6. User Conduct</h3>
-              <p>Do not use RichDad for illegal activities or to violate API provider terms of service.</p>
+              <h3 className="text-white font-semibold mb-2">6. Limitation of Liability</h3>
+              <p>The developers of RichDad shall not be liable for any direct, indirect, incidental, special, or consequential damages arising from your use of this software, including but not limited to financial losses.</p>
+            </div>
+
+            <div>
+              <h3 className="text-white font-semibold mb-2">7. License</h3>
+              <p>RichDad is provided under the MIT License. You are free to use, modify, and distribute this software in accordance with the license terms.</p>
+            </div>
+
+            <div>
+              <h3 className="text-white font-semibold mb-2">8. Updates & Changes</h3>
+              <p>We reserve the right to modify these terms at any time. Continued use of RichDad after changes constitutes acceptance of the updated terms.</p>
+            </div>
+          </div>
+
+          {/* Privacy Promise */}
+          <div className="bg-terminal-up/10 border border-terminal-up/30 rounded-lg p-6">
+            <h3 className="text-terminal-up text-lg font-bold mb-4 flex items-center gap-2">
+              <Shield size={20} />
+              Privacy Promise
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-start gap-3">
+                <Check size={18} className="text-terminal-up flex-shrink-0" />
+                <div>
+                  <p className="text-white font-medium">No Ads, No Trackers</p>
+                  <p className="text-gray-400 text-sm">Ever. Period.</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Check size={18} className="text-terminal-up flex-shrink-0" />
+                <div>
+                  <p className="text-white font-medium">Your Trades Are Yours</p>
+                  <p className="text-gray-400 text-sm">Local storage only</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Check size={18} className="text-terminal-up flex-shrink-0" />
+                <div>
+                  <p className="text-white font-medium">No Cloud Servers</p>
+                  <p className="text-gray-400 text-sm">Data stays on your machine</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Check size={18} className="text-terminal-up flex-shrink-0" />
+                <div>
+                  <p className="text-white font-medium">No Crowdsourcing</p>
+                  <p className="text-gray-400 text-sm">Your strategy stays private</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -2030,6 +2279,186 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
                 <span className="text-gray-300">Screenshots if applicable</span>
               </div>
             </div>
+          </div>
+        </div>
+      )
+
+    case 'tiers':
+      return (
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Pricing Tiers</h2>
+            <p className="text-gray-400">Compare Free, Standard, and Premium setup paths</p>
+          </div>
+
+          <p className="text-gray-300">
+            RichDad offers three setup paths based on your needs and budget. You can change your configuration anytime in <span className="text-terminal-amber">Settings → Data Sources</span>.
+          </p>
+
+          <div className="grid grid-cols-3 gap-4">
+            {/* Free Tier */}
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Leaf size={20} className="text-green-400" />
+                <span className="text-green-400 font-bold text-lg">Free</span>
+              </div>
+              <p className="text-green-400/80 text-xs mb-4">$0/month</p>
+              <div className="text-sm text-gray-300 space-y-2">
+                <div className="flex items-start gap-2">
+                  <Check size={14} className="text-green-400 mt-0.5 flex-shrink-0" />
+                  <span>TwelveData (800 calls/day)</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check size={14} className="text-green-400 mt-0.5 flex-shrink-0" />
+                  <span>Groq AI / Llama 3 (free)</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check size={14} className="text-green-400 mt-0.5 flex-shrink-0" />
+                  <span>RSS news feeds</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check size={14} className="text-green-400 mt-0.5 flex-shrink-0" />
+                  <span>Intraday: Today only</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check size={14} className="text-green-400 mt-0.5 flex-shrink-0" />
+                  <span>Real-time data</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Standard Tier */}
+            <div className="bg-terminal-amber/10 border border-terminal-amber/30 rounded-lg p-4 relative">
+              <div className="absolute -top-2 right-3 bg-terminal-amber text-black text-[10px] font-bold px-2 py-0.5 rounded">
+                RECOMMENDED
+              </div>
+              <div className="flex items-center gap-2 mb-3">
+                <Star size={20} className="text-terminal-amber" />
+                <span className="text-terminal-amber font-bold text-lg">Standard</span>
+              </div>
+              <p className="text-terminal-amber/80 text-xs mb-4">~$5-20/month</p>
+              <div className="text-sm text-gray-300 space-y-2">
+                <div className="flex items-start gap-2">
+                  <Check size={14} className="text-terminal-amber mt-0.5 flex-shrink-0" />
+                  <span>Polygon (5 calls/min)</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check size={14} className="text-terminal-amber mt-0.5 flex-shrink-0" />
+                  <span>OpenAI GPT-4</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check size={14} className="text-terminal-amber mt-0.5 flex-shrink-0" />
+                  <span>Finnhub + Economic Calendar</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check size={14} className="text-terminal-amber mt-0.5 flex-shrink-0" />
+                  <span>Intraday: Today only</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check size={14} className="text-terminal-amber mt-0.5 flex-shrink-0" />
+                  <span>15-min delayed (free tier)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Premium Tier */}
+            <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Crown size={20} className="text-purple-400" />
+                <span className="text-purple-400 font-bold text-lg">Premium</span>
+              </div>
+              <p className="text-purple-400/80 text-xs mb-4">Power User</p>
+              <div className="text-sm text-gray-300 space-y-2">
+                <div className="flex items-start gap-2">
+                  <Check size={14} className="text-purple-400 mt-0.5 flex-shrink-0" />
+                  <span>Polygon paid (unlimited)</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check size={14} className="text-purple-400 mt-0.5 flex-shrink-0" />
+                  <span>Anthropic Claude</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check size={14} className="text-purple-400 mt-0.5 flex-shrink-0" />
+                  <span>All news + Alpha Vantage</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check size={14} className="text-purple-400 mt-0.5 flex-shrink-0" />
+                  <span>Intraday: 90-day history</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Check size={14} className="text-purple-400 mt-0.5 flex-shrink-0" />
+                  <span>Real-time data</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <SectionDivider />
+
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Feature Comparison</h3>
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-terminal-border">
+                    <th className="text-left py-3 px-4 text-gray-400 font-medium">Feature</th>
+                    <th className="text-center py-3 px-4 text-green-400 font-medium">Free</th>
+                    <th className="text-center py-3 px-4 text-terminal-amber font-medium">Standard</th>
+                    <th className="text-center py-3 px-4 text-purple-400 font-medium">Premium</th>
+                  </tr>
+                </thead>
+                <tbody className="text-gray-300">
+                  <tr className="border-b border-terminal-border/50">
+                    <td className="py-2 px-4">Market Data Provider</td>
+                    <td className="py-2 px-4 text-center">TwelveData</td>
+                    <td className="py-2 px-4 text-center">Polygon</td>
+                    <td className="py-2 px-4 text-center">Polygon (paid)</td>
+                  </tr>
+                  <tr className="border-b border-terminal-border/50">
+                    <td className="py-2 px-4">AI Provider</td>
+                    <td className="py-2 px-4 text-center">Groq (Llama 3)</td>
+                    <td className="py-2 px-4 text-center">OpenAI GPT-4</td>
+                    <td className="py-2 px-4 text-center">Claude</td>
+                  </tr>
+                  <tr className="border-b border-terminal-border/50">
+                    <td className="py-2 px-4">Intraday History</td>
+                    <td className="py-2 px-4 text-center">Today only</td>
+                    <td className="py-2 px-4 text-center">Today only</td>
+                    <td className="py-2 px-4 text-center text-purple-400">90 days</td>
+                  </tr>
+                  <tr className="border-b border-terminal-border/50">
+                    <td className="py-2 px-4">Daily Chart History</td>
+                    <td className="py-2 px-4 text-center">90 days</td>
+                    <td className="py-2 px-4 text-center">90 days</td>
+                    <td className="py-2 px-4 text-center">Full history</td>
+                  </tr>
+                  <tr className="border-b border-terminal-border/50">
+                    <td className="py-2 px-4">Data Freshness</td>
+                    <td className="py-2 px-4 text-center">Real-time</td>
+                    <td className="py-2 px-4 text-center">15-min delay</td>
+                    <td className="py-2 px-4 text-center">Real-time</td>
+                  </tr>
+                  <tr className="border-b border-terminal-border/50">
+                    <td className="py-2 px-4">News Sources</td>
+                    <td className="py-2 px-4 text-center">RSS only</td>
+                    <td className="py-2 px-4 text-center">Finnhub + Calendar</td>
+                    <td className="py-2 px-4 text-center">All sources</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 px-4">AI Calls/Day</td>
+                    <td className="py-2 px-4 text-center">15 (configurable)</td>
+                    <td className="py-2 px-4 text-center">15 (configurable)</td>
+                    <td className="py-2 px-4 text-center">15 (configurable)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="bg-terminal-border/30 rounded-lg p-4 text-center">
+            <p className="text-gray-400 text-sm">
+              AI call limits are the same across all tiers (default 15/day) but can be configured from 5-100 in <span className="text-terminal-amber">Settings → AI Copilot</span>
+            </p>
           </div>
         </div>
       )

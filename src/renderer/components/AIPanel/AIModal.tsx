@@ -12,9 +12,9 @@ import { AIPerformanceSummary } from './AIPerformanceSummary'
 import { AnalysisProgress } from './AnalysisProgress'
 import { MorningBriefingButton } from './MorningBriefingButton'
 import { IntelPanel } from '../Intel'
+import { ErrorBoundary } from '../ErrorBoundary'
 import { useAIStore } from '../../stores/aiStore'
 import { useMarketStore } from '../../stores/marketStore'
-import { useSettingsStore } from '../../stores/settingsStore'
 import { useIntelStore } from '../../stores/intelStore'
 
 interface AIModalProps {
@@ -28,7 +28,6 @@ export function AIModal({ isOpen, onClose }: AIModalProps) {
   const clearMessages = useAIStore(state => state.clearMessages)
   const analysisProgress = useAIStore(state => state.analysisProgress)
   const selectedTicker = useMarketStore(state => state.selectedTicker)
-  const aiPerformanceVisible = useSettingsStore(state => state.panelVisibility.aiPerformanceVisible)
   const intelPanelEnabled = useIntelStore(state => state.intelPanelEnabled)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -60,13 +59,13 @@ export function AIModal({ isOpen, onClose }: AIModalProps) {
     <AnimatePresence>
       {isOpen && (
         <>
-          {/* Backdrop - subtle overlay, click to close */}
+          {/* Backdrop - click to close (transparent) */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/30 z-[100]"
+            className="fixed inset-0 z-[100]"
           />
 
           {/* Sliding Panel from Right */}
@@ -119,44 +118,44 @@ export function AIModal({ isOpen, onClose }: AIModalProps) {
             </div>
 
             {/* Content */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-              {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto p-4">
-                {/* Analysis Progress */}
-                <AnimatePresence>
-                  {analysisProgress && (
-                    <AnalysisProgress progress={analysisProgress} />
-                  )}
-                </AnimatePresence>
+            <ErrorBoundary>
+              <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Messages Area */}
+                <div className="flex-1 overflow-y-auto p-4">
+                  {/* Analysis Progress */}
+                  <AnimatePresence>
+                    {analysisProgress && (
+                      <AnalysisProgress progress={analysisProgress} />
+                    )}
+                  </AnimatePresence>
 
-                <ActivityLog />
-                <div ref={messagesEndRef} />
-              </div>
+                  <ActivityLog />
+                  <div ref={messagesEndRef} />
+                </div>
 
-              {/* Performance Summary */}
-              {aiPerformanceVisible && (
+                {/* Performance Summary - always visible */}
                 <div className="flex-shrink-0 border-t border-terminal-border">
                   <AIPerformanceSummary />
                 </div>
-              )}
 
-              {/* Intel Panel */}
-              {intelPanelEnabled && (
+                {/* Intel Panel */}
+                {intelPanelEnabled && (
+                  <div className="flex-shrink-0 px-4 py-2 border-t border-terminal-border">
+                    <IntelPanel />
+                  </div>
+                )}
+
+                {/* Morning Briefing Button */}
                 <div className="flex-shrink-0 px-4 py-2 border-t border-terminal-border">
-                  <IntelPanel />
+                  <MorningBriefingButton />
                 </div>
-              )}
 
-              {/* Morning Briefing Button */}
-              <div className="flex-shrink-0 px-4 py-2 border-t border-terminal-border">
-                <MorningBriefingButton />
+                {/* Chat Input */}
+                <div className="flex-shrink-0">
+                  <ChatInput />
+                </div>
               </div>
-
-              {/* Chat Input */}
-              <div className="flex-shrink-0">
-                <ChatInput />
-              </div>
-            </div>
+            </ErrorBoundary>
           </motion.div>
         </>
       )}

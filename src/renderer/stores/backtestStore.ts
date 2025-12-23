@@ -52,11 +52,11 @@ interface BacktestState {
 const DEFAULT_CONFIG: Omit<BacktestConfig, 'id'> = {
   symbol: 'SPY',
   startDate: Date.now() - (90 * 24 * 60 * 60 * 1000), // 90 days ago
-  endDate: Date.now(),
+  endDate: Date.now() - (24 * 60 * 60 * 1000), // Yesterday (previous day)
   timeframe: '1d',
   initialCapital: 10000,
   positionSizePercent: 10,
-  confidenceThreshold: 70,
+  confidenceThreshold: 80,
   maxConcurrentTrades: 1,
   includeNews: false
 }

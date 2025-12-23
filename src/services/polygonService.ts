@@ -38,41 +38,122 @@ async function respectRateLimit(): Promise<void> {
 }
 
 /**
- * Fetch quotes for multiple symbols from Polygon
- * Uses the Previous Close endpoint for each symbol
+ * Fetch quotes for multiple symbols from Polygon using BATCH snapshot endpoint
+ * Uses /v2/snapshot/locale/us/markets/stocks/tickers to get ALL symbols in 1 API call
+ * This is critical for staying under the 5 calls/minute free tier limit!
  */
 export async function fetchPolygonQuotes(symbols: string[], apiKey: string): Promise<Quote[]> {
   // Check cache first
   const now = Date.now()
   if (cachedQuotes.length > 0 && (now - quoteCacheTimestamp) < QUOTE_CACHE_DURATION_MS) {
     console.log('[Polygon] Serving quotes from cache')
-    return cachedQuotes
+    // Filter cached quotes to requested symbols
+    const filtered = cachedQuotes.filter(q => symbols.includes(q.symbol))
+    if (filtered.length > 0) {
+      return filtered
+    }
   }
 
+  if (symbols.length === 0) {
+    return []
+  }
+
+  await respectRateLimit()
+
+  // Use BATCH snapshot endpoint - gets ALL tickers in ONE call!
+  // Format: /v2/snapshot/locale/us/markets/stocks/tickers?tickers=AAPL,MSFT,GOOGL
+  const tickerList = symbols.join(',')
+  const url = `${POLYGON_BASE_URL}/v2/snapshot/locale/us/markets/stocks/tickers?tickers=${tickerList}&apiKey=${apiKey}`
+
+  console.log(`[Polygon] Batch fetch for ${symbols.length} symbols (1 API call)`)
+
+  try {
+    const response = await fetch(url)
+
+    if (!response.ok) {
+      // Handle rate limit specifically
+      if (response.status === 429) {
+        console.warn('[Polygon] Rate limit hit (429), returning cached data')
+        return cachedQuotes.filter(q => symbols.includes(q.symbol))
+      }
+      throw new Error(`Polygon API error: ${response.status}`)
+    }
+
+    const data = await response.json()
+
+    if (data.status !== 'OK' || !data.tickers || data.tickers.length === 0) {
+      console.warn('[Polygon] No snapshot data returned, trying fallback')
+      // Fallback to previous close for individual symbols (only if batch fails)
+      return await fetchPolygonQuotesFallback(symbols, apiKey)
+    }
+
+    const quotes: Quote[] = data.tickers.map((ticker: any) => {
+      const day = ticker.day || {}
+      const prevDay = ticker.prevDay || {}
+      const price = day.c || prevDay.c || 0
+      const open = day.o || prevDay.o || price
+      const previousClose = prevDay.c || price
+      const change = price - previousClose
+      const changePercent = previousClose > 0 ? ((change / previousClose) * 100) : 0
+
+      return {
+        symbol: ticker.ticker,
+        price,
+        change,
+        changePercent,
+        volume: day.v || prevDay.v || 0,
+        high: day.h || prevDay.h || price,
+        low: day.l || prevDay.l || price,
+        open,
+        previousClose,
+        timestamp: ticker.updated || Date.now()
+      }
+    })
+
+    // Update cache
+    if (quotes.length > 0) {
+      // Merge with existing cache (keep quotes for symbols not in this request)
+      const otherQuotes = cachedQuotes.filter(q => !symbols.includes(q.symbol))
+      cachedQuotes = [...otherQuotes, ...quotes]
+      quoteCacheTimestamp = now
+    }
+
+    console.log(`[Polygon] Batch fetch successful: ${quotes.length} quotes`)
+    return quotes
+
+  } catch (error) {
+    console.error('[Polygon] Batch fetch error:', error)
+    // Return cached data on error
+    return cachedQuotes.filter(q => symbols.includes(q.symbol))
+  }
+}
+
+/**
+ * Fallback: Fetch quotes one-by-one using Previous Close endpoint
+ * Only used if the batch snapshot endpoint fails (e.g., on Basic plan)
+ */
+async function fetchPolygonQuotesFallback(symbols: string[], apiKey: string): Promise<Quote[]> {
+  console.warn('[Polygon] Using fallback (individual calls) - this uses more API quota!')
   const quotes: Quote[] = []
 
-  for (const symbol of symbols) {
+  // Limit to first 5 symbols to stay under rate limit
+  const limitedSymbols = symbols.slice(0, 5)
+
+  for (const symbol of limitedSymbols) {
     try {
       await respectRateLimit()
 
-      // Use Previous Day Aggs endpoint for quote data
       const url = `${POLYGON_BASE_URL}/v2/aggs/ticker/${symbol}/prev?adjusted=true&apiKey=${apiKey}`
       const response = await fetch(url)
 
-      if (!response.ok) {
-        console.warn(`[Polygon] Failed to fetch ${symbol}: ${response.status}`)
-        continue
-      }
+      if (!response.ok) continue
 
       const data = await response.json()
 
       if (data.status === 'OK' && data.results && data.results.length > 0) {
         const result = data.results[0]
-        const price = result.c // Close price
-        const open = result.o  // Open price
-        const high = result.h  // High price
-        const low = result.l   // Low price
-        const previousClose = result.c // Use close as previous close for prev day data
+        const price = result.c
+        const open = result.o
         const change = price - open
         const changePercent = open > 0 ? ((change / open) * 100) : 0
 
@@ -82,22 +163,16 @@ export async function fetchPolygonQuotes(symbols: string[], apiKey: string): Pro
           change,
           changePercent,
           volume: result.v || 0,
-          high,
-          low,
+          high: result.h,
+          low: result.l,
           open,
-          previousClose,
+          previousClose: result.c,
           timestamp: result.t || Date.now()
         })
       }
     } catch (error) {
-      console.error(`[Polygon] Error fetching ${symbol}:`, error)
+      console.error(`[Polygon] Fallback error for ${symbol}:`, error)
     }
-  }
-
-  // Update cache
-  if (quotes.length > 0) {
-    cachedQuotes = quotes
-    quoteCacheTimestamp = now
   }
 
   return quotes

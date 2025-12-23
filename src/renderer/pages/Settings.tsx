@@ -128,11 +128,8 @@ export function Settings() {
   const setTickerSpeed = useSettingsStore(state => state.setTickerSpeed)
   const panelVisibility = useSettingsStore(state => state.panelVisibility)
   const toggleLeftPanel = useSettingsStore(state => state.toggleLeftPanel)
-  const toggleRightPanel = useSettingsStore(state => state.toggleRightPanel)
   const toggleChart = useSettingsStore(state => state.toggleChart)
   const toggleNewsTicker = useSettingsStore(state => state.toggleNewsTicker)
-  const toggleAIPerformance = useSettingsStore(state => state.toggleAIPerformance)
-  const toggleEconomicCalendarTicker = useSettingsStore(state => state.toggleEconomicCalendarTicker)
 
   // Pro Traders state
   const { traders, loadTraders, addTrader, removeTrader, toggleTrader } = useProTraderStore()
@@ -2280,21 +2277,6 @@ export function Settings() {
                       </button>
                     </div>
 
-                    {/* AI Copilot */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-300 text-sm">AI Copilot</span>
-                      <button
-                        onClick={toggleRightPanel}
-                        className={`w-12 h-6 rounded-full transition-colors ${
-                          panelVisibility.rightPanelVisible ? 'bg-terminal-amber' : 'bg-terminal-border'
-                        }`}
-                      >
-                        <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                          panelVisibility.rightPanelVisible ? 'translate-x-6' : 'translate-x-0.5'
-                        }`} />
-                      </button>
-                    </div>
-
                     {/* News Ticker */}
                     <div className="flex items-center justify-between">
                       <span className="text-gray-300 text-sm">News Ticker</span>
@@ -2310,39 +2292,7 @@ export function Settings() {
                       </button>
                     </div>
 
-                    {/* Economic Calendar Ticker */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-300 text-sm">Economic Calendar Ticker</span>
-                      <button
-                        onClick={toggleEconomicCalendarTicker}
-                        className={`w-12 h-6 rounded-full transition-colors ${
-                          panelVisibility.economicCalendarTickerVisible ? 'bg-terminal-amber' : 'bg-terminal-border'
-                        }`}
-                      >
-                        <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                          panelVisibility.economicCalendarTickerVisible ? 'translate-x-6' : 'translate-x-0.5'
-                        }`} />
-                      </button>
                     </div>
-
-                    {/* AI Performance Summary */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <span className="text-gray-300 text-sm">AI Performance Summary</span>
-                        <p className="text-gray-500 text-xs">Show W-L-P stats in AI Copilot panel</p>
-                      </div>
-                      <button
-                        onClick={toggleAIPerformance}
-                        className={`w-12 h-6 rounded-full transition-colors ${
-                          panelVisibility.aiPerformanceVisible ? 'bg-terminal-amber' : 'bg-terminal-border'
-                        }`}
-                      >
-                        <div className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                          panelVisibility.aiPerformanceVisible ? 'translate-x-6' : 'translate-x-0.5'
-                        }`} />
-                      </button>
-                    </div>
-                  </div>
                 </div>
 
                 <div className="border-t border-terminal-border" />

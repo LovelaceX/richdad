@@ -1,9 +1,8 @@
 import { useEffect, useState, useMemo } from 'react'
-import { TrendingUp, Calendar, Maximize2, Minimize2, Activity, Minus, TrendingUp as TrendlineIcon, Trash2, RefreshCw } from 'lucide-react'
+import { TrendingUp, Calendar, Maximize2, Minimize2, Activity, Minus, TrendingUp as TrendlineIcon, Trash2, RefreshCw, Search } from 'lucide-react'
 import { TradingChart } from './TradingChart'
 import { ProactiveAlert } from './ProactiveAlert'
 import { TimeframeSelector } from './TimeframeSelector'
-import { MarketStatusIndicator } from './MarketStatusIndicator'
 import { QuickTradeButtons } from './QuickTradeButtons'
 import { PositionSizeCalculator } from './PositionSizeCalculator'
 import { MarketContextPanel } from './MarketContextPanel'
@@ -116,21 +115,10 @@ export function ChartPanel() {
       {/* Header with ticker info */}
       <div className="panel-header flex items-center justify-between gap-2 overflow-visible">
         {/* Essential info - always visible, never shrink */}
-        <div className="flex items-center gap-3 flex-shrink-0">
-          <div className="flex items-center gap-2">
-            <TrendingUp size={14} />
-            <span>{selectedTicker}</span>
-            {selectedItem && (
-              <span className="text-gray-500 text-[10px] font-normal normal-case truncate max-w-[120px]">
-                {selectedItem.name}
-              </span>
-            )}
-          </div>
-
-          {/* Unified Market Index Dropdown with Price + Regime */}
-          <div className="border-l border-terminal-border pl-3">
-            <MarketIndexDropdown />
-          </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <TrendingUp size={14} />
+          {/* Market Index Dropdown shows symbol + price + regime */}
+          <MarketIndexDropdown />
         </div>
 
         {/* Controls - can shrink/scroll */}
@@ -195,6 +183,15 @@ export function ChartPanel() {
               `}
             >
               <Activity size={12} />
+            </button>
+
+            {/* Manual Pattern Scan Button */}
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('trigger-pattern-scan'))}
+              title="Scan for patterns (uses API calls)"
+              className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-terminal-amber rounded transition-all border border-transparent hover:border-terminal-border hover:bg-terminal-amber/10"
+            >
+              <Search size={12} />
             </button>
 
             {/* Technical Indicators Selector */}
@@ -274,9 +271,6 @@ export function ChartPanel() {
               </div>
             )}
           </div>
-
-          {/* Market Status Indicator */}
-          <MarketStatusIndicator />
 
           {/* Data Source & Freshness Indicator */}
           <div className="flex items-center gap-1.5 border-l border-terminal-border pl-3 group relative">
@@ -381,32 +375,6 @@ export function ChartPanel() {
           <IndicatorPanelGroup />
         </div>
       </ChartSyncProvider>
-
-      {/* Quick Timeframe Buttons */}
-      {selectedTicker === 'SPY' && (
-        <div className="flex items-center justify-center gap-2 py-2 border-t border-terminal-border bg-terminal-panel/50">
-          {[
-            { label: '5M', value: '5min' },
-            { label: '15M', value: '15min' },
-            { label: '1H', value: '60min' },
-            { label: '1D', value: 'daily' },
-          ].map(({ label, value }) => (
-            <button
-              key={value}
-              onClick={() => setTimeframe(value as any)}
-              className={`
-                px-3 py-1 text-xs rounded transition-colors
-                ${timeframe === value
-                  ? 'bg-terminal-amber/20 text-terminal-amber border border-terminal-amber/50'
-                  : 'text-gray-400 hover:text-white hover:bg-terminal-border/50 border border-transparent'
-                }
-              `}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

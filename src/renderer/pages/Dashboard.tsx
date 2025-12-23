@@ -2,14 +2,13 @@ import { Panel, PanelGroup } from 'react-resizable-panels'
 import { MarketWatch } from '../components/MarketWatch'
 import { ChartPanel } from '../components/Chart'
 import { NewsTicker } from '../components/NewsTicker'
-import { EconomicCalendarTicker } from '../components/EconomicCalendarTicker'
 import { MarketOverview } from '../components/MarketOverview'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { useSettingsStore } from '../stores/settingsStore'
 
 export function Dashboard() {
   const { panelSizes, panelVisibility } = useSettingsStore()
-  const { leftPanelVisible, chartVisible, newsTickerVisible, economicCalendarTickerVisible } = panelVisibility
+  const { leftPanelVisible, chartVisible, newsTickerVisible } = panelVisibility
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -52,15 +51,6 @@ export function Dashboard() {
             <Panel defaultSize={panelSizes.bottomPanel} minSize={3} maxSize={15}>
               <ErrorBoundary fallbackTitle="News Ticker Error">
                 <NewsTicker />
-              </ErrorBoundary>
-            </Panel>
-          )}
-
-          {/* Bottom: Economic Calendar Ticker */}
-          {economicCalendarTickerVisible && (
-            <Panel defaultSize={panelSizes.bottomPanel} minSize={3} maxSize={15}>
-              <ErrorBoundary fallbackTitle="Calendar Error">
-                <EconomicCalendarTicker />
               </ErrorBoundary>
             </Panel>
           )}

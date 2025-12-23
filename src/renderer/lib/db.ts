@@ -84,6 +84,9 @@ export interface UserSettings {
   // Real-time Data Streaming
   enableWebsocket?: boolean  // Use WebSocket for real-time quotes (requires Polygon paid tier)
 
+  // Pattern Scanning
+  autoPatternScan?: boolean  // Enable automatic pattern scanning every 15min (disabled by default - expensive for free tier)
+
   // News Ticker
   tickerSpeed: 'slow' | 'normal' | 'fast'
 
@@ -271,7 +274,7 @@ export const DEFAULT_AI_SETTINGS: AISettings = {
   apiKey: '',
   model: 'gpt-4.0-turbo',
   recommendationInterval: 15,
-  confidenceThreshold: 70,
+  confidenceThreshold: 80,
   aiDailyCallLimit: 15,  // Conservative default for free tier protection
   includeOptionsLanguage: false  // Off by default, can be enabled in settings
 }

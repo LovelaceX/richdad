@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { dataHeartbeat } from '../../services/DataHeartbeatService'
+import { websocketService } from '../../services/websocketService'
 import { useMarketStore } from '../stores/marketStore'
 import { useNewsStore } from '../stores/newsStore'
 import { useAIStore } from '../stores/aiStore'
 import { useIntelStore } from '../stores/intelStore'
 import { useAIModalStore } from '../stores/aiModalStore'
 import { useSettingsStore } from '../stores/settingsStore'
+import { useServiceHealthStore, type WebSocketStatus } from '../stores/serviceHealthStore'
 import { playSound } from '../lib/sounds'
 import type { DataUpdateCallback } from '../../services/DataHeartbeatService'
 import type { NewsIntelReport, PatternScanReport } from '../../services/agents/types'
@@ -41,6 +43,9 @@ export function useDataHeartbeat() {
 
   // Get live data state from settings store
   const isLiveDataEnabled = useSettingsStore(state => state.isLiveDataEnabled)
+
+  // WebSocket status updates
+  const updateWebSocketStatus = useServiceHealthStore(state => state.updateWebSocketStatus)
 
   // Subscribe to data updates (always active)
   useEffect(() => {
@@ -88,6 +93,22 @@ export function useDataHeartbeat() {
     window.addEventListener('api-settings-updated', handleApiSettingsChange)
     return () => window.removeEventListener('api-settings-updated', handleApiSettingsChange)
   }, [])
+
+  // Subscribe to WebSocket status changes
+  useEffect(() => {
+    const unsubscribe = websocketService.onStatusChange((status, message) => {
+      // Map websocket states to service health states
+      const healthStatus: WebSocketStatus =
+        status === 'connected' ? 'connected' :
+        status === 'connecting' || status === 'authenticating' ? 'connecting' :
+        status === 'reconnecting' ? 'reconnecting' :
+        status === 'disconnected' ? 'disconnected' : 'failed'
+
+      updateWebSocketStatus(healthStatus, message, websocketService.getReconnectAttempts())
+    })
+
+    return unsubscribe
+  }, [updateWebSocketStatus])
 
   const handleDataUpdate: DataUpdateCallback = ({ type, payload }) => {
     switch (type) {

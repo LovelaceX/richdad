@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, Sparkles, Zap, Leaf, Star, Crown, Brain } from 'lucide-react'
+import { X, Sparkles, Zap, Leaf, Star, Crown, Brain, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 import { WelcomeStep } from './WelcomeStep'
 import { TermsStep } from './TermsStep'
 import { WizardStep } from './WizardStep'
 import { updateSettings, updateAISettings } from '../../lib/db'
+import { testAIKey, type AIProvider } from '../../../services/aiKeyValidator'
 
 interface OnboardingWizardProps {
   isOpen: boolean
@@ -24,6 +25,8 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
   const [twelvedataKey, setTwelvedataKey] = useState('')
   const [selectedAIProvider, setSelectedAIProvider] = useState<AIProviderChoice>('openai')
   const [aiApiKey, setAiApiKey] = useState('')
+  const [aiKeyStatus, setAiKeyStatus] = useState<'idle' | 'testing' | 'valid' | 'invalid'>('idle')
+  const [aiKeyMessage, setAiKeyMessage] = useState('')
 
   // Derived state based on selected path
   const selectedProvider: MarketDataProvider = setupPath === 'free' ? 'twelvedata' : 'polygon'
@@ -32,6 +35,28 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
   const handlePathChange = (path: SetupPath) => {
     setSetupPath(path)
     setSelectedAIProvider(path === 'free' ? 'groq' : path === 'premium' ? 'anthropic' : 'openai')
+    // Reset AI key status when provider changes
+    setAiKeyStatus('idle')
+    setAiKeyMessage('')
+  }
+
+  // Test AI API key
+  const handleTestAIKey = async () => {
+    if (!aiApiKey.trim()) return
+
+    setAiKeyStatus('testing')
+    setAiKeyMessage('')
+
+    // Map wizard provider to validator provider type
+    const providerMap: Record<AIProviderChoice, AIProvider> = {
+      openai: 'openai',
+      anthropic: 'anthropic',
+      groq: 'groq'
+    }
+
+    const result = await testAIKey(providerMap[selectedAIProvider], aiApiKey)
+    setAiKeyStatus(result.valid ? 'valid' : 'invalid')
+    setAiKeyMessage(result.message)
   }
 
   const handleSkip = async () => {
@@ -314,18 +339,56 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
               </button>
             </div>
 
-            {/* API Key Input */}
+            {/* API Key Input with Test Button */}
             <div className="space-y-2">
               <label className="text-gray-400 text-sm">
                 {selectedAIProvider === 'openai' ? 'OpenAI API Key' : selectedAIProvider === 'anthropic' ? 'Anthropic API Key' : 'Groq API Key'}
               </label>
-              <input
-                type="password"
-                value={aiApiKey}
-                onChange={(e) => setAiApiKey(e.target.value)}
-                placeholder={selectedAIProvider === 'openai' ? 'sk-...' : selectedAIProvider === 'anthropic' ? 'sk-ant-...' : 'gsk_...'}
-                className="w-full bg-terminal-bg border border-terminal-border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:border-terminal-amber focus:outline-none"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  value={aiApiKey}
+                  onChange={(e) => {
+                    setAiApiKey(e.target.value)
+                    setAiKeyStatus('idle')
+                    setAiKeyMessage('')
+                  }}
+                  placeholder={selectedAIProvider === 'openai' ? 'sk-...' : selectedAIProvider === 'anthropic' ? 'sk-ant-...' : 'gsk_...'}
+                  className={`flex-1 bg-terminal-bg border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none transition-colors ${
+                    aiKeyStatus === 'valid' ? 'border-terminal-up' :
+                    aiKeyStatus === 'invalid' ? 'border-terminal-down' :
+                    'border-terminal-border focus:border-terminal-amber'
+                  }`}
+                />
+                <button
+                  onClick={handleTestAIKey}
+                  disabled={!aiApiKey.trim() || aiKeyStatus === 'testing'}
+                  className={`px-4 py-3 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 ${
+                    aiKeyStatus === 'testing'
+                      ? 'bg-terminal-border text-gray-400 cursor-wait'
+                      : aiKeyStatus === 'valid'
+                      ? 'bg-terminal-up/20 text-terminal-up border border-terminal-up/30'
+                      : aiKeyStatus === 'invalid'
+                      ? 'bg-terminal-down/20 text-terminal-down border border-terminal-down/30'
+                      : 'bg-terminal-amber/20 text-terminal-amber hover:bg-terminal-amber/30 border border-terminal-amber/30'
+                  }`}
+                >
+                  {aiKeyStatus === 'testing' ? (
+                    <><Loader2 size={14} className="animate-spin" /> Testing...</>
+                  ) : aiKeyStatus === 'valid' ? (
+                    <><CheckCircle2 size={14} /> Valid</>
+                  ) : aiKeyStatus === 'invalid' ? (
+                    <><XCircle size={14} /> Invalid</>
+                  ) : (
+                    'Test'
+                  )}
+                </button>
+              </div>
+              {aiKeyMessage && (
+                <p className={`text-xs ${aiKeyStatus === 'valid' ? 'text-terminal-up' : 'text-terminal-down'}`}>
+                  {aiKeyMessage}
+                </p>
+              )}
               <p className="text-gray-500 text-xs">
                 {selectedAIProvider === 'openai'
                   ? 'Get your key at platform.openai.com/api-keys'
