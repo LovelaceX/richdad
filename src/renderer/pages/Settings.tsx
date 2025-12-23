@@ -2383,16 +2383,16 @@ export function Settings() {
                   </div>
                 </div>
 
-                {/* News Ticker Speed */}
+                {/* Ticker Speed */}
                 <div className="border-t border-terminal-border" />
                 <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Newspaper className="w-4 h-4 text-terminal-amber" />
-                    <span className="text-white text-sm font-medium">News Ticker Speed</span>
+                    <span className="text-white text-sm font-medium">Ticker Speed</span>
                   </div>
 
                   <p className="text-gray-400 text-xs mb-4">
-                    Control the scrolling speed of the news ticker marquee (Bloomberg-style).
+                    Control the scrolling speed of the News and Economic Calendar tickers.
                   </p>
 
                   <div className="space-y-3">
