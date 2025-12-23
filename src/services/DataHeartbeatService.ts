@@ -7,6 +7,7 @@ import { generateNewsIntelReport } from './agents/newsIntelAgent'
 import { generatePatternScanReport } from './agents/patternScanAgent'
 import { websocketService, type WebSocketState } from './websocketService'
 import { db, getSettings, type PriceAlert } from '../renderer/lib/db'
+import { reportServiceHealth } from '../renderer/stores/serviceHealthStore'
 import type { Quote, NewsItem, AnalysisPhase, AIRecommendation } from '../renderer/types'
 import type { NewsIntelReport, PatternScanReport } from './agents/types'
 import type { CacheStatus } from './marketData'
@@ -67,6 +68,11 @@ class DataHeartbeatService {
   private lastPricesLRU: string[] = [] // Track access order for cleanup
   private websocketEnabled = false
   private websocketUnsubscribe: (() => void) | null = null
+
+  // Last update timestamps for service health monitoring
+  private lastMarketUpdate: number = 0
+  private lastNewsUpdate: number = 0
+  private lastSentimentUpdate: number = 0
 
   // Bound event handlers (stored as class properties to allow proper cleanup)
   // IMPORTANT: .bind() creates new references, so we store them for removeEventListener
@@ -234,10 +240,15 @@ class DataHeartbeatService {
       // Check price alerts after market update
       await this.checkPriceAlerts(quotes)
 
+      // Track success
+      this.lastMarketUpdate = Date.now()
+      reportServiceHealth.success('market')
+
       return quotes
 
     } catch (error) {
       console.error('[Heartbeat] Market update failed:', error)
+      reportServiceHealth.error('market', error instanceof Error ? error.message : 'Unknown error')
       return []
     }
   }
@@ -373,10 +384,15 @@ class DataHeartbeatService {
         console.error('[Heartbeat] News intel update failed:', err)
       })
 
+      // Track success
+      this.lastNewsUpdate = Date.now()
+      reportServiceHealth.success('news')
+
       return newsResponse.articles
 
     } catch (error) {
       console.error('[Heartbeat] News update failed:', error)
+      reportServiceHealth.error('news', error instanceof Error ? error.message : 'Unknown error')
       return []
     }
   }
@@ -465,6 +481,8 @@ class DataHeartbeatService {
       // Skip FinBERT if news already has sentiment from Alpha Vantage
       if (this.newsSourceMetadata?.hasSentiment) {
         console.log('[Heartbeat] Skipping FinBERT - news from Alpha Vantage already has sentiment')
+        this.lastSentimentUpdate = Date.now()
+        reportServiceHealth.success('sentiment')
         return
       }
 
@@ -473,6 +491,8 @@ class DataHeartbeatService {
 
       if (unanalyzed.length === 0) {
         console.log('[Heartbeat] All news already analyzed')
+        this.lastSentimentUpdate = Date.now()
+        reportServiceHealth.success('sentiment')
         return
       }
 
@@ -491,8 +511,13 @@ class DataHeartbeatService {
         payload: this.cachedNews
       })
 
+      // Track success
+      this.lastSentimentUpdate = Date.now()
+      reportServiceHealth.success('sentiment')
+
     } catch (error) {
       console.error('[Heartbeat] Sentiment analysis failed:', error)
+      reportServiceHealth.error('sentiment', error instanceof Error ? error.message : 'Unknown error')
     }
   }
 
@@ -586,9 +611,9 @@ class DataHeartbeatService {
     return {
       running: this.isRunning,
       lastUpdate: {
-        market: 0, // TODO: Track last update times
-        news: 0,
-        sentiment: 0
+        market: this.lastMarketUpdate,
+        news: this.lastNewsUpdate,
+        sentiment: this.lastSentimentUpdate
       }
     }
   }
@@ -596,10 +621,11 @@ class DataHeartbeatService {
   // Private methods
 
   private startMarketUpdates(): void {
-    // Initial update with slight random delay to prevent thundering herd on startup
+    // Initial update with longer delay to prevent rate limit collision with loadSelectedMarket()
+    // loadSelectedMarket() fires immediately on app start, so we wait 5s before first heartbeat update
     setTimeout(() => {
       this.updateMarketData([])
-    }, addJitter(1000))
+    }, addJitter(5000))
 
     // Periodic updates with jitter
     this.marketInterval = setInterval(() => {

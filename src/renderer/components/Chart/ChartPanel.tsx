@@ -3,6 +3,7 @@ import { TrendingUp, Calendar, Maximize2, Minimize2, Activity, Minus, TrendingUp
 import { TradingChart } from './TradingChart'
 import { ProactiveAlert } from './ProactiveAlert'
 import { TimeframeSelector } from './TimeframeSelector'
+import { MarketStatusIndicator } from './MarketStatusIndicator'
 import { QuickTradeButtons } from './QuickTradeButtons'
 import { PositionSizeCalculator } from './PositionSizeCalculator'
 import { MarketContextPanel } from './MarketContextPanel'
@@ -274,15 +275,8 @@ export function ChartPanel() {
             )}
           </div>
 
-          {/* EST Timezone Display */}
-          <div className="text-gray-500 text-[10px] tabular-nums" title="New York (EST/EDT)">
-            {new Date().toLocaleTimeString('en-US', {
-              timeZone: 'America/New_York',
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: true
-            })} EST
-          </div>
+          {/* Market Status Indicator */}
+          <MarketStatusIndicator />
 
           {/* Data Source & Freshness Indicator */}
           <div className="flex items-center gap-1.5 border-l border-terminal-border pl-3 group relative">

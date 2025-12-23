@@ -155,9 +155,13 @@ export const useMarketStore = create<MarketState>((set, get) => ({
     set({ dataSource: source })
   },
 
+  /**
+   * @deprecated This function is a no-op. Quote refresh is handled by DataHeartbeatService.
+   * Will be removed in a future version.
+   */
   refreshAllQuotes: () => {
     // No-op - quote refresh is handled by DataHeartbeatService fetching real API data
-    // This function is kept for backward compatibility but does nothing
+    // Kept for backward compatibility but should not be relied upon
   },
 
   setTimeframe: (timeframe: Timeframe) => {

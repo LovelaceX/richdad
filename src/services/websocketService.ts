@@ -405,7 +405,10 @@ class WebSocketService {
     }
 
     this.reconnectAttempts++
-    const delay = this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts - 1)
+    // Exponential backoff with jitter (±25% randomization to prevent thundering herd)
+    const baseDelay = this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts - 1)
+    const jitter = baseDelay * 0.25 * (Math.random() * 2 - 1) // Random value between -25% and +25%
+    const delay = Math.max(this.baseReconnectDelay, Math.round(baseDelay + jitter))
 
     console.log(`[WebSocket] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`)
     this.updateState('reconnecting', `Reconnecting in ${Math.round(delay / 1000)}s...`)

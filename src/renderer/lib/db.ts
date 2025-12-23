@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
+import { encryptApiKey, decryptApiKey, migrateToEncrypted } from './crypto'
 
 // Database interfaces
 export interface TradeDecision {
@@ -304,6 +305,36 @@ export interface TradeMemory {
   outcomeResult?: 'win' | 'loss' | 'pending'
 }
 
+// Error log entry for persistent error tracking
+export type ErrorService = 'market' | 'news' | 'sentiment' | 'ai' | 'websocket' | 'system'
+export type ErrorSeverity = 'error' | 'warning' | 'info'
+export type ErrorResolutionType = 'help_article' | 'clear_cache' | 'open_settings' | 'contact_support' | 'retry' | 'none'
+
+export interface ErrorLogEntry {
+  id?: number
+  timestamp: number
+  service: ErrorService
+  errorCode?: string
+  message: string
+  severity: ErrorSeverity
+
+  // Resolution metadata
+  resolutionType?: ErrorResolutionType
+  resolutionHint?: string
+  resolutionTarget?: string  // Help section ID or settings section
+
+  // Status
+  resolved: boolean
+  resolvedAt?: number
+
+  // Additional context (optional)
+  context?: {
+    symbol?: string
+    provider?: string
+    statusCode?: number
+  }
+}
+
 // Database class
 class DadAppDatabase extends Dexie {
   tradeDecisions!: EntityTable<TradeDecision, 'id'>
@@ -317,6 +348,7 @@ class DadAppDatabase extends Dexie {
   watchlist!: EntityTable<WatchlistEntry, 'id'>
   holdings!: EntityTable<Holding, 'id'>
   tradeMemories!: EntityTable<TradeMemory, 'id'>
+  errorLogs!: EntityTable<ErrorLogEntry, 'id'>
 
   constructor() {
     super('dadapp')
@@ -439,6 +471,22 @@ class DadAppDatabase extends Dexie {
         }
       })
       console.log('[DB] Migrated tradeMemories to use flat outcomeResult field')
+    })
+
+    // v9: Add errorLogs table for persistent error tracking
+    this.version(9).stores({
+      tradeDecisions: '++id, timestamp, symbol, action, decision, source, [symbol+timestamp]',
+      userSettings: '++id',
+      newsSources: '++id, name, type, enabled, category',
+      proTraders: '++id, handle, source, enabled',
+      priceAlerts: '++id, symbol, triggered, createdAt',
+      pnlEntries: '++id, date',
+      userProfile: '++id',
+      aiSettings: '++id, provider',
+      watchlist: '++id, symbol, addedAt',
+      holdings: '++id, symbol, entryDate',
+      tradeMemories: '++id, timestamp, symbol, outcomeResult, [symbol+timestamp]',
+      errorLogs: '++id, timestamp, service, severity, resolved, [resolved+timestamp]'
     })
   }
 }
@@ -607,18 +655,135 @@ export async function initializeDatabase() {
   }
 }
 
+// API key field names for encryption/decryption
+const API_KEY_FIELDS: (keyof UserSettings)[] = [
+  'alphaVantageApiKey',
+  'polygonApiKey',
+  'finnhubApiKey',
+  'fasttrackApiKey',
+  'twelvedataApiKey',
+  'fredApiKey'
+]
+
+/**
+ * Decrypt API keys in settings
+ */
+async function decryptSettingsKeys(settings: UserSettings): Promise<UserSettings> {
+  const decrypted = { ...settings }
+  for (const field of API_KEY_FIELDS) {
+    const value = decrypted[field]
+    if (typeof value === 'string' && value) {
+      (decrypted as Record<string, unknown>)[field] = await decryptApiKey(value)
+    }
+  }
+  return decrypted
+}
+
+/**
+ * Encrypt API keys in updates
+ */
+async function encryptSettingsKeys(updates: Partial<UserSettings>): Promise<Partial<UserSettings>> {
+  const encrypted = { ...updates }
+  for (const field of API_KEY_FIELDS) {
+    const value = encrypted[field]
+    if (typeof value === 'string' && value) {
+      (encrypted as Record<string, unknown>)[field] = await encryptApiKey(value)
+    }
+  }
+  return encrypted
+}
+
 // Helper functions
 export async function getSettings(): Promise<UserSettings> {
   const settings = await db.userSettings.toCollection().first()
-  return settings || DEFAULT_SETTINGS
+  const baseSettings = settings || DEFAULT_SETTINGS
+
+  // Decrypt API keys on read
+  return decryptSettingsKeys(baseSettings)
 }
 
 export async function updateSettings(updates: Partial<UserSettings>): Promise<void> {
+  // Encrypt API keys before saving
+  const encryptedUpdates = await encryptSettingsKeys(updates)
+
   const settings = await db.userSettings.toCollection().first()
   if (settings?.id) {
-    await db.userSettings.update(settings.id, updates)
+    await db.userSettings.update(settings.id, encryptedUpdates)
   } else {
-    await db.userSettings.add({ ...DEFAULT_SETTINGS, ...updates })
+    await db.userSettings.add({ ...DEFAULT_SETTINGS, ...encryptedUpdates })
+  }
+}
+
+/**
+ * Migrate existing plaintext API keys to encrypted format
+ * Call this once on app startup
+ */
+export async function migrateApiKeysToEncrypted(): Promise<void> {
+  try {
+    // Migrate UserSettings API keys
+    const settings = await db.userSettings.toCollection().first()
+    if (settings) {
+      const updates: Partial<UserSettings> = {}
+      let needsMigration = false
+
+      for (const field of API_KEY_FIELDS) {
+        const value = settings[field]
+        if (typeof value === 'string' && value) {
+          const migrated = await migrateToEncrypted(value)
+          if (migrated !== value) {
+            (updates as Record<string, unknown>)[field] = migrated
+            needsMigration = true
+          }
+        }
+      }
+
+      if (needsMigration && settings.id) {
+        await db.userSettings.update(settings.id, updates)
+        console.log('[DB] Migrated UserSettings API keys to encrypted format')
+      }
+    }
+
+    // Migrate AISettings API keys
+    const aiSettings = await db.aiSettings.toCollection().first()
+    if (aiSettings) {
+      let needsAIMigration = false
+      const aiUpdates: Partial<AISettings> = {}
+
+      // Migrate legacy apiKey
+      if (aiSettings.apiKey) {
+        const migrated = await migrateToEncrypted(aiSettings.apiKey)
+        if (migrated !== aiSettings.apiKey) {
+          aiUpdates.apiKey = migrated
+          needsAIMigration = true
+        }
+      }
+
+      // Migrate provider apiKeys
+      if (aiSettings.providers && aiSettings.providers.length > 0) {
+        const migratedProviders = await Promise.all(
+          aiSettings.providers.map(async (provider) => {
+            if (provider.apiKey) {
+              const migrated = await migrateToEncrypted(provider.apiKey)
+              if (migrated !== provider.apiKey) {
+                needsAIMigration = true
+                return { ...provider, apiKey: migrated }
+              }
+            }
+            return provider
+          })
+        )
+        if (needsAIMigration) {
+          aiUpdates.providers = migratedProviders
+        }
+      }
+
+      if (needsAIMigration && aiSettings.id) {
+        await db.aiSettings.update(aiSettings.id, aiUpdates)
+        console.log('[DB] Migrated AISettings API keys to encrypted format')
+      }
+    }
+  } catch (error) {
+    console.error('[DB] Failed to migrate API keys:', error)
   }
 }
 
@@ -903,17 +1068,89 @@ export async function updateProfile(updates: Partial<UserProfile>): Promise<void
 }
 
 // AI Settings helpers
+// Helper to decrypt AI settings keys
+async function decryptAISettingsKeys(settings: AISettings): Promise<AISettings> {
+  const decrypted = { ...settings }
+
+  // Decrypt legacy apiKey
+  if (decrypted.apiKey) {
+    try {
+      decrypted.apiKey = await decryptApiKey(decrypted.apiKey)
+    } catch (e) {
+      console.warn('[DB] Failed to decrypt AI apiKey:', e)
+    }
+  }
+
+  // Decrypt provider apiKeys
+  if (decrypted.providers && decrypted.providers.length > 0) {
+    decrypted.providers = await Promise.all(
+      decrypted.providers.map(async (provider) => {
+        if (provider.apiKey) {
+          try {
+            return { ...provider, apiKey: await decryptApiKey(provider.apiKey) }
+          } catch (e) {
+            console.warn(`[DB] Failed to decrypt ${provider.provider} apiKey:`, e)
+            return provider
+          }
+        }
+        return provider
+      })
+    )
+  }
+
+  return decrypted
+}
+
+// Helper to encrypt AI settings keys
+async function encryptAISettingsKeys(updates: Partial<AISettings>): Promise<Partial<AISettings>> {
+  const encrypted = { ...updates }
+
+  // Encrypt legacy apiKey
+  if (encrypted.apiKey !== undefined) {
+    try {
+      encrypted.apiKey = await encryptApiKey(encrypted.apiKey)
+    } catch (e) {
+      console.warn('[DB] Failed to encrypt AI apiKey:', e)
+    }
+  }
+
+  // Encrypt provider apiKeys
+  if (encrypted.providers && encrypted.providers.length > 0) {
+    encrypted.providers = await Promise.all(
+      encrypted.providers.map(async (provider) => {
+        if (provider.apiKey) {
+          try {
+            return { ...provider, apiKey: await encryptApiKey(provider.apiKey) }
+          } catch (e) {
+            console.warn(`[DB] Failed to encrypt ${provider.provider} apiKey:`, e)
+            return provider
+          }
+        }
+        return provider
+      })
+    )
+  }
+
+  return encrypted
+}
+
 export async function getAISettings(): Promise<AISettings> {
   const settings = await db.aiSettings.toCollection().first()
-  return settings || DEFAULT_AI_SETTINGS
+  if (!settings) return DEFAULT_AI_SETTINGS
+
+  // Decrypt API keys before returning
+  return decryptAISettingsKeys(settings)
 }
 
 export async function updateAISettings(updates: Partial<AISettings>): Promise<void> {
+  // Encrypt API keys before saving
+  const encryptedUpdates = await encryptAISettingsKeys(updates)
+
   const settings = await db.aiSettings.toCollection().first()
   if (settings?.id) {
-    await db.aiSettings.update(settings.id, updates)
+    await db.aiSettings.update(settings.id, encryptedUpdates)
   } else {
-    await db.aiSettings.add({ ...DEFAULT_AI_SETTINGS, ...updates })
+    await db.aiSettings.add({ ...DEFAULT_AI_SETTINGS, ...encryptedUpdates })
   }
 }
 

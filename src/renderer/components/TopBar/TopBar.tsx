@@ -4,6 +4,8 @@ import { NavBar } from '../Navigation/NavBar'
 import { APIBudgetAlert } from './APIBudgetAlert'
 import { AIBudgetAlert } from './AIBudgetAlert'
 import { AICopilotButton } from './AICopilotButton'
+import { LiveDataToggle } from './LiveDataToggle'
+import { ServiceHealthIndicator } from './ServiceHealthIndicator'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useNetworkStatus } from '../../hooks/useNetworkStatus'
 
@@ -60,8 +62,11 @@ export function TopBar() {
           <CommandInput />
         </div>
 
-        {/* Right: AI Copilot + Zoom Controls */}
-        <div className="flex justify-end items-center gap-2 no-drag" style={{ width: '280px' }}>
+        {/* Right: Live Toggle + Service Health + AI Copilot + Zoom Controls */}
+        <div className="flex justify-end items-center gap-2 no-drag" style={{ width: '380px' }}>
+          <LiveDataToggle />
+          <ServiceHealthIndicator />
+          <div className="w-px h-5 bg-terminal-border" />
           <AICopilotButton />
           <div className="w-px h-5 bg-terminal-border" />
           <ZoomControls />

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, Sparkles, Zap } from 'lucide-react'
+import { X, Sparkles, Zap, Leaf, Star, Crown, Brain } from 'lucide-react'
 import { WelcomeStep } from './WelcomeStep'
 import { TermsStep } from './TermsStep'
 import { WizardStep } from './WizardStep'
@@ -12,17 +12,27 @@ interface OnboardingWizardProps {
 }
 
 type MarketDataProvider = 'polygon' | 'twelvedata'
-type AIProviderChoice = 'openai' | 'groq'
-type WizardStepType = 'welcome' | 'terms' | 'provider-choice' | 'api-key' | 'ai-provider'
+type AIProviderChoice = 'openai' | 'groq' | 'anthropic'
+type SetupPath = 'free' | 'standard' | 'premium'
+type WizardStepType = 'welcome' | 'terms' | 'path-selection' | 'api-key' | 'ai-provider'
 
 export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
   const [currentStep, setCurrentStep] = useState<WizardStepType>('welcome')
   const [termsAccepted, setTermsAccepted] = useState(false)
-  const [selectedProvider, setSelectedProvider] = useState<MarketDataProvider>('polygon')
+  const [setupPath, setSetupPath] = useState<SetupPath>('standard')
   const [polygonKey, setPolygonKey] = useState('')
   const [twelvedataKey, setTwelvedataKey] = useState('')
   const [selectedAIProvider, setSelectedAIProvider] = useState<AIProviderChoice>('openai')
   const [aiApiKey, setAiApiKey] = useState('')
+
+  // Derived state based on selected path
+  const selectedProvider: MarketDataProvider = setupPath === 'free' ? 'twelvedata' : 'polygon'
+
+  // Update AI provider when path changes
+  const handlePathChange = (path: SetupPath) => {
+    setSetupPath(path)
+    setSelectedAIProvider(path === 'free' ? 'groq' : path === 'premium' ? 'anthropic' : 'openai')
+  }
 
   const handleSkip = async () => {
     // Mark onboarding complete even without keys
@@ -34,9 +44,9 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
     if (currentStep === 'welcome') {
       setCurrentStep('terms')
     } else if (currentStep === 'terms') {
-      setCurrentStep('provider-choice')
-    } else if (currentStep === 'provider-choice') {
-      // Save provider choice
+      setCurrentStep('path-selection')
+    } else if (currentStep === 'path-selection') {
+      // Save provider choice based on path
       await updateSettings({ marketDataProvider: selectedProvider })
       setCurrentStep('api-key')
     } else if (currentStep === 'api-key') {
@@ -50,9 +60,18 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
     } else {
       // Save AI provider choice and complete onboarding
       if (aiApiKey) {
-        // Map groq to llama provider (Groq hosts Llama models)
-        const provider = selectedAIProvider === 'groq' ? 'llama' : 'openai'
-        const model = selectedAIProvider === 'groq' ? 'llama-3.3-70b-versatile' : 'gpt-4.0-turbo'
+        // Map providers to internal names (AIProvider type uses 'claude' not 'anthropic')
+        let provider: 'openai' | 'claude' | 'llama' = 'openai'
+        let model = 'gpt-4.0-turbo'
+
+        if (selectedAIProvider === 'groq') {
+          provider = 'llama'
+          model = 'llama-3.3-70b-versatile'
+        } else if (selectedAIProvider === 'anthropic') {
+          provider = 'claude'
+          model = 'claude-sonnet-4-20250514'
+        }
+
         await updateAISettings({ provider, apiKey: aiApiKey, model })
       }
       await updateSettings({ hasCompletedOnboarding: true })
@@ -64,7 +83,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
     const stepOrder: Record<WizardStepType, number> = {
       welcome: 1,
       terms: 2,
-      'provider-choice': 3,
+      'path-selection': 3,
       'api-key': 4,
       'ai-provider': 5
     }
@@ -99,54 +118,104 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
             onAcceptChange={setTermsAccepted}
           />
         )
-      case 'provider-choice':
+      case 'path-selection':
         return (
           <div className="space-y-4">
             <div className="text-center">
               <p className="text-gray-400 text-sm mb-1">Step {stepNumber} of {totalSteps}</p>
-              <h3 className="text-white text-lg font-medium">Choose Market Data Provider</h3>
-              <p className="text-gray-500 text-sm mt-2">Select your preferred source for stock prices and charts</p>
+              <h3 className="text-white text-lg font-medium">Choose Your Setup</h3>
+              <p className="text-gray-500 text-sm mt-2">Select a path based on your needs - you can change these later in Settings</p>
             </div>
 
             <div className="space-y-3">
+              {/* Free Path */}
               <button
-                onClick={() => setSelectedProvider('polygon')}
+                onClick={() => handlePathChange('free')}
                 className={`w-full p-4 rounded-lg border text-left transition-colors ${
-                  selectedProvider === 'polygon'
-                    ? 'border-terminal-amber bg-terminal-amber/10'
+                  setupPath === 'free'
+                    ? 'border-green-500 bg-green-500/10'
                     : 'border-terminal-border hover:border-gray-600'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-white font-medium">Massive.com (Polygon.io)</div>
-                    <div className="text-gray-400 text-sm mt-1">5 API calls/min, EOD data, 2 years history</div>
+                <div className="flex items-start gap-3">
+                  <Leaf className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <div className="text-white font-medium">Free Path</div>
+                      <span className="text-green-400 text-xs font-medium px-2 py-0.5 bg-green-400/20 rounded">
+                        $0/month
+                      </span>
+                    </div>
+                    <div className="text-gray-400 text-sm mt-1">Perfect for learning and exploring</div>
+                    <div className="text-gray-500 text-xs mt-2 space-y-1">
+                      <div>• TwelveData (800 calls/day free)</div>
+                      <div>• Groq AI (Llama 3 - completely free)</div>
+                      <div>• RSS News feeds</div>
+                    </div>
                   </div>
-                  <span className="text-terminal-amber text-xs font-medium px-2 py-1 bg-terminal-amber/20 rounded">
-                    Recommended
-                  </span>
                 </div>
               </button>
 
+              {/* Standard Path */}
               <button
-                onClick={() => setSelectedProvider('twelvedata')}
+                onClick={() => handlePathChange('standard')}
                 className={`w-full p-4 rounded-lg border text-left transition-colors ${
-                  selectedProvider === 'twelvedata'
+                  setupPath === 'standard'
                     ? 'border-terminal-amber bg-terminal-amber/10'
                     : 'border-terminal-border hover:border-gray-600'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-white font-medium">TwelveData</div>
-                    <div className="text-gray-400 text-sm mt-1">800 calls/day, real-time data, all US markets</div>
+                <div className="flex items-start gap-3">
+                  <Star className="w-5 h-5 text-terminal-amber flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <div className="text-white font-medium">Standard Path</div>
+                      <span className="text-terminal-amber text-xs font-medium px-2 py-0.5 bg-terminal-amber/20 rounded">
+                        Recommended
+                      </span>
+                    </div>
+                    <div className="text-gray-400 text-sm mt-1">Best experience for most traders</div>
+                    <div className="text-gray-500 text-xs mt-2 space-y-1">
+                      <div>• Polygon via Massive (5 calls/min free)</div>
+                      <div>• OpenAI GPT-4 (~$5-20/month usage)</div>
+                      <div>• Finnhub News + Economic Calendar</div>
+                    </div>
                   </div>
-                  <span className="text-green-400 text-xs font-medium px-2 py-1 bg-green-400/20 rounded">
-                    Best Free Tier
-                  </span>
+                </div>
+              </button>
+
+              {/* Premium Path */}
+              <button
+                onClick={() => handlePathChange('premium')}
+                className={`w-full p-4 rounded-lg border text-left transition-colors ${
+                  setupPath === 'premium'
+                    ? 'border-purple-500 bg-purple-500/10'
+                    : 'border-terminal-border hover:border-gray-600'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <Crown className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <div className="text-white font-medium">Premium Path</div>
+                      <span className="text-purple-400 text-xs font-medium px-2 py-0.5 bg-purple-400/20 rounded">
+                        Power User
+                      </span>
+                    </div>
+                    <div className="text-gray-400 text-sm mt-1">Maximum speed & advanced analysis</div>
+                    <div className="text-gray-500 text-xs mt-2 space-y-1">
+                      <div>• Polygon paid tier (faster, more data)</div>
+                      <div>• Anthropic Claude (superior reasoning)</div>
+                      <div>• All news sources + Alpha Vantage</div>
+                    </div>
+                  </div>
                 </div>
               </button>
             </div>
+
+            <p className="text-center text-gray-500 text-xs">
+              All paths can be customized later in Settings → Data Sources
+            </p>
           </div>
         )
       case 'api-key':
@@ -169,6 +238,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
             </div>
 
             <div className="space-y-3">
+              {/* OpenAI Option */}
               <button
                 onClick={() => setSelectedAIProvider('openai')}
                 className={`w-full p-4 rounded-lg border text-left transition-colors ${
@@ -182,29 +252,64 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
                     <Sparkles className="w-5 h-5 text-terminal-amber flex-shrink-0" />
                     <div>
                       <div className="text-white font-medium">OpenAI (GPT-4)</div>
-                      <div className="text-gray-400 text-sm mt-1">Most capable reasoning</div>
+                      <div className="text-gray-400 text-sm mt-1">Most capable, ~$5-20/month</div>
                     </div>
                   </div>
-                  <span className="text-terminal-amber text-xs font-medium px-2 py-1 bg-terminal-amber/20 rounded">
-                    Recommended
-                  </span>
+                  {setupPath === 'standard' && (
+                    <span className="text-terminal-amber text-xs font-medium px-2 py-1 bg-terminal-amber/20 rounded">
+                      Recommended
+                    </span>
+                  )}
                 </div>
               </button>
 
+              {/* Anthropic Option */}
+              <button
+                onClick={() => setSelectedAIProvider('anthropic')}
+                className={`w-full p-4 rounded-lg border text-left transition-colors ${
+                  selectedAIProvider === 'anthropic'
+                    ? 'border-purple-500 bg-purple-500/10'
+                    : 'border-terminal-border hover:border-gray-600'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Brain className="w-5 h-5 text-purple-400 flex-shrink-0" />
+                    <div>
+                      <div className="text-white font-medium">Anthropic (Claude)</div>
+                      <div className="text-gray-400 text-sm mt-1">Superior reasoning, ~$10-30/month</div>
+                    </div>
+                  </div>
+                  {setupPath === 'premium' && (
+                    <span className="text-purple-400 text-xs font-medium px-2 py-1 bg-purple-400/20 rounded">
+                      Premium Pick
+                    </span>
+                  )}
+                </div>
+              </button>
+
+              {/* Groq Option */}
               <button
                 onClick={() => setSelectedAIProvider('groq')}
                 className={`w-full p-4 rounded-lg border text-left transition-colors ${
                   selectedAIProvider === 'groq'
-                    ? 'border-terminal-amber bg-terminal-amber/10'
+                    ? 'border-green-500 bg-green-500/10'
                     : 'border-terminal-border hover:border-gray-600'
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <Zap className="w-5 h-5 text-terminal-up flex-shrink-0" />
-                  <div>
-                    <div className="text-white font-medium">Groq (Free)</div>
-                    <div className="text-gray-400 text-sm mt-1">Fast Llama 3 inference, completely free</div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Zap className="w-5 h-5 text-green-400 flex-shrink-0" />
+                    <div>
+                      <div className="text-white font-medium">Groq (Llama 3)</div>
+                      <div className="text-gray-400 text-sm mt-1">Fast inference, completely free</div>
+                    </div>
                   </div>
+                  {setupPath === 'free' && (
+                    <span className="text-green-400 text-xs font-medium px-2 py-1 bg-green-400/20 rounded">
+                      Free
+                    </span>
+                  )}
                 </div>
               </button>
             </div>
@@ -212,18 +317,20 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
             {/* API Key Input */}
             <div className="space-y-2">
               <label className="text-gray-400 text-sm">
-                {selectedAIProvider === 'openai' ? 'OpenAI API Key' : 'Groq API Key'}
+                {selectedAIProvider === 'openai' ? 'OpenAI API Key' : selectedAIProvider === 'anthropic' ? 'Anthropic API Key' : 'Groq API Key'}
               </label>
               <input
                 type="password"
                 value={aiApiKey}
                 onChange={(e) => setAiApiKey(e.target.value)}
-                placeholder={selectedAIProvider === 'openai' ? 'sk-...' : 'gsk_...'}
+                placeholder={selectedAIProvider === 'openai' ? 'sk-...' : selectedAIProvider === 'anthropic' ? 'sk-ant-...' : 'gsk_...'}
                 className="w-full bg-terminal-bg border border-terminal-border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:border-terminal-amber focus:outline-none"
               />
               <p className="text-gray-500 text-xs">
                 {selectedAIProvider === 'openai'
                   ? 'Get your key at platform.openai.com/api-keys'
+                  : selectedAIProvider === 'anthropic'
+                  ? 'Get your key at console.anthropic.com/settings/keys'
                   : 'Get your free key at console.groq.com/keys'}
               </p>
             </div>
@@ -263,13 +370,13 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
               <div className="flex items-center justify-between p-6">
                 <div>
                   <h2 className="text-white text-xl font-semibold">
-                    {currentStep === 'provider-choice' || currentStep === 'api-key' || currentStep === 'ai-provider'
-                      ? 'API Setup Wizard'
+                    {currentStep === 'path-selection' || currentStep === 'api-key' || currentStep === 'ai-provider'
+                      ? 'Setup Wizard'
                       : ''}
                   </h2>
-                  {(currentStep === 'provider-choice' || currentStep === 'api-key' || currentStep === 'ai-provider') && (
+                  {(currentStep === 'path-selection' || currentStep === 'api-key' || currentStep === 'ai-provider') && (
                     <p className="text-gray-400 text-sm mt-1">
-                      Configure free market data sources
+                      Configure your market data and AI sources
                     </p>
                   )}
                 </div>
@@ -293,7 +400,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
                 {currentStep !== 'welcome' ? (
                   <button
                     onClick={() => {
-                      const stepOrder: WizardStepType[] = ['welcome', 'terms', 'provider-choice', 'api-key', 'ai-provider']
+                      const stepOrder: WizardStepType[] = ['welcome', 'terms', 'path-selection', 'api-key', 'ai-provider']
                       const currentIndex = stepOrder.indexOf(currentStep)
                       if (currentIndex > 0) {
                         setCurrentStep(stepOrder[currentIndex - 1])

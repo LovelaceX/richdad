@@ -125,7 +125,7 @@ export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
             <div className="flex items-center gap-3">
               <BookOpen size={22} className="text-terminal-amber" />
               <h2 className="text-white text-lg font-semibold">Reference Guide</h2>
-              <span className="text-gray-500 text-sm">v5.1.0</span>
+              <span className="text-gray-500 text-sm">v5.2.0</span>
             </div>
             <button
               onClick={onClose}
@@ -282,7 +282,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           <div>
             <h3 className="text-white text-lg font-semibold mb-4">Step 2: Configure Settings</h3>
             <div className="space-y-1">
-              <Step>Press <kbd className="bg-terminal-border px-2 py-1 rounded text-xs mx-1">Cmd+3</kbd> to open Settings</Step>
+              <Step>Press <kbd className="bg-terminal-border px-2 py-1 rounded text-xs mx-1">Cmd/Ctrl+3</kbd> to open Settings</Step>
               <Step>Navigate to <span className="text-white font-medium">API Keys</span> section</Step>
               <Step>Paste your Alpha Vantage key</Step>
               <Step>Navigate to <span className="text-white font-medium">AI Copilot</span> section</Step>
@@ -295,8 +295,8 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           <div>
             <h3 className="text-white text-lg font-semibold mb-4">Step 3: Start Using RichDad</h3>
             <div className="space-y-1">
-              <Step><span className="text-white font-medium">Dashboard</span> (<kbd className="bg-terminal-border px-2 py-1 rounded text-xs mx-1">Cmd+1</kbd>): View live prices, charts, and AI recommendations</Step>
-              <Step><span className="text-white font-medium">News</span> (<kbd className="bg-terminal-border px-2 py-1 rounded text-xs mx-1">Cmd+2</kbd>): Read latest market headlines with sentiment</Step>
+              <Step><span className="text-white font-medium">Dashboard</span> (<kbd className="bg-terminal-border px-2 py-1 rounded text-xs mx-1">Cmd/Ctrl+1</kbd>): View live prices, charts, and AI recommendations</Step>
+              <Step><span className="text-white font-medium">News</span> (<kbd className="bg-terminal-border px-2 py-1 rounded text-xs mx-1">Cmd/Ctrl+2</kbd>): Read latest market headlines with sentiment</Step>
               <Step><span className="text-white font-medium">AI Panel</span>: Chat with your AI copilot or wait for automatic analysis</Step>
               <Step><span className="text-white font-medium">Watchlist</span>: Track your favorite stocks in real-time</Step>
             </div>
@@ -314,10 +314,30 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
 
           {/* Feature List */}
           <div className="space-y-6">
-            {/* v5.1.0 */}
+            {/* v5.2.0 */}
             <div className="bg-terminal-bg border border-green-500/30 rounded-lg p-5">
               <div className="flex items-center gap-2 mb-3">
-                <span className="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded">v5.1.0</span>
+                <span className="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded">v5.2.0</span>
+                <h3 className="text-white font-semibold">Self-Service & Security</h3>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">
+                New error troubleshooting tools, service monitoring, and enhanced security for API keys.
+              </p>
+              <ul className="text-gray-400 text-sm space-y-1">
+                <li>• <span className="text-terminal-amber">Error Log</span> - View and resolve errors in Settings with actionable hints</li>
+                <li>• <span className="text-blue-400">Service Health</span> - Real-time status indicator for all background services</li>
+                <li>• <span className="text-green-400">API Key Encryption</span> - Keys now encrypted at rest using AES-256</li>
+                <li>• <span className="text-purple-400">Watchlist News</span> - News feed now filters by your watchlist symbols</li>
+                <li>• LRU cache limits prevent memory leaks in long sessions</li>
+                <li>• WebSocket reconnect with jitter for better reliability</li>
+              </ul>
+              <p className="text-gray-500 text-xs mt-3">Access Error Log: Settings → Error Log</p>
+            </div>
+
+            {/* v5.1.0 */}
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="bg-blue-500/20 text-blue-400 text-xs px-2 py-0.5 rounded">v5.1.0</span>
                 <h3 className="text-white font-semibold">UX Polish Sprint</h3>
               </div>
               <p className="text-gray-300 text-sm mb-3">
@@ -364,7 +384,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 <li>• Generate optimization suggestions</li>
                 <li>• Export results to CSV for analysis</li>
               </ul>
-              <p className="text-gray-500 text-xs mt-3">Access: Press <kbd className="bg-terminal-border px-1.5 py-0.5 rounded">Cmd+4</kbd> or navigate to Backtest</p>
+              <p className="text-gray-500 text-xs mt-3">Access: Press <kbd className="bg-terminal-border px-1.5 py-0.5 rounded">Cmd/Ctrl+4</kbd> or navigate to Backtest</p>
             </div>
 
             <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
@@ -529,10 +549,12 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             <h3 className="text-white text-lg font-semibold mb-4">Market Overview Bar</h3>
             <p className="text-gray-300 mb-3">The top bar displays key market indices:</p>
             <div className="space-y-1">
-              <Step><span className="text-white font-medium">S&P 500 (SPX)</span> - Broad market benchmark</Step>
-              <Step><span className="text-white font-medium">NASDAQ (NDX)</span> - Tech-heavy index</Step>
-              <Step><span className="text-white font-medium">Dow Jones (DJI)</span> - Blue-chip stocks</Step>
-              <Step><span className="text-white font-medium">VIX</span> - Market volatility ("fear gauge")</Step>
+              <Step><span className="text-white font-medium">S&P 500 (SPY)</span> - Broad market benchmark</Step>
+              <Step><span className="text-white font-medium">NASDAQ (QQQ)</span> - Tech-heavy index</Step>
+              <Step><span className="text-white font-medium">Russell 2000 (IWM)</span> - Small-cap stocks</Step>
+              <Step><span className="text-white font-medium">Total Market (VTI)</span> - Full US market exposure</Step>
+              <Step><span className="text-white font-medium">Semiconductors (SMH)</span> - Chip sector ETF</Step>
+              <Step><span className="text-white font-medium">VIX (VXX)</span> - Volatility tracker</Step>
               <Step><span className="text-white font-medium">AI Win Rate</span> - Your AI's performance record</Step>
             </div>
           </div>
@@ -700,7 +722,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           <div>
             <h3 className="text-white text-lg font-semibold mb-4">Views</h3>
             <div className="space-y-1">
-              <Step><span className="text-white font-medium">Calendar Page</span> (<kbd className="bg-terminal-border px-2 py-1 rounded text-xs mx-1">Cmd+3</kbd>) - Full table with filters</Step>
+              <Step><span className="text-white font-medium">Calendar Page</span> (<kbd className="bg-terminal-border px-2 py-1 rounded text-xs mx-1">Cmd/Ctrl+3</kbd>) - Full table with filters</Step>
               <Step><span className="text-white font-medium">Ticker</span> - Scrolling bar below news showing upcoming events</Step>
             </div>
           </div>
@@ -1406,6 +1428,34 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               <Step>Clear old data: Settings → Danger Zone → Clear AI History</Step>
             </div>
           </div>
+
+          {/* Error Log */}
+          <div className="bg-terminal-bg border border-terminal-amber/30 rounded-lg p-5">
+            <h3 className="text-terminal-amber font-semibold mb-3">Using the Error Log</h3>
+            <p className="text-gray-300 text-sm mb-3">
+              RichDad logs all service errors with actionable resolution hints. Access via Settings → Error Log.
+            </p>
+            <div className="space-y-1 text-gray-300">
+              <Step><span className="text-white">View errors</span> - See date, service, message, and suggested fix</Step>
+              <Step><span className="text-white">Take action</span> - Click "How to Fix" links to open help articles, clear cache, or update settings</Step>
+              <Step><span className="text-white">Resolve</span> - Click "Resolve" to dismiss individual errors or "Resolve All" to clear the log</Step>
+              <Step><span className="text-white">Auto-cleanup</span> - Resolved errors are deleted after 7 days, unresolved after 30 days</Step>
+            </div>
+          </div>
+
+          {/* Service Health */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white font-semibold mb-3">Understanding Service Health</h3>
+            <p className="text-gray-300 text-sm mb-3">
+              RichDad monitors all background services (Market Data, News, AI, WebSocket) and reports their status.
+            </p>
+            <div className="space-y-1 text-gray-300">
+              <Step><span className="text-terminal-up">OK</span> - Service is working normally</Step>
+              <Step><span className="text-yellow-400">Degraded</span> - 1-2 recent errors, may recover automatically</Step>
+              <Step><span className="text-terminal-down">Error</span> - 3+ consecutive failures, check Error Log for details</Step>
+            </div>
+            <p className="text-gray-500 text-xs mt-3">Tip: Most "degraded" services recover on their own within minutes.</p>
+          </div>
         </div>
       )
 
@@ -1518,7 +1568,7 @@ The chart header shows your current data source and whether it's delayed.`
             },
             {
               q: 'How do I validate AI performance with backtesting?',
-              a: `Use the Backtest feature (Cmd+4) to test AI recommendations against historical data:
+              a: `Use the Backtest feature (Cmd/Ctrl+4) to test AI recommendations against historical data:
 
 1. Select a symbol and date range
 2. Set confidence threshold and position size
@@ -1786,8 +1836,8 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
           </div>
 
           <div className="bg-terminal-bg border border-terminal-amber/30 rounded-lg p-6 text-center">
-            <h3 className="text-terminal-amber text-3xl font-bold">RichDad v5.1.0</h3>
-            <p className="text-gray-500 text-sm mt-2">UX Polish • Data Freshness Badges • Request Cancellation</p>
+            <h3 className="text-terminal-amber text-3xl font-bold">RichDad v5.2.0</h3>
+            <p className="text-gray-500 text-sm mt-2">Error Log • Service Health • API Key Security • Watchlist News</p>
           </div>
 
           {/* Why RichDad - Bloomberg Comparison */}
@@ -1945,8 +1995,8 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
               onClick={() => openUrl('https://github.com/LovelaceX/richdad/issues')}
               className="flex items-center gap-2 px-4 py-2 bg-terminal-amber text-black rounded font-medium hover:bg-amber-500 transition-colors"
             >
-              <ExternalLink className="w-4 h-4" />
               Open GitHub Issues
+              <ExternalLink className="w-4 h-4" />
             </button>
           </div>
 

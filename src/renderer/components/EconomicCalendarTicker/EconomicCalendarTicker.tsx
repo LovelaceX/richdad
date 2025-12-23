@@ -63,7 +63,7 @@ export function EconomicCalendarTicker() {
         {error ? (
           <SetupPrompt
             compact
-            title="FRED API needed"
+            title="Finnhub API key needed"
             helpSection="api-limits"
           />
         ) : (

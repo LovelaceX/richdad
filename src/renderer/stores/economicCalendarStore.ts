@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { EconomicEvent } from '../types'
-import { fetchEconomicCalendar, getEventCountdown } from '../../services/fredService'
+import { fetchEconomicCalendar } from '../../services/finnhubEconomicCalendar'
 import { getSettings } from '../lib/db'
 
 interface EconomicCalendarState {
@@ -41,16 +41,17 @@ export const useEconomicCalendarStore = create<EconomicCalendarState>((set, get)
     try {
       const settings = await getSettings()
 
-      if (!settings.fredApiKey) {
+      if (!settings.finnhubApiKey) {
         set({
           events: [],
           loading: false,
-          error: 'FRED API key not configured'
+          error: 'Add Finnhub API key in Settings for economic calendar'
         })
         return
       }
 
-      const events = await fetchEconomicCalendar(settings.fredApiKey, 30)
+      // Finnhub service gets API key from settings internally
+      const events = await fetchEconomicCalendar()
 
       set({
         events,
@@ -81,6 +82,27 @@ export const useEconomicCalendarStore = create<EconomicCalendarState>((set, get)
       .slice(0, limit)
   }
 }))
+
+// Helper to get countdown string for an event
+function getEventCountdown(eventDate: Date): string {
+  const now = new Date()
+  const diff = eventDate.getTime() - now.getTime()
+
+  if (diff < 0) return 'Past'
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+
+  if (days > 0) {
+    return `${days}d ${hours}h`
+  } else if (hours > 0) {
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+    return `${hours}h ${minutes}m`
+  } else {
+    const minutes = Math.floor(diff / (1000 * 60))
+    return `${minutes}m`
+  }
+}
 
 // Helper to format event for ticker display
 export function formatEventForTicker(event: EconomicEvent): string {

@@ -121,7 +121,7 @@ export function EconomicCalendar() {
               <p className="text-red-400 text-sm">{error}</p>
               {error.includes('API key') && (
                 <p className="text-gray-500 text-xs mt-1">
-                  Configure your FRED API key in Settings → Data Sources
+                  Add your Finnhub API key in Settings → Data Sources
                 </p>
               )}
             </div>

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-5.1.0-gold?style=for-the-badge" alt="Version 5.1.0"/>
+  <img src="https://img.shields.io/badge/version-5.2.0-gold?style=for-the-badge" alt="Version 5.2.0"/>
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License"/>
   <img src="https://img.shields.io/badge/tauri-2.x-blue?style=for-the-badge&logo=tauri" alt="Tauri 2.x"/>
   <img src="https://img.shields.io/badge/react-18-61DAFB?style=for-the-badge&logo=react" alt="React 18"/>
@@ -342,6 +342,32 @@ See [LICENSE](./LICENSE) for full text.
 ---
 
 ## Changelog
+
+### v5.2.0 - Self-Service & Security
+
+**Error Log**
+- New Settings section for viewing and resolving errors
+- 4-column layout: Date, Error Message, How to Fix, Resolve
+- Actionable resolution hints (links to help articles, clear cache, open settings)
+- Pagination (5 per page) with "Resolve All" button
+- Auto-cleanup: resolved errors after 7 days, unresolved after 30 days
+
+**Service Health Monitoring**
+- Real-time tracking of all background services (Market, News, AI, WebSocket)
+- Status indicators: OK, Degraded (1-2 errors), Error (3+ failures)
+- Errors automatically persisted to Error Log for troubleshooting
+
+**Security Enhancements**
+- API keys now encrypted at rest using AES-256 (Web Crypto API)
+- Device-specific encryption key derived from system identifiers
+- Transparent migration of existing plaintext keys
+
+**Performance & Reliability**
+- LRU cache limits (max 50 symbols) prevent memory leaks
+- WebSocket reconnect with jitter (±25%) for better stability
+- Watchlist news filtering for more relevant content
+
+---
 
 ### v5.1.0 - UX Polish Sprint
 

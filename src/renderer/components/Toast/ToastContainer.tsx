@@ -95,6 +95,33 @@ export function ToastContainer() {
     }
   }, [addToast])
 
+  // Listen for service error events
+  useEffect(() => {
+    const handleServiceError = (event: CustomEvent) => {
+      const { service, error } = event.detail
+      const serviceNames: Record<string, string> = {
+        market: 'Market Data',
+        news: 'News Feed',
+        sentiment: 'Sentiment Analysis',
+        ai: 'AI Copilot',
+        websocket: 'Real-time Connection'
+      }
+
+      addToast({
+        message: error,
+        type: 'error',
+        provider: serviceNames[service] || service,
+        duration: 8000,
+        helpSection: 'troubleshooting'
+      })
+    }
+
+    window.addEventListener('service-error', handleServiceError as EventListener)
+    return () => {
+      window.removeEventListener('service-error', handleServiceError as EventListener)
+    }
+  }, [addToast])
+
   if (toasts.length === 0) return null
 
   return (

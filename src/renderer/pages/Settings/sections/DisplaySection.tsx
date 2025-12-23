@@ -23,7 +23,6 @@ export function DisplaySection() {
   const setTickerSpeed = useSettingsStore((state) => state.setTickerSpeed)
   const panelVisibility = useSettingsStore((state) => state.panelVisibility)
   const toggleLeftPanel = useSettingsStore((state) => state.toggleLeftPanel)
-  const toggleRightPanel = useSettingsStore((state) => state.toggleRightPanel)
   const toggleChart = useSettingsStore((state) => state.toggleChart)
   const toggleNewsTicker = useSettingsStore((state) => state.toggleNewsTicker)
   const toggleAIPerformance = useSettingsStore((state) => state.toggleAIPerformance)
@@ -162,13 +161,6 @@ export function DisplaySection() {
               label="Live Chart"
               enabled={panelVisibility.chartVisible}
               onToggle={toggleChart}
-            />
-
-            {/* AI Copilot */}
-            <ToggleRow
-              label="AI Copilot"
-              enabled={panelVisibility.rightPanelVisible}
-              onToggle={toggleRightPanel}
             />
 
             {/* News Ticker */}

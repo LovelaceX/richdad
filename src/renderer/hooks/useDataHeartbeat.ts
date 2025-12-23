@@ -5,6 +5,7 @@ import { useNewsStore } from '../stores/newsStore'
 import { useAIStore } from '../stores/aiStore'
 import { useIntelStore } from '../stores/intelStore'
 import { useAIModalStore } from '../stores/aiModalStore'
+import { useSettingsStore } from '../stores/settingsStore'
 import { playSound } from '../lib/sounds'
 import type { DataUpdateCallback } from '../../services/DataHeartbeatService'
 import type { NewsIntelReport, PatternScanReport } from '../../services/agents/types'
@@ -38,22 +39,33 @@ export function useDataHeartbeat() {
   // Track heartbeat service errors
   const [heartbeatError, setHeartbeatError] = useState<Error | null>(null)
 
-  useEffect(() => {
-    // Subscribe to data updates
-    const unsubscribe = dataHeartbeat.subscribe(handleDataUpdate)
+  // Get live data state from settings store
+  const isLiveDataEnabled = useSettingsStore(state => state.isLiveDataEnabled)
 
-    // Start the heartbeat service
-    dataHeartbeat.start().catch(error => {
-      console.error('[useDataHeartbeat] Failed to start heartbeat:', error)
-      setHeartbeatError(error instanceof Error ? error : new Error(String(error)))
-    })
+  // Subscribe to data updates (always active)
+  useEffect(() => {
+    const unsubscribe = dataHeartbeat.subscribe(handleDataUpdate)
+    return () => unsubscribe()
+  }, [])
+
+  // Start/stop heartbeat based on isLiveDataEnabled
+  useEffect(() => {
+    if (isLiveDataEnabled) {
+      console.log('[useDataHeartbeat] Live data enabled, starting heartbeat...')
+      dataHeartbeat.start().catch(error => {
+        console.error('[useDataHeartbeat] Failed to start heartbeat:', error)
+        setHeartbeatError(error instanceof Error ? error : new Error(String(error)))
+      })
+    } else {
+      console.log('[useDataHeartbeat] Live data disabled, stopping heartbeat...')
+      dataHeartbeat.stop()
+    }
 
     // Cleanup on unmount
     return () => {
-      unsubscribe()
       dataHeartbeat.stop()
     }
-  }, [])
+  }, [isLiveDataEnabled])
 
   // Listen for AI settings changes and update interval
   useEffect(() => {

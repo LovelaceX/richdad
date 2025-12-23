@@ -10,7 +10,7 @@
 
 import { getAISettings } from '../renderer/lib/db'
 import { fetchHistoricalData, fetchLivePrices } from './marketData'
-import { calculateIndicators } from './technicalIndicators'
+import { calculateIndicators, type TechnicalIndicators } from './technicalIndicators'
 import { calculateMarketRegime, formatRegimeForPrompt, type MarketRegime } from './marketRegime'
 import { detectPatterns, type DetectedPattern } from './candlestickPatterns'
 import type { AIRecommendation, Quote, AnalysisPhase } from '../renderer/types'
@@ -31,6 +31,11 @@ const INDICATOR_CACHE_TTL = 60 * 1000 // 1 minute - indicators based on price
 const PATTERN_CACHE_TTL = 15 * 60 * 1000 // 15 minutes - patterns are slow-changing
 
 /**
+ * Maximum number of symbols to cache (prevents memory leak)
+ */
+const MAX_CACHED_SYMBOLS = 50
+
+/**
  * Cached context data
  */
 interface CachedData<T> {
@@ -39,8 +44,10 @@ interface CachedData<T> {
 }
 
 const regimeCache: { data: MarketRegime | null; timestamp: number } = { data: null, timestamp: 0 }
-const indicatorCache = new Map<string, CachedData<any>>()
+const indicatorCache = new Map<string, CachedData<TechnicalIndicators>>()
+const indicatorCacheLRU: string[] = [] // LRU tracking for indicator cache
 const patternCache = new Map<string, CachedData<DetectedPattern[]>>()
+const patternCacheLRU: string[] = [] // LRU tracking for pattern cache
 
 /**
  * Get cached market regime or calculate fresh
@@ -72,25 +79,50 @@ async function getCachedMarketRegime(): Promise<MarketRegime | null> {
 
 /**
  * Get cached indicators or calculate fresh
+ * Implements LRU eviction when cache exceeds MAX_CACHED_SYMBOLS
  */
-function getCachedIndicators(symbol: string, candles: CandleData[]): any {
+function getCachedIndicators(symbol: string, candles: CandleData[]): TechnicalIndicators {
   const now = Date.now()
   const cached = indicatorCache.get(symbol)
 
   // Check cache validity
   if (cached && (now - cached.timestamp) < INDICATOR_CACHE_TTL) {
     console.log(`[AI Engine] Using cached indicators for ${symbol}`)
+    // Move to end of LRU (most recently used)
+    const lruIndex = indicatorCacheLRU.indexOf(symbol)
+    if (lruIndex > -1) {
+      indicatorCacheLRU.splice(lruIndex, 1)
+      indicatorCacheLRU.push(symbol)
+    }
     return cached.data
   }
 
   // Calculate fresh indicators
   const indicators = calculateIndicators(candles)
+
+  // LRU eviction if cache is full
+  if (indicatorCache.size >= MAX_CACHED_SYMBOLS && !indicatorCache.has(symbol)) {
+    const oldest = indicatorCacheLRU.shift()
+    if (oldest) {
+      indicatorCache.delete(oldest)
+      console.log(`[AI Engine] Evicted ${oldest} from indicator cache (LRU)`)
+    }
+  }
+
+  // Update cache and LRU
   indicatorCache.set(symbol, { data: indicators, timestamp: now })
+  const existingIndex = indicatorCacheLRU.indexOf(symbol)
+  if (existingIndex > -1) {
+    indicatorCacheLRU.splice(existingIndex, 1)
+  }
+  indicatorCacheLRU.push(symbol)
+
   return indicators
 }
 
 /**
  * Get cached patterns or detect fresh
+ * Implements LRU eviction when cache exceeds MAX_CACHED_SYMBOLS
  */
 function getCachedPatterns(symbol: string, candles: CandleData[]): DetectedPattern[] {
   const now = Date.now()
@@ -99,12 +131,35 @@ function getCachedPatterns(symbol: string, candles: CandleData[]): DetectedPatte
   // Check cache validity
   if (cached && (now - cached.timestamp) < PATTERN_CACHE_TTL) {
     console.log(`[AI Engine] Using cached patterns for ${symbol}`)
+    // Move to end of LRU (most recently used)
+    const lruIndex = patternCacheLRU.indexOf(symbol)
+    if (lruIndex > -1) {
+      patternCacheLRU.splice(lruIndex, 1)
+      patternCacheLRU.push(symbol)
+    }
     return cached.data
   }
 
   // Detect fresh patterns
   const patterns = detectPatterns(candles)
+
+  // LRU eviction if cache is full
+  if (patternCache.size >= MAX_CACHED_SYMBOLS && !patternCache.has(symbol)) {
+    const oldest = patternCacheLRU.shift()
+    if (oldest) {
+      patternCache.delete(oldest)
+      console.log(`[AI Engine] Evicted ${oldest} from pattern cache (LRU)`)
+    }
+  }
+
+  // Update cache and LRU
   patternCache.set(symbol, { data: patterns, timestamp: now })
+  const existingIndex = patternCacheLRU.indexOf(symbol)
+  if (existingIndex > -1) {
+    patternCacheLRU.splice(existingIndex, 1)
+  }
+  patternCacheLRU.push(symbol)
+
   return patterns
 }
 
@@ -123,10 +178,12 @@ export function invalidateAIContext(type?: 'regime' | 'indicators' | 'patterns')
   }
   if (!type || type === 'indicators') {
     indicatorCache.clear()
+    indicatorCacheLRU.length = 0 // Clear LRU array
     console.log('[AI Engine] Indicator cache cleared')
   }
   if (!type || type === 'patterns') {
     patternCache.clear()
+    patternCacheLRU.length = 0 // Clear LRU array
     console.log('[AI Engine] Pattern cache cleared')
   }
 }

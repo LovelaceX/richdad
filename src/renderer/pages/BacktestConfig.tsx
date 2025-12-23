@@ -3,8 +3,11 @@
  * Form for configuring backtest parameters
  */
 
+import { useRef } from 'react'
 import { Calendar, DollarSign, Percent, TrendingUp } from 'lucide-react'
 import type { BacktestConfig as BacktestConfigType } from '../types'
+import { useStockAutocomplete } from './Settings/hooks/useStockAutocomplete'
+import type { StockInfo } from '../lib/stockSymbols'
 
 interface BacktestConfigProps {
   config: Omit<BacktestConfigType, 'id'>
@@ -13,8 +16,40 @@ interface BacktestConfigProps {
 }
 
 export function BacktestConfig({ config, onChange, disabled }: BacktestConfigProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+
   const updateConfig = (updates: Partial<Omit<BacktestConfigType, 'id'>>) => {
     onChange({ ...config, ...updates })
+  }
+
+  // Stock autocomplete hook
+  const {
+    inputValue,
+    searchResults,
+    selectedIndex,
+    isOpen,
+    handleInputChange,
+    handleKeyDown,
+    handleSelect,
+    clearResults
+  } = useStockAutocomplete({
+    initialValue: config.symbol,
+    onSelect: (symbol: string) => {
+      updateConfig({ symbol })
+    }
+  })
+
+  // Handle click on stock item
+  const handleStockClick = (stock: StockInfo) => {
+    handleSelect(stock)
+    updateConfig({ symbol: stock.symbol })
+  }
+
+  // Handle blur - close dropdown after delay (allows click to register)
+  const handleBlur = () => {
+    setTimeout(() => {
+      clearResults()
+    }, 200)
   }
 
   // Format date for input
@@ -34,17 +69,46 @@ export function BacktestConfig({ config, onChange, disabled }: BacktestConfigPro
         Configuration
       </h3>
 
-      {/* Symbol */}
-      <div>
+      {/* Symbol with Autocomplete */}
+      <div ref={containerRef} className="relative">
         <label className="block text-xs text-gray-400 mb-1">Symbol</label>
         <input
           type="text"
-          value={config.symbol}
-          onChange={(e) => updateConfig({ symbol: e.target.value.toUpperCase() })}
+          value={inputValue}
+          onChange={(e) => handleInputChange(e.target.value.toUpperCase())}
+          onKeyDown={handleKeyDown}
+          onBlur={handleBlur}
           disabled={disabled}
           className="w-full px-3 py-2 bg-terminal-bg border border-terminal-border rounded text-white text-sm focus:outline-none focus:border-terminal-amber disabled:opacity-50"
-          placeholder="SPY"
+          placeholder="SPY, AAPL, TSLA..."
+          autoComplete="off"
         />
+
+        {/* Autocomplete Dropdown */}
+        {isOpen && searchResults.length > 0 && (
+          <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-terminal-panel border border-terminal-border rounded shadow-lg max-h-48 overflow-y-auto">
+            {searchResults.map((stock, idx) => (
+              <button
+                key={stock.symbol}
+                type="button"
+                onClick={() => handleStockClick(stock)}
+                className={`w-full px-3 py-2 text-left text-sm flex items-center justify-between transition-colors ${
+                  idx === selectedIndex
+                    ? 'bg-terminal-amber/20 text-terminal-amber'
+                    : 'text-white hover:bg-terminal-border'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-medium">{stock.symbol}</span>
+                  <span className="text-gray-400 text-xs truncate max-w-[180px]">{stock.name}</span>
+                </div>
+                {stock.sector && (
+                  <span className="text-xs text-gray-500">{stock.sector}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Date Range */}

@@ -27,7 +27,9 @@ import {
   Briefcase,
   Edit3,
   Upload,
-  Calendar
+  Calendar,
+  Snail,
+  Rabbit
 } from 'lucide-react'
 import { useSettingsStore } from '../stores/settingsStore'
 // Theme is now fixed to Bloomberg - no selector needed
@@ -38,6 +40,7 @@ import { AIPerformanceDetail } from '../components/AI/AIPerformanceDetail'
 import { APIBudgetMeter } from '../components/Settings/APIBudgetMeter'
 import { AIBudgetMeter } from '../components/Settings/AIBudgetMeter'
 import { MultiProviderManager } from '../components/Settings/MultiProviderManager'
+import { ApiUsageDashboard } from '../components/ApiUsageDashboard'
 import { searchStocks, type StockInfo } from '../lib/stockSymbols'
 import {
   getSettings,
@@ -952,9 +955,8 @@ export function Settings() {
                   <div>
                     <span className="text-gray-500">Market Data:</span>
                     <span className="text-white ml-2">
-                      {settings?.marketDataProvider === 'polygon' ? 'Polygon (15-min delayed)' :
+                      {settings?.marketDataProvider === 'polygon' ? 'Polygon (via Massive.com)' :
                        settings?.marketDataProvider === 'twelvedata' ? 'TwelveData (real-time)' :
-                       settings?.marketDataProvider === 'alphavantage' ? 'Alpha Vantage (real-time)' :
                        'Polygon (default)'}
                     </span>
                   </div>
@@ -982,13 +984,16 @@ export function Settings() {
                 </p>
               </div>
 
-              {/* Setup Wizard Button */}
+              {/* API Usage Dashboard */}
+              <ApiUsageDashboard />
+
+              {/* Onboarding Wizard Button */}
               <button
                 onClick={() => setShowOnboardingWizard(true)}
                 className="w-full bg-terminal-bg border border-terminal-border rounded-lg px-4 py-3 text-white hover:border-terminal-amber transition-colors mb-6 flex items-center justify-center gap-2"
               >
                 <BarChart3 className="w-4 h-4 text-terminal-amber" />
-                <span className="text-sm font-medium">Setup Wizard</span>
+                <span className="text-sm font-medium">Onboarding Wizard</span>
               </button>
 
               <div className="space-y-6">
@@ -1005,14 +1010,11 @@ export function Settings() {
 
                   <select
                     value={settings?.marketDataProvider || 'polygon'}
-                    onChange={(e) => saveSettings({ marketDataProvider: e.target.value as 'polygon' | 'alphavantage' | 'finnhub' | 'fasttrack' | 'twelvedata' })}
+                    onChange={(e) => saveSettings({ marketDataProvider: e.target.value as 'polygon' | 'twelvedata' })}
                     className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-terminal-amber/50"
                   >
-                    <option value="polygon">Massive.com (Recommended - 5/min, EOD data)</option>
-                    <option value="twelvedata">TwelveData (800/day, real-time, all US markets)</option>
-                    <option value="alphavantage">Alpha Vantage (25 calls/day, real-time)</option>
-                    <option value="finnhub">Finnhub (60 calls/min)</option>
-                    <option value="fasttrack">FastTrack.net (2K/month, 37yr history, analytics)</option>
+                    <option value="polygon">Polygon via Massive.com (Recommended)</option>
+                    <option value="twelvedata">TwelveData (800/day free, real-time)</option>
                   </select>
                 </div>
 
@@ -1131,15 +1133,16 @@ export function Settings() {
 
                 <div className="border-t border-terminal-border" />
 
-                {/* Alpha Vantage API */}
+                {/* Alpha Vantage API (News Fallback) */}
                 <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-3">
-                    <BarChart3 className="w-4 h-4 text-terminal-amber" />
-                    <span className="text-white text-sm font-medium">Alpha Vantage (Market Data)</span>
+                    <Newspaper className="w-4 h-4 text-terminal-amber" />
+                    <span className="text-white text-sm font-medium">Alpha Vantage (News)</span>
+                    <span className="text-xs text-gray-500 bg-terminal-bg px-2 py-0.5 rounded">Optional</span>
                   </div>
 
                   <p className="text-gray-400 text-xs mb-4">
-                    Free API for real-time stock quotes. Get your key at{' '}
+                    Alternative news source with built-in sentiment analysis. Get your key at{' '}
                     <a href="https://www.alphavantage.co/support/#api-key" target="_blank" rel="noopener noreferrer" className="text-terminal-amber hover:underline">
                       alphavantage.co
                     </a>
@@ -1217,15 +1220,16 @@ export function Settings() {
 
                 <div className="border-t border-terminal-border" />
 
-                {/* Finnhub */}
+                {/* Finnhub (News + Economic Calendar) */}
                 <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-3">
-                    <TrendingUp className="w-4 h-4 text-terminal-amber" />
-                    <span className="text-white text-sm font-medium">Finnhub</span>
+                    <Rss className="w-4 h-4 text-terminal-amber" />
+                    <span className="text-white text-sm font-medium">Finnhub (News + Economic Calendar)</span>
+                    <span className="text-xs text-terminal-amber bg-terminal-amber/10 px-2 py-0.5 rounded">Recommended</span>
                   </div>
 
                   <p className="text-gray-400 text-xs mb-4">
-                    Alternative market data provider with real-time news.
+                    Primary news source with real-time market headlines and economic calendar events.
                   </p>
 
                   {/* Tier Selector */}
@@ -2396,38 +2400,41 @@ export function Settings() {
                   </p>
 
                   <div className="space-y-3">
-                    <div className="flex justify-between text-xs text-gray-400">
-                      <span>Fast</span>
-                      <span className="text-terminal-amber font-mono">
-                        {tickerSpeed < 120 ? `${tickerSpeed}s` : `${Math.round(tickerSpeed / 60)}min`}
+                    <div className="flex items-center gap-3">
+                      <span title="Slow">
+                        <Snail size={18} className="text-gray-400" />
                       </span>
-                      <span>Slow</span>
+                      <div className="flex-1 flex flex-col gap-1">
+                        <input
+                          type="range"
+                          min={60}
+                          max={600}
+                          step={30}
+                          value={tickerSpeed}
+                          onChange={(e) => setTickerSpeed(Number(e.target.value))}
+                          className="w-full h-2 bg-terminal-bg rounded-lg appearance-none cursor-pointer [direction:rtl]
+                            [&::-webkit-slider-thumb]:appearance-none
+                            [&::-webkit-slider-thumb]:w-4
+                            [&::-webkit-slider-thumb]:h-4
+                            [&::-webkit-slider-thumb]:rounded-full
+                            [&::-webkit-slider-thumb]:bg-terminal-amber
+                            [&::-webkit-slider-thumb]:cursor-pointer
+                            [&::-webkit-slider-thumb]:hover:bg-terminal-amber-hover
+                            [&::-moz-range-thumb]:w-4
+                            [&::-moz-range-thumb]:h-4
+                            [&::-moz-range-thumb]:rounded-full
+                            [&::-moz-range-thumb]:bg-terminal-amber
+                            [&::-moz-range-thumb]:cursor-pointer
+                            [&::-moz-range-thumb]:border-0"
+                        />
+                        <div className="text-center text-terminal-amber font-mono text-xs">
+                          {tickerSpeed < 120 ? `${tickerSpeed}s` : `${Math.round(tickerSpeed / 60)}min`}
+                        </div>
+                      </div>
+                      <span title="Fast">
+                        <Rabbit size={18} className="text-gray-400" />
+                      </span>
                     </div>
-                    <input
-                      type="range"
-                      min={60}
-                      max={600}
-                      step={30}
-                      value={tickerSpeed}
-                      onChange={(e) => setTickerSpeed(Number(e.target.value))}
-                      className="w-full h-2 bg-terminal-bg rounded-lg appearance-none cursor-pointer
-                        [&::-webkit-slider-thumb]:appearance-none
-                        [&::-webkit-slider-thumb]:w-4
-                        [&::-webkit-slider-thumb]:h-4
-                        [&::-webkit-slider-thumb]:rounded-full
-                        [&::-webkit-slider-thumb]:bg-terminal-amber
-                        [&::-webkit-slider-thumb]:cursor-pointer
-                        [&::-webkit-slider-thumb]:hover:bg-terminal-amber-hover
-                        [&::-moz-range-thumb]:w-4
-                        [&::-moz-range-thumb]:h-4
-                        [&::-moz-range-thumb]:rounded-full
-                        [&::-moz-range-thumb]:bg-terminal-amber
-                        [&::-moz-range-thumb]:border-0
-                        [&::-moz-range-thumb]:cursor-pointer"
-                    />
-                    <p className="text-gray-500 text-xs text-center">
-                      Hover over ticker to pause
-                    </p>
                   </div>
                 </div>
 

@@ -13,7 +13,7 @@ const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.S
 import { useSettingsStore } from './stores/settingsStore'
 import { useMarketStore } from './stores/marketStore'
 import { useDataHeartbeat } from './hooks/useDataHeartbeat'
-import { initializeDatabase, getSettings } from './lib/db'
+import { initializeDatabase, getSettings, migrateApiKeysToEncrypted } from './lib/db'
 import { OnboardingWizard } from './components/Onboarding/OnboardingWizard'
 import { FloatingHelp } from './components/Help/FloatingHelp'
 import { HelpModal } from './components/Help/HelpModal'
@@ -52,6 +52,7 @@ export default function App() {
   useEffect(() => {
     const init = async () => {
       await initializeDatabase()
+      await migrateApiKeysToEncrypted() // Encrypt any existing plaintext API keys
       await loadUserWatchlist()
       await loadSelectedMarket()
     }
@@ -169,7 +170,13 @@ export default function App() {
       {/* Onboarding Wizard */}
       <OnboardingWizard
         isOpen={showWizard}
-        onClose={() => setShowWizard(false)}
+        onClose={() => {
+          setShowWizard(false)
+          // After onboarding completes, wait for settings to persist then reload data
+          setTimeout(() => {
+            loadSelectedMarket()
+          }, 500)
+        }}
       />
 
       {/* Floating Help Button */}

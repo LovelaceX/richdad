@@ -42,8 +42,8 @@ export function NewsTicker() {
         </div>
         <SetupPrompt
           compact
-          title="News will appear once you connect a data source"
-          helpSection="api-limits"
+          title="Configure news in Settings → RSS"
+          helpSection="news"
         />
       </div>
     )

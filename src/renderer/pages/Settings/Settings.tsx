@@ -20,6 +20,7 @@ import {
   Monitor,
   Briefcase,
   Trash2,
+  AlertCircle,
 } from 'lucide-react'
 import {
   getSettings,
@@ -41,6 +42,8 @@ import { NotificationsSection } from './sections/NotificationsSection'
 import { RSSFeedsSection } from './sections/RSSFeedsSection'
 import { PriceAlertsSection } from './sections/PriceAlertsSection'
 import { DangerZoneSection } from './sections/DangerZoneSection'
+import { ErrorLogSection } from './sections/ErrorLogSection'
+import { useErrorLogStore } from '../../stores/errorLogStore'
 
 type SettingsSection =
   | 'style'
@@ -52,6 +55,7 @@ type SettingsSection =
   | 'sounds'
   | 'traders'
   | 'alerts'
+  | 'error-log'
   | 'danger'
 
 const SECTIONS = [
@@ -64,6 +68,7 @@ const SECTIONS = [
   { id: 'sounds' as const, label: 'Notifications', icon: Volume2 },
   { id: 'traders' as const, label: 'RSS Feeds', icon: Rss },
   { id: 'alerts' as const, label: 'Price Alerts', icon: Bell },
+  { id: 'error-log' as const, label: 'Error Log', icon: AlertCircle },
   { id: 'danger' as const, label: 'Danger Zone', icon: Trash2 },
 ]
 
@@ -74,12 +79,21 @@ export function Settings() {
   const [aiSettings, setAiSettings] = useState<AISettings | null>(null)
   const [saving, setSaving] = useState(false)
   const [showSavedMessage, setShowSavedMessage] = useState(false)
+  const [errorCount, setErrorCount] = useState(0)
+  const getUnresolvedCount = useErrorLogStore((s) => s.getUnresolvedCount)
+  const errorLogErrors = useErrorLogStore((s) => s.errors)
 
   // Load settings on mount
   useEffect(() => {
     getSettings().then(setSettings)
     getAISettings().then(setAiSettings)
-  }, [])
+    getUnresolvedCount().then(setErrorCount)
+  }, [getUnresolvedCount])
+
+  // Refresh error count when error log changes
+  useEffect(() => {
+    getUnresolvedCount().then(setErrorCount)
+  }, [errorLogErrors, getUnresolvedCount])
 
   // Save settings with feedback
   const saveSettings = async (updates: Partial<UserSettings>) => {
@@ -143,6 +157,8 @@ export function Settings() {
         return <RSSFeedsSection />
       case 'alerts':
         return <PriceAlertsSection />
+      case 'error-log':
+        return <ErrorLogSection />
       case 'danger':
         return <DangerZoneSection />
       default:
@@ -190,6 +206,11 @@ export function Settings() {
             >
               <section.icon className="w-4 h-4" />
               <span className="text-sm">{section.label}</span>
+              {section.id === 'error-log' && errorCount > 0 && (
+                <span className="bg-red-500 text-white text-xs px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                  {errorCount > 99 ? '99+' : errorCount}
+                </span>
+              )}
               <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
             </button>
           ))}

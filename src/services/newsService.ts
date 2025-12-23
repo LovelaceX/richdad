@@ -15,6 +15,47 @@ const FINNHUB_BASE_URL = 'https://finnhub.io/api/v1'
 const RSS_FETCH_TIMEOUT_MS = 10000 // 10 seconds per feed
 const FINNHUB_FETCH_TIMEOUT_MS = 15000 // 15 seconds for Finnhub
 
+/**
+ * Validate and sanitize image URLs from external sources
+ * Prevents XSS attacks via javascript: or data: URLs
+ * @param url - The URL to validate
+ * @returns The URL if valid, undefined if invalid
+ */
+function sanitizeImageUrl(url: string | undefined | null): string | undefined {
+  if (!url || typeof url !== 'string') return undefined
+
+  try {
+    const parsed = new URL(url)
+
+    // Only allow http/https protocols
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      console.warn(`[News Service] Blocked non-http(s) image URL: ${url.slice(0, 50)}...`)
+      return undefined
+    }
+
+    // Block suspicious patterns that could be XSS vectors
+    const suspicious = [
+      'javascript:',
+      'data:',
+      '<script',
+      'onerror=',
+      'onload=',
+      'onclick='
+    ]
+
+    const lowerUrl = url.toLowerCase()
+    if (suspicious.some(pattern => lowerUrl.includes(pattern))) {
+      console.warn(`[News Service] Blocked suspicious image URL: ${url.slice(0, 50)}...`)
+      return undefined
+    }
+
+    return url
+  } catch {
+    // Invalid URL format
+    return undefined
+  }
+}
+
 export interface NewsResponse {
   articles: NewsItem[]
   source: 'rss' | 'alpha_vantage' | 'finnhub' | 'cache' | 'empty'
@@ -169,7 +210,7 @@ export async function fetchNewsFromAlphaVantage(): Promise<NewsItem[]> {
       summary: item.summary || '',
       sentiment: mapAVSentiment(item.overall_sentiment_label),
       tickers: item.ticker_sentiment?.map((t: any) => t.ticker) || [],
-      imageUrl: item.banner_image
+      imageUrl: sanitizeImageUrl(item.banner_image)
     }))
 
     // Record the API call in budget
@@ -258,7 +299,7 @@ export async function fetchNewsFromFinnhub(symbol?: string): Promise<NewsItem[]>
       timestamp: item.datetime ? item.datetime * 1000 : Date.now(), // Finnhub uses Unix seconds
       summary: item.summary || '',
       tickers: item.related ? item.related.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
-      imageUrl: item.image || undefined
+      imageUrl: sanitizeImageUrl(item.image)
       // Note: Finnhub doesn't provide sentiment - will be analyzed by FinBERT if needed
     }))
 
@@ -361,9 +402,13 @@ export async function fetchNews(): Promise<NewsResponse> {
  * Helper: Get watchlist tickers for Alpha Vantage filtering
  */
 async function getWatchlistTickers(): Promise<string[]> {
-  // TODO: Implement if watchlist is stored in database
-  // For now, return empty array (fetches general market news)
-  return []
+  try {
+    const watchlist = await db.watchlist.toArray()
+    return watchlist.map(entry => entry.symbol.toUpperCase())
+  } catch (error) {
+    console.warn('[News Service] Failed to get watchlist tickers:', error)
+    return []
+  }
 }
 
 /**

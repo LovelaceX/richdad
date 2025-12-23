@@ -684,3 +684,82 @@ function emitLimitReached(provider: string, message: string): void {
     }))
   }
 }
+
+// ==========================================
+// API USAGE SNAPSHOT (FOR DASHBOARD)
+// ==========================================
+
+export interface ApiUsageSnapshot {
+  polygon: {
+    used: number
+    limit: number
+    tier: PolygonTier
+    resetInSeconds: number
+    isUnlimited: boolean
+  }
+  twelveData: {
+    minuteUsed: number
+    minuteLimit: number
+    dailyUsed: number
+    dailyLimit: number
+    tier: TwelveDataTier
+    minuteResetInSeconds: number
+    dailyResetInSeconds: number
+    isDailyUnlimited: boolean
+  }
+  finnhub: {
+    used: number
+    limit: number
+    tier: FinnhubTier
+    resetInSeconds: number
+  }
+}
+
+/**
+ * Get a snapshot of current API usage for the dashboard
+ * Includes reset time calculations
+ */
+export function getApiUsageSnapshot(): ApiUsageSnapshot {
+  const budget = getBudget()
+
+  // Calculate seconds until minute resets (60 - seconds into current minute)
+  const secondsIntoMinute = Math.floor((Date.now() % 60000) / 1000)
+  const minuteResetInSeconds = 60 - secondsIntoMinute
+
+  // Calculate seconds until midnight for daily resets
+  const now = new Date()
+  const midnight = new Date(now)
+  midnight.setDate(midnight.getDate() + 1)
+  midnight.setHours(0, 0, 0, 0)
+  const dailyResetInSeconds = Math.floor((midnight.getTime() - now.getTime()) / 1000)
+
+  const polygonLimit = POLYGON_LIMITS[currentPolygonTier].callsPerMinute
+  const finnhubLimit = FINNHUB_LIMITS[currentFinnhubTier].callsPerMinute
+  const twelveDataLimits = TWELVEDATA_LIMITS[currentTwelveDataTier]
+
+  return {
+    polygon: {
+      used: budget.polygonCallsThisMinute,
+      limit: polygonLimit === Infinity ? 999999 : polygonLimit,
+      tier: currentPolygonTier,
+      resetInSeconds: minuteResetInSeconds,
+      isUnlimited: polygonLimit === Infinity
+    },
+    twelveData: {
+      minuteUsed: budget.twelveDataCallsThisMinute,
+      minuteLimit: twelveDataLimits.callsPerMinute,
+      dailyUsed: budget.twelveDataCallsToday,
+      dailyLimit: twelveDataLimits.callsPerDay === Infinity ? 999999 : twelveDataLimits.callsPerDay,
+      tier: currentTwelveDataTier,
+      minuteResetInSeconds: minuteResetInSeconds,
+      dailyResetInSeconds: dailyResetInSeconds,
+      isDailyUnlimited: twelveDataLimits.callsPerDay === Infinity
+    },
+    finnhub: {
+      used: budget.finnhubCallsThisMinute,
+      limit: finnhubLimit,
+      tier: currentFinnhubTier,
+      resetInSeconds: minuteResetInSeconds
+    }
+  }
+}

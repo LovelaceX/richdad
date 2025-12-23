@@ -9,6 +9,7 @@ interface SettingsState {
   zoomLevel: number
   tickerSpeed: number  // Duration in seconds (60-600)
   theme: ThemeId
+  isLiveDataEnabled: boolean  // Controls whether live data fetching is active
   panelSizes: {
     leftPanel: number    // percentage (default 20)
     rightPanel: number   // percentage (default 25)
@@ -41,6 +42,8 @@ interface SettingsState {
   toggleNewsTicker: () => void
   toggleAIPerformance: () => void
   toggleEconomicCalendarTicker: () => void
+  toggleLiveData: () => void
+  setLiveDataEnabled: (enabled: boolean) => void
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -52,6 +55,7 @@ export const useSettingsStore = create<SettingsState>()(
       zoomLevel: 100,
       tickerSpeed: 90,  // Default 1.5 minutes (normal speed)
       theme: getSavedTheme(),
+      isLiveDataEnabled: false,  // Paused by default - user clicks to start
       panelSizes: {
         leftPanel: 15,  // Reduced from 20% to give more space to chart
         rightPanel: 20, // Reduced from 25% to give more space to chart
@@ -194,6 +198,20 @@ export const useSettingsStore = create<SettingsState>()(
             economicCalendarTickerVisible: !state.panelVisibility.economicCalendarTickerVisible,
           }
         }))
+      },
+
+      toggleLiveData: () => {
+        set(state => {
+          const newState = !state.isLiveDataEnabled
+          // Emit event for data heartbeat service to react
+          window.dispatchEvent(new CustomEvent('live-data-toggle', { detail: { enabled: newState } }))
+          return { isLiveDataEnabled: newState }
+        })
+      },
+
+      setLiveDataEnabled: (enabled: boolean) => {
+        set({ isLiveDataEnabled: enabled })
+        window.dispatchEvent(new CustomEvent('live-data-toggle', { detail: { enabled } }))
       },
     }),
     {
