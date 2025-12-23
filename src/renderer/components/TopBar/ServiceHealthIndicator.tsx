@@ -6,9 +6,10 @@
  * Hover shows detailed status of each service.
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Activity, CheckCircle, AlertTriangle, XCircle, RefreshCw } from 'lucide-react'
 import { useServiceHealthStore, type ServiceStatus, type WebSocketStatus } from '../../stores/serviceHealthStore'
+import { getSettings } from '../../lib/db'
 
 function formatTimeSince(timestamp: number): string {
   if (timestamp === 0) return 'Never'
@@ -57,12 +58,28 @@ function getStatusColor(status: ServiceStatus | WebSocketStatus): string {
 
 export function ServiceHealthIndicator() {
   const [isOpen, setIsOpen] = useState(false)
+  const [hasPolygonKey, setHasPolygonKey] = useState(false)
   const market = useServiceHealthStore(state => state.market)
   const news = useServiceHealthStore(state => state.news)
   const sentiment = useServiceHealthStore(state => state.sentiment)
   const ai = useServiceHealthStore(state => state.ai)
   const websocket = useServiceHealthStore(state => state.websocket)
   const getOverallStatus = useServiceHealthStore(state => state.getOverallStatus)
+
+  // Check if user has Polygon API key configured (WebSocket is Polygon-only)
+  useEffect(() => {
+    const checkPolygonKey = () => {
+      getSettings().then(settings => {
+        setHasPolygonKey(!!settings.polygonApiKey)
+      }).catch(() => setHasPolygonKey(false))
+    }
+
+    checkPolygonKey()
+
+    // Re-check when API settings change
+    window.addEventListener('api-settings-updated', checkPolygonKey)
+    return () => window.removeEventListener('api-settings-updated', checkPolygonKey)
+  }, [])
 
   const overallStatus = getOverallStatus()
 
@@ -72,12 +89,13 @@ export function ServiceHealthIndicator() {
     unhealthy: 'bg-red-400'
   }
 
+  // Only show WebSocket if user has Polygon configured (WebSocket is Polygon-only)
   const services = [
     { name: 'Market Data', state: market, type: 'service' as const },
     { name: 'News Feed', state: news, type: 'service' as const },
     { name: 'Sentiment', state: sentiment, type: 'service' as const },
     { name: 'AI Copilot', state: ai, type: 'service' as const },
-    { name: 'WebSocket', state: websocket, type: 'websocket' as const }
+    ...(hasPolygonKey ? [{ name: 'WebSocket', state: websocket, type: 'websocket' as const }] : [])
   ]
 
   return (
@@ -135,10 +153,10 @@ export function ServiceHealthIndicator() {
             ))}
           </div>
 
-          {(market.lastError || news.lastError || sentiment.lastError || ai.lastError || websocket.lastError) && (
+          {(market.lastError || news.lastError || sentiment.lastError || ai.lastError || (hasPolygonKey && websocket.lastError)) && (
             <div className="p-2 border-t border-terminal-border">
               <div className="text-[10px] text-red-400 truncate">
-                Last error: {market.lastError || news.lastError || sentiment.lastError || ai.lastError || websocket.lastError}
+                Last error: {market.lastError || news.lastError || sentiment.lastError || ai.lastError || (hasPolygonKey ? websocket.lastError : '')}
               </div>
             </div>
           )}

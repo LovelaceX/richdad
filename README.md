@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-5.5.0-gold?style=for-the-badge" alt="Version 5.5.0"/>
+  <img src="https://img.shields.io/badge/version-5.5.1-gold?style=for-the-badge" alt="Version 5.5.1"/>
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License"/>
   <img src="https://img.shields.io/badge/tauri-2.x-blue?style=for-the-badge&logo=tauri" alt="Tauri 2.x"/>
   <img src="https://img.shields.io/badge/react-18-61DAFB?style=for-the-badge&logo=react" alt="React 18"/>
@@ -342,6 +342,15 @@ See [LICENSE](./LICENSE) for full text.
 ---
 
 ## Changelog
+
+### v5.5.1 - WebSocket UX Fix
+
+**Service Health Improvement**
+- WebSocket status now hidden for non-Polygon users (was showing confusing "disconnected" status)
+- WebSocket is Polygon-only; TwelveData/Alpha Vantage users use HTTP polling (works fine)
+- Status dynamically updates when user adds/removes Polygon API key
+
+---
 
 ### v5.5.0 - Service Health & Rate Limit Overhaul
 
