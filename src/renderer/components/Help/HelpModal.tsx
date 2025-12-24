@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, BookOpen, Zap, BarChart3, Keyboard, HelpCircle, Shield, FileText, Mail,
   Search, Gauge, AlertTriangle, Database, TrendingUp, Bell, Eye, Check, Calendar, ExternalLink, Bug, Sparkles, Activity,
-  Crown, Star, Leaf
+  Crown, Star, Leaf, Heart, ClipboardCheck, Square, CheckSquare
 } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 
@@ -15,6 +15,7 @@ interface HelpModalProps {
 
 type Section =
   | 'get-started'
+  | 'verify-setup'
   | 'whats-new'
   | 'tiers'
   | 'dashboard'
@@ -34,12 +35,17 @@ type Section =
   | 'security'
   | 'about'
   | 'report-issue'
+  | 'support'
 
 // Searchable content for each section - includes all important words and phrases
 const sectionContent: Record<Section, { title: string; searchableText: string }> = {
   'get-started': {
     title: 'Get Started',
     searchableText: 'setup api key configure begin first install alpha vantage openai claude gemini grok deepseek llama groq settings dashboard news watchlist price alerts chart controls keyboard shortcuts api limits troubleshooting quick links step by step guide free account paste copy'
+  },
+  'verify-setup': {
+    title: 'Verify Your Setup',
+    searchableText: 'verify check test working setup complete checklist confirmation api key data news ai sentiment market prices onboarding validate confirm everything working chart loading prices updating news scrolling ai responding'
   },
   'whats-new': {
     title: "What's New",
@@ -59,7 +65,7 @@ const sectionContent: Record<Section, { title: string; searchableText: string }>
   },
   'news': {
     title: 'Market News',
-    searchableText: 'headlines feed sentiment filter rss sources finnhub alpha vantage breaking news articles positive negative neutral bullish bearish market sentiment analysis ticker relevance'
+    searchableText: 'headlines feed sentiment filter rss sources finnhub alpha vantage breaking news articles positive negative neutral bullish bearish market sentiment analysis ticker relevance hugging face finbert ai keywords fallback headline limit news sources'
   },
   'economic-calendar': {
     title: 'Economic Calendar',
@@ -79,7 +85,7 @@ const sectionContent: Record<Section, { title: string; searchableText: string }>
   },
   'ai-copilot': {
     title: 'AI Copilot',
-    searchableText: 'openai claude gemini grok deepseek groq llama recommendation chat provider morning briefing briefing thinking animation phases finnhub news buy call buy put options options-aware call put leverage buy sell hold confidence technical analysis sentiment market regime risk management position size stop loss take profit price target rationale explanation ai analysis automatic manual trigger chat interface conversation history performance tracking win rate accuracy options trading suggestions'
+    searchableText: 'openai claude gemini grok deepseek groq llama recommendation chat provider morning briefing briefing thinking animation phases finnhub news buy call buy put options options-aware call put leverage buy sell hold confidence technical analysis sentiment market regime risk management position size stop loss take profit price target rationale explanation ai analysis automatic manual trigger chat interface conversation history performance tracking win rate accuracy options trading suggestions rate limit unlimited fallback'
   },
   'api-limits': {
     title: 'API Limits & Usage',
@@ -91,11 +97,11 @@ const sectionContent: Record<Section, { title: string; searchableText: string }>
   },
   'troubleshooting': {
     title: 'Troubleshooting',
-    searchableText: 'error fix problem not working issue help debug crash freeze slow loading blank screen no data connection failed timeout api error rate limit exceeded invalid key authentication failed network error clear cache reset refresh restart reinstall'
+    searchableText: 'error fix problem not working issue help debug crash freeze slow loading blank screen no data connection failed timeout api error rate limit exceeded invalid key authentication failed network error clear cache reset refresh restart reinstall activity log service health data freshness stale cached fresh live news sentiment keywords finbert hugging face verify api key'
   },
   'faq': {
     title: 'FAQ',
-    searchableText: 'question answer common frequently asked questions how do i what is why does can i should i when will how to'
+    searchableText: 'question answer common frequently asked questions how do i what is why does can i should i when will how to onboarding wizard first launch rate limit'
   },
   'terms': {
     title: 'Terms of Service',
@@ -117,7 +123,48 @@ const sectionContent: Record<Section, { title: string; searchableText: string }>
     title: 'Report Issue',
     searchableText: 'bug problem feedback github issue report feature request enhancement suggestion error message screenshot steps to reproduce expected behavior actual behavior'
   },
+  'support': {
+    title: 'Support Development',
+    searchableText: 'tip donate support developer lovelacex paypal contribution thank you appreciation funding open source free software'
+  },
 }
+
+// Setup Verification Checklist types and defaults
+interface SetupChecklist {
+  marketData: {
+    chartLoads: boolean
+    pricesUpdate: boolean
+    dataSourceVisible: boolean
+  }
+  news: {
+    tickerScrolling: boolean
+    sentimentColors: boolean
+  }
+  aiCopilot: {
+    chatResponds: boolean
+    analyzeWorks: boolean
+    recommendationsAppear: boolean
+  }
+}
+
+const defaultChecklist: SetupChecklist = {
+  marketData: {
+    chartLoads: false,
+    pricesUpdate: false,
+    dataSourceVisible: false
+  },
+  news: {
+    tickerScrolling: false,
+    sentimentColors: false
+  },
+  aiCopilot: {
+    chatResponds: false,
+    analyzeWorks: false,
+    recommendationsAppear: false
+  }
+}
+
+const CHECKLIST_STORAGE_KEY = 'richdad-setup-checklist'
 
 export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
   const [activeSection, setActiveSection] = useState<Section>((initialSection as Section) || 'get-started')
@@ -132,6 +179,7 @@ export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
 
   const sections: { id: Section; label: string; icon: any }[] = [
     { id: 'get-started', label: 'Get Started', icon: BookOpen },
+    { id: 'verify-setup', label: 'Verify Setup', icon: ClipboardCheck },
     { id: 'whats-new', label: "What's New", icon: Sparkles },
     { id: 'tiers', label: 'Pricing Tiers', icon: Crown },
     { id: 'dashboard', label: 'Dashboard', icon: Eye },
@@ -151,6 +199,7 @@ export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'about', label: 'About', icon: Mail },
     { id: 'report-issue', label: 'Report Issue', icon: Bug },
+    { id: 'support', label: 'Support Us', icon: Heart },
   ]
 
   // Filter sections based on search - searches title, label, and full content text
@@ -272,6 +321,57 @@ interface HelpContentProps {
 }
 
 function HelpContent({ section, onNavigate }: HelpContentProps) {
+  // Setup verification checklist state (persisted to localStorage)
+  const [checklist, setChecklist] = useState<SetupChecklist>(() => {
+    try {
+      const saved = localStorage.getItem(CHECKLIST_STORAGE_KEY)
+      return saved ? JSON.parse(saved) : defaultChecklist
+    } catch {
+      return defaultChecklist
+    }
+  })
+
+  // Save checklist to localStorage on change
+  useEffect(() => {
+    localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(checklist))
+  }, [checklist])
+
+  // Toggle checklist item
+  const toggleChecklistItem = (sectionKey: keyof SetupChecklist, item: string) => {
+    setChecklist(prev => ({
+      ...prev,
+      [sectionKey]: {
+        ...prev[sectionKey],
+        [item]: !prev[sectionKey][item as keyof typeof prev[typeof sectionKey]]
+      }
+    }))
+  }
+
+  // Reset checklist
+  const resetChecklist = () => {
+    setChecklist(defaultChecklist)
+    localStorage.removeItem(CHECKLIST_STORAGE_KEY)
+  }
+
+  // Count helpers
+  const getCompletedCount = () => {
+    let count = 0
+    Object.values(checklist).forEach(sec => {
+      Object.values(sec).forEach(value => {
+        if (value) count++
+      })
+    })
+    return count
+  }
+
+  const getTotalCount = () => {
+    let count = 0
+    Object.values(checklist).forEach(sec => {
+      count += Object.keys(sec).length
+    })
+    return count
+  }
+
   const QuickLink = ({ to, children }: { to: Section; children: React.ReactNode }) => (
     <button
       onClick={() => onNavigate(to)}
@@ -323,23 +423,29 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           <SectionDivider />
 
           <div>
-            <h3 className="text-white text-lg font-semibold mb-4">Step 1: Get API Keys</h3>
-            <p className="text-gray-300 mb-4">RichDad requires API keys for market data and AI features.</p>
+            <h3 className="text-white text-lg font-semibold mb-4">Step 1: Choose Your Path</h3>
+            <p className="text-gray-300 mb-4">Use the Setup Wizard in Settings → API Keys to get started quickly.</p>
 
             <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5 space-y-4">
               <div>
-                <p className="text-terminal-amber font-medium mb-2">Required: Alpha Vantage (Free)</p>
-                <Step>Visit <a href="https://www.alphavantage.co/support/#api-key" target="_blank" rel="noopener noreferrer" className="text-terminal-amber hover:underline">alphavantage.co</a></Step>
-                <Step>Sign up for a free account</Step>
-                <Step>Copy your API key</Step>
+                <p className="text-green-400 font-medium mb-2">🌱 Free Path ($0/month)</p>
+                <Step><span className="text-white">TwelveData</span> - 800 calls/day free tier</Step>
+                <Step><span className="text-white">Groq (Llama 3)</span> - Completely free AI</Step>
+                <Step>RSS news feeds included</Step>
               </div>
 
               <div className="border-t border-terminal-border pt-4">
-                <p className="text-terminal-amber font-medium mb-2">Recommended: AI Provider</p>
-                <p className="text-gray-400 text-sm mb-2">Choose one of: OpenAI, Claude, Gemini, Grok, DeepSeek, or Llama (Groq)</p>
-                <Step>Create account with your chosen provider</Step>
-                <Step>Generate an API key</Step>
-                <Step>Note any free tier limits (see <QuickLink to="api-limits">API Limits</QuickLink>)</Step>
+                <p className="text-terminal-amber font-medium mb-2">⭐ Standard Path (Recommended)</p>
+                <Step><span className="text-white">Polygon.io</span> - Reliable market data (5 calls/min free)</Step>
+                <Step><span className="text-white">OpenAI GPT-4</span> - Best analysis (~$5-20/month)</Step>
+                <Step>Finnhub news + Economic calendar</Step>
+              </div>
+
+              <div className="border-t border-terminal-border pt-4">
+                <p className="text-purple-400 font-medium mb-2">👑 Premium Path</p>
+                <Step><span className="text-white">Polygon.io</span> paid tier (faster, more data)</Step>
+                <Step><span className="text-white">Anthropic Claude</span> - Superior reasoning</Step>
+                <Step>All news sources + Alpha Vantage</Step>
               </div>
             </div>
           </div>
@@ -348,11 +454,10 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             <h3 className="text-white text-lg font-semibold mb-4">Step 2: Configure Settings</h3>
             <div className="space-y-1">
               <Step>Press <kbd className="bg-terminal-border px-2 py-1 rounded text-xs mx-1">Cmd/Ctrl+3</kbd> to open Settings</Step>
-              <Step>Navigate to <span className="text-white font-medium">API Keys</span> section</Step>
-              <Step>Paste your Alpha Vantage key</Step>
-              <Step>Navigate to <span className="text-white font-medium">AI Copilot</span> section</Step>
-              <Step>Select your AI provider from the dropdown</Step>
-              <Step>Paste your AI API key</Step>
+              <Step>Click <span className="text-terminal-amber font-medium">Setup Wizard</span> button in API Keys section</Step>
+              <Step>Follow the wizard to select your path and enter API keys</Step>
+              <Step>Or manually: Navigate to <span className="text-white font-medium">API Keys</span> → enter your market data key</Step>
+              <Step>Then: Navigate to <span className="text-white font-medium">AI Copilot</span> → configure your AI provider</Step>
               <Step>Settings auto-save when changed</Step>
             </div>
           </div>
@@ -368,6 +473,175 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           </div>
         </div>
       )
+
+    case 'verify-setup': {
+      const completedCount = getCompletedCount()
+      const totalCount = getTotalCount()
+      const isAllComplete = completedCount === totalCount
+
+      // Checklist item component
+      const ChecklistItem = ({
+        id,
+        sectionKey,
+        title,
+        hint,
+        checked
+      }: {
+        id: string
+        sectionKey: keyof SetupChecklist
+        title: string
+        hint: string
+        checked: boolean
+      }) => (
+        <div
+          className="flex items-start gap-3 py-2 cursor-pointer group"
+          onClick={() => toggleChecklistItem(sectionKey, id)}
+        >
+          {checked ? (
+            <CheckSquare className="w-5 h-5 text-terminal-up flex-shrink-0" />
+          ) : (
+            <Square className="w-5 h-5 text-gray-500 group-hover:text-gray-400 flex-shrink-0" />
+          )}
+          <div>
+            <p className={`text-sm ${checked ? 'text-terminal-up line-through' : 'text-white'}`}>
+              {title}
+            </p>
+            <p className="text-gray-500 text-xs">{hint}</p>
+          </div>
+        </div>
+      )
+
+      // Section header component
+      const SectionLabel = ({ label }: { label: string }) => (
+        <div className="mt-6 mb-3">
+          <p className="text-gray-400 text-xs font-semibold tracking-wider uppercase">{label}</p>
+          <div className="border-b border-terminal-border mt-1" />
+        </div>
+      )
+
+      return (
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Verify Your Setup</h2>
+            <p className="text-gray-400">Use this checklist to confirm everything is working correctly</p>
+          </div>
+
+          {/* Progress Counter */}
+          <div className={`rounded-lg p-4 ${isAllComplete ? 'bg-terminal-up/20 border border-terminal-up/30' : 'bg-terminal-bg border border-terminal-border'}`}>
+            {/* Progress dots */}
+            <div className="flex gap-1.5 mb-2">
+              {Array.from({ length: totalCount }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-3 h-3 rounded-full transition-colors ${
+                    i < completedCount ? 'bg-terminal-up' : 'bg-gray-600'
+                  }`}
+                />
+              ))}
+            </div>
+            {/* Counter text */}
+            <p className={`text-sm font-medium ${isAllComplete ? 'text-terminal-up' : 'text-white'}`}>
+              {isAllComplete
+                ? `✓ ${completedCount} of ${totalCount} completed — Setup Complete!`
+                : `${completedCount} of ${totalCount} completed`}
+            </p>
+            {isAllComplete && (
+              <p className="text-gray-400 text-xs mt-1">All checks passed. RichDad is ready to use.</p>
+            )}
+          </div>
+
+          {/* Market Data Section */}
+          <div>
+            <SectionLabel label="Market Data" />
+            <div className="space-y-1">
+              <ChecklistItem
+                id="chartLoads"
+                sectionKey="marketData"
+                title="Chart is loading"
+                hint="Look at main chart — candles should appear within ~5 seconds"
+                checked={checklist.marketData.chartLoads}
+              />
+              <ChecklistItem
+                id="pricesUpdate"
+                sectionKey="marketData"
+                title="Prices are updating"
+                hint="Check watchlist for green/red colors + 'Live' or 'Fresh' badge"
+                checked={checklist.marketData.pricesUpdate}
+              />
+              <ChecklistItem
+                id="dataSourceVisible"
+                sectionKey="marketData"
+                title="Data source visible"
+                hint="Look for 'Polygon', 'TwelveData', or 'Alpha Vantage' badge near chart"
+                checked={checklist.marketData.dataSourceVisible}
+              />
+            </div>
+          </div>
+
+          {/* News Feed Section */}
+          <div>
+            <SectionLabel label="News Feed" />
+            <div className="space-y-1">
+              <ChecklistItem
+                id="tickerScrolling"
+                sectionKey="news"
+                title="News ticker scrolling"
+                hint="Headlines at bottom of screen. If empty → Settings → News Sources"
+                checked={checklist.news.tickerScrolling}
+              />
+              <ChecklistItem
+                id="sentimentColors"
+                sectionKey="news"
+                title="Sentiment colors appear"
+                hint="Click News panel to see green/red/gray indicators per headline"
+                checked={checklist.news.sentimentColors}
+              />
+            </div>
+          </div>
+
+          {/* AI Copilot Section */}
+          <div>
+            <SectionLabel label="AI Copilot" />
+            <div className="space-y-1">
+              <ChecklistItem
+                id="chatResponds"
+                sectionKey="aiCopilot"
+                title="AI chat responds"
+                hint="Type 'Hello' in AI Panel, wait for response"
+                checked={checklist.aiCopilot.chatResponds}
+              />
+              <ChecklistItem
+                id="analyzeWorks"
+                sectionKey="aiCopilot"
+                title="Analyze shows progress"
+                hint="Click analyze icon, watch 6-step progress animation"
+                checked={checklist.aiCopilot.analyzeWorks}
+              />
+              <ChecklistItem
+                id="recommendationsAppear"
+                sectionKey="aiCopilot"
+                title="Recommendations appear"
+                hint="BUY/SELL/HOLD with confidence %. Check Activity Log if not"
+                checked={checklist.aiCopilot.recommendationsAppear}
+              />
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center justify-between pt-4 border-t border-terminal-border">
+            <p className="text-gray-500 text-xs">
+              {isAllComplete ? 'You\'re all set!' : 'Click items to mark them complete'}
+            </p>
+            <button
+              onClick={resetChecklist}
+              className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              Reset Checklist
+            </button>
+          </div>
+        </div>
+      )
+    }
 
     case 'whats-new':
       return (
@@ -715,7 +989,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
 
           <div>
             <h3 className="text-white text-lg font-semibold mb-4">Sentiment Analysis</h3>
-            <p className="text-gray-300 mb-3">Headlines are analyzed for market sentiment:</p>
+            <p className="text-gray-300 mb-3">Headlines are analyzed for market sentiment using a three-tier system:</p>
             <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5 space-y-3">
               <div className="flex items-center gap-3">
                 <TrendingUp size={16} className="text-terminal-up" />
@@ -730,6 +1004,51 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 <span className="text-gray-300">Negative - Bearish news, misses, downgrades</span>
               </div>
             </div>
+          </div>
+
+          {/* Sentiment Fallback Chain */}
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-5">
+            <h3 className="text-blue-400 font-semibold mb-3">How Sentiment Works</h3>
+            <p className="text-gray-300 text-sm mb-3">
+              RichDad uses a three-tier fallback system for reliable sentiment analysis:
+            </p>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-3">
+                <span className="text-white font-medium w-20">Primary</span>
+                <span className="text-gray-400">→</span>
+                <span className="text-gray-300">FinBERT (cloud) - Financial-specialized AI model</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-white font-medium w-20">Fallback</span>
+                <span className="text-gray-400">→</span>
+                <span className="text-gray-300">Your AI provider (OpenAI/Claude/Groq)</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-white font-medium w-20">Backup</span>
+                <span className="text-gray-400">→</span>
+                <span className="text-gray-300">Keyword matching (always works)</span>
+              </div>
+            </div>
+            <p className="text-gray-500 text-xs mt-3">
+              Works automatically. For faster analysis, add an optional HuggingFace token in Settings → News Sources.
+            </p>
+          </div>
+
+          {/* News Sources Settings */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white font-semibold mb-3">News Sources Settings</h3>
+            <p className="text-gray-300 text-sm mb-3">
+              Configure your news feed in Settings → News Sources:
+            </p>
+            <div className="space-y-1">
+              <Step><span className="text-white font-medium">Headline Limit</span> - Max headlines per hour (5-50)</Step>
+              <Step><span className="text-white font-medium">AI Filtering</span> - Only show news for your watchlist</Step>
+              <Step><span className="text-white font-medium">RSS Feeds</span> - Select sources (Bloomberg, CNBC, etc.)</Step>
+              <Step><span className="text-white font-medium">HuggingFace Token</span> - Optional boost for sentiment analysis</Step>
+            </div>
+            <p className="text-gray-500 text-xs mt-3">
+              Note: RSS is disabled when your market data provider includes news (Finnhub, Alpha Vantage Premium).
+            </p>
           </div>
         </div>
       )
@@ -1067,6 +1386,22 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             </div>
           </div>
 
+          {/* Rate Limits */}
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-5">
+            <h3 className="text-yellow-400 font-semibold mb-3">Rate Limits</h3>
+            <p className="text-gray-300 text-sm mb-3">
+              RichDad has no daily limit - your AI provider handles rate limiting. If you see a rate limit message:
+            </p>
+            <div className="space-y-1">
+              <Step>Wait a few minutes for your provider's limit to reset</Step>
+              <Step>Add a fallback provider in Settings → AI Copilot</Step>
+              <Step>Consider upgrading your AI provider's plan for higher limits</Step>
+            </div>
+            <p className="text-gray-500 text-xs mt-3">
+              Most providers: OpenAI (90 req/min), Claude (60 req/min), Groq (30 req/min free tier)
+            </p>
+          </div>
+
           <div>
             <h3 className="text-white text-lg font-semibold mb-4">Automatic Recommendations</h3>
             <div className="space-y-1">
@@ -1105,7 +1440,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               <Step>Click any result to jump to that ticker's chart</Step>
             </div>
             <p className="text-gray-500 text-xs mt-3">
-              Note: Uses ~1 AI call per ticker. 15 stocks = ~30% of daily budget.
+              Note: Uses ~1 AI call per ticker. Large watchlists may take a few minutes.
             </p>
           </div>
 
@@ -1348,10 +1683,25 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 <span className="text-white w-20">Dow Jones</span>
                 <span className="text-gray-400 text-sm">30 blue-chip industrial companies - oldest index</span>
               </div>
-              <div className="flex gap-4 py-2">
+              <div className="flex gap-4 py-2 border-b border-terminal-border">
                 <span className="text-terminal-amber w-24 flex-shrink-0 font-medium">IWM</span>
-                <span className="text-white w-20">Russell</span>
+                <span className="text-white w-20">Russell 2000</span>
                 <span className="text-gray-400 text-sm">2000 small-cap stocks - small company performance</span>
+              </div>
+              <div className="flex gap-4 py-2 border-b border-terminal-border">
+                <span className="text-terminal-amber w-24 flex-shrink-0 font-medium">VTI</span>
+                <span className="text-white w-20">Total Market</span>
+                <span className="text-gray-400 text-sm">Full US stock market exposure - all cap sizes</span>
+              </div>
+              <div className="flex gap-4 py-2 border-b border-terminal-border">
+                <span className="text-terminal-amber w-24 flex-shrink-0 font-medium">SMH</span>
+                <span className="text-white w-20">Semiconductors</span>
+                <span className="text-gray-400 text-sm">Chip sector ETF - tracks semiconductor industry</span>
+              </div>
+              <div className="flex gap-4 py-2">
+                <span className="text-terminal-amber w-24 flex-shrink-0 font-medium">VXX</span>
+                <span className="text-white w-20">Volatility</span>
+                <span className="text-gray-400 text-sm">VIX tracker - measures market fear/uncertainty</span>
               </div>
             </div>
 
@@ -1584,6 +1934,40 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             <p className="text-gray-400">Common issues and solutions</p>
           </div>
 
+          {/* Quick Reference - What to Watch For */}
+          <div className="bg-terminal-amber/10 border border-terminal-amber/30 rounded-lg p-5">
+            <h3 className="text-terminal-amber font-semibold mb-4 flex items-center gap-2">
+              <AlertTriangle size={18} />
+              What to Watch For
+            </h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-white font-medium mb-1">News not loading?</p>
+                <p className="text-gray-400">Check Settings → News Sources. Enable RSS or add Finnhub key.</p>
+              </div>
+              <div>
+                <p className="text-white font-medium mb-1">AI rate limited?</p>
+                <p className="text-gray-400">Wait a few minutes or switch providers in Settings → AI Copilot.</p>
+              </div>
+              <div>
+                <p className="text-white font-medium mb-1">Sentiment shows "keywords"?</p>
+                <p className="text-gray-400">FinBERT unavailable. This is normal fallback behavior.</p>
+              </div>
+              <div>
+                <p className="text-white font-medium mb-1">Chart not loading?</p>
+                <p className="text-gray-400">Check data source badge. Verify API key in Settings → Market Data.</p>
+              </div>
+              <div>
+                <p className="text-white font-medium mb-1">Data seems stale?</p>
+                <p className="text-gray-400">Check freshness badge (green=live, yellow=cached, red=stale).</p>
+              </div>
+              <div>
+                <p className="text-white font-medium mb-1">Something broken?</p>
+                <p className="text-gray-400">Check Settings → Activity Log for detailed error messages.</p>
+              </div>
+            </div>
+          </div>
+
           <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
             <h3 className="text-white font-semibold mb-3">"No market data" or prices not updating</h3>
             <div className="space-y-1 text-gray-300">
@@ -1597,9 +1981,9 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             <h3 className="text-white font-semibold mb-3">"AI not responding" or recommendations missing</h3>
             <div className="space-y-1 text-gray-300">
               <Step>Verify your AI API key in Settings → AI Copilot</Step>
-              <Step>Check if you've hit your provider's rate limit</Step>
-              <Step>Try adding a fallback provider</Step>
-              <Step>AI only runs during market hours (9:30 AM - 4:00 PM ET)</Step>
+              <Step>Check if you've hit your provider's rate limit (wait a few minutes)</Step>
+              <Step>Try adding a fallback provider for reliability</Step>
+              <Step>Check the Activity Log for error details (Settings → Activity Log)</Step>
             </div>
           </div>
 
@@ -1630,17 +2014,17 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             </div>
           </div>
 
-          {/* Error Log */}
+          {/* Activity Log */}
           <div className="bg-terminal-bg border border-terminal-amber/30 rounded-lg p-5">
-            <h3 className="text-terminal-amber font-semibold mb-3">Using the Error Log</h3>
+            <h3 className="text-terminal-amber font-semibold mb-3">Using the Activity Log</h3>
             <p className="text-gray-300 text-sm mb-3">
-              RichDad logs all service errors with actionable resolution hints. Access via Settings → Error Log.
+              RichDad logs all service activity with actionable resolution hints. Access via Settings → Activity Log.
             </p>
             <div className="space-y-1 text-gray-300">
-              <Step><span className="text-white">View errors</span> - See date, service, message, and suggested fix</Step>
+              <Step><span className="text-white">View activity</span> - See date, service, message, and suggested fix</Step>
               <Step><span className="text-white">Take action</span> - Click "How to Fix" links to open help articles, clear cache, or update settings</Step>
-              <Step><span className="text-white">Resolve</span> - Click "Resolve" to dismiss individual errors or "Resolve All" to clear the log</Step>
-              <Step><span className="text-white">Auto-cleanup</span> - Resolved errors are deleted after 7 days, unresolved after 30 days</Step>
+              <Step><span className="text-white">Resolve</span> - Click "Resolve" to dismiss individual items or "Resolve All" to clear the log</Step>
+              <Step><span className="text-white">Auto-cleanup</span> - Resolved items are deleted after 7 days, unresolved after 30 days</Step>
             </div>
           </div>
 
@@ -1653,9 +2037,64 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             <div className="space-y-1 text-gray-300">
               <Step><span className="text-terminal-up">OK</span> - Service is working normally</Step>
               <Step><span className="text-yellow-400">Degraded</span> - 1-2 recent errors, may recover automatically</Step>
-              <Step><span className="text-terminal-down">Error</span> - 3+ consecutive failures, check Error Log for details</Step>
+              <Step><span className="text-terminal-down">Error</span> - 3+ consecutive failures, check Activity Log for details</Step>
             </div>
             <p className="text-gray-500 text-xs mt-3">Tip: Most "degraded" services recover on their own within minutes.</p>
+          </div>
+
+          {/* Data Freshness */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white font-semibold mb-3">Understanding Data Freshness</h3>
+            <p className="text-gray-300 text-sm mb-3">
+              Data badges indicate how fresh your market data is:
+            </p>
+            <div className="space-y-1 text-gray-300">
+              <Step><span className="text-terminal-up font-medium">Live</span> - Real-time from WebSocket (Polygon paid tier)</Step>
+              <Step><span className="text-blue-400 font-medium">Fresh</span> - Less than 5 minutes old</Step>
+              <Step><span className="text-yellow-400 font-medium">Cached</span> - From cache (1 hour for quotes, 24 hours for charts)</Step>
+              <Step><span className="text-gray-400 font-medium">Stale</span> - Older cached data, API may be unavailable</Step>
+            </div>
+            <p className="text-gray-500 text-xs mt-3">
+              Cache helps stay within API limits. Click "Refresh" in charts to force a new fetch.
+            </p>
+          </div>
+
+          {/* News Not Loading */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white font-semibold mb-3">News not loading</h3>
+            <div className="space-y-1 text-gray-300">
+              <Step>Check Settings → News Sources to ensure feeds are enabled</Step>
+              <Step>If using Finnhub or Alpha Vantage, their news requires valid API keys</Step>
+              <Step>RSS feeds may be blocked by network firewalls</Step>
+              <Step>Check Activity Log for specific error messages</Step>
+            </div>
+          </div>
+
+          {/* Sentiment Analysis */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white font-semibold mb-3">Sentiment showing as "keywords"</h3>
+            <p className="text-gray-300 text-sm mb-3">
+              Sentiment analysis uses a fallback chain:
+            </p>
+            <div className="space-y-1 text-gray-300">
+              <Step><span className="text-white font-medium">FinBERT</span> → Cloud AI model (primary)</Step>
+              <Step><span className="text-white font-medium">Your AI</span> → OpenAI/Claude/Groq (fallback)</Step>
+              <Step><span className="text-white font-medium">Keywords</span> → Pattern matching (backup)</Step>
+            </div>
+            <p className="text-gray-500 text-xs mt-3">
+              If you see "keywords" often, the cloud services may be rate-limited. Add an optional HuggingFace token in Settings → News Sources for faster analysis.
+            </p>
+          </div>
+
+          {/* Verifying API Keys */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white font-semibold mb-3">How to verify API keys are working</h3>
+            <div className="space-y-1 text-gray-300">
+              <Step>Go to Settings → Market Data and look for green checkmarks</Step>
+              <Step>If a key fails, you'll see a red X with an error message</Step>
+              <Step>Check the Activity Log for "API key invalid" or "401 Unauthorized" errors</Step>
+              <Step>Try the "Test Connection" button after entering a new key</Step>
+            </div>
           </div>
         </div>
       )
@@ -1672,6 +2111,16 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             {
               q: 'Is RichDad free to use?',
               a: 'Yes! RichDad itself is free. You need free API keys from Alpha Vantage and an AI provider.'
+            },
+            {
+              q: 'Why do I need to set up API keys myself?',
+              a: `RichDad is 100% free and open-source for retail traders. We don't charge anything.
+
+However, we use third-party services for market data (Alpha Vantage, Polygon), AI analysis (OpenAI, Claude, Groq), and sentiment analysis (HuggingFace) - and these providers require their own API keys.
+
+Think of it like this: RichDad is the car (free), but you need to get your own gas (API keys from providers).
+
+Want help getting set up? We're happy to help you complete this process for free. Reach out to our support team at support@lovelacex.com and we'll walk you through it.`
             },
             {
               q: 'Do AI recommendations cost money?',
@@ -1724,6 +2173,32 @@ In volatile markets (VIX >25), it becomes more cautious. In choppy markets, it f
               a: 'Settings → Danger Zone → Reset All Data. This clears all settings, history, and shows onboarding again.'
             },
             {
+              q: 'What is the First Launch Wizard?',
+              a: `When you first open RichDad, you'll see a 5-step onboarding wizard:
+
+1. Welcome - Introduction to RichDad
+2. Terms of Service - Accept the terms
+3. Path Selection - Choose Free, Standard, or Premium
+4. API Key Setup - Enter your market data API key
+5. AI Provider - Configure your AI provider
+
+You can skip any step by clicking the X button. To re-run the wizard, go to Settings → Danger Zone → Reset All Data.`
+            },
+            {
+              q: 'What happens when I hit rate limits?',
+              a: `Rate limits are set by your API providers, not RichDad:
+
+- Alpha Vantage Free: 5 calls/minute, 25 calls/day
+- Polygon Free: 5 calls/minute
+- TwelveData Free: 8 calls/minute, 800 calls/day
+- Finnhub Free: 60 calls/minute
+
+When rate limited:
+- AI shows a yellow message in the AI Panel
+- Market data falls back to cached values
+- Try again in a few minutes, or add a fallback provider in Settings`
+            },
+            {
               q: 'What is the Morning Briefing?',
               a: `The Morning Briefing analyzes your entire watchlist with one click. Click the "Morning Briefing" button in the AI Panel and it will:
 1. Analyze each ticker sequentially (2-second delay between each)
@@ -1761,7 +2236,7 @@ Get a free key at finnhub.io. If not configured, the AI falls back to RSS feeds.
               a: `The free tier of Polygon.io (our default data provider) has a 15-minute delay. This is standard for free market data.
 
 Options for real-time data:
-- Switch to TwelveData (free, real-time) in Settings → Data Sources
+- Switch to TwelveData (free, real-time) in Settings → Market Data
 - Upgrade to Polygon Pro ($29/mo) for real-time Polygon data
 - Use Alpha Vantage (25 calls/day, real-time)
 
@@ -2081,7 +2556,7 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
         <div className="space-y-8">
           <div>
             <h2 className="text-terminal-amber text-2xl font-bold mb-2">About RichDad</h2>
-            <p className="text-gray-400">AI-Powered Trading Terminal for Retail Investors</p>
+            <p className="text-gray-400">AI-Powered Trading Co-Pilot for Retail Investors</p>
           </div>
 
           <div className="bg-terminal-bg border border-terminal-amber/30 rounded-lg p-6 text-center">
@@ -2217,14 +2692,6 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
             </div>
           </div>
 
-          <div>
-            <h3 className="text-white font-semibold mb-3">Acknowledgments</h3>
-            <div className="space-y-1">
-              <Step>Polygon.io & Alpha Vantage for market data</Step>
-              <Step>TradingView for Lightweight Charts library</Step>
-              <Step>All open-source contributors</Step>
-            </div>
-          </div>
         </div>
       )
 
@@ -2283,6 +2750,45 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
         </div>
       )
 
+    case 'support':
+      return (
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Support Development</h2>
+            <p className="text-gray-400">Help us keep RichDad free and open-source</p>
+          </div>
+
+          <div className="bg-gradient-to-br from-terminal-amber/10 to-terminal-amber/5 border border-terminal-amber/30 rounded-lg p-6 text-center space-y-4">
+            <Heart className="w-12 h-12 text-terminal-amber mx-auto" />
+            <p className="text-gray-300 leading-relaxed max-w-lg mx-auto">
+              We hope you're enjoying the app as much as we enjoyed building it.
+            </p>
+            <p className="text-gray-400 text-sm leading-relaxed max-w-lg mx-auto">
+              As an independent team maintaining free and open-source software, we rely on community support.
+              If you'd like to say thanks or help us continue, any tip is greatly appreciated and goes directly toward future development.
+            </p>
+          </div>
+
+          <div className="flex justify-center">
+            <button
+              onClick={() => openUrl('https://www.paypal.com/ncp/payment/BWTA5MZYMTEDG')}
+              className="flex items-center gap-3 bg-[#0070ba] hover:bg-[#005ea6] text-white px-8 py-4 rounded-lg font-semibold transition-colors shadow-lg hover:shadow-xl"
+            >
+              <svg viewBox="0 0 24 24" className="w-6 h-6 fill-current">
+                <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.254-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 0 0-.556.479l-1.187 7.527h-.506l-.24 1.516a.56.56 0 0 0 .554.647h3.882c.46 0 .85-.334.922-.788.06-.26.76-4.852.816-5.09a.932.932 0 0 1 .923-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.777-4.471z"/>
+              </svg>
+              Tip via PayPal
+            </button>
+          </div>
+
+          <div className="text-center">
+            <p className="text-gray-500 text-sm">
+              Built with ❤️ by <span className="text-terminal-amber">LovelaceX</span>
+            </p>
+          </div>
+        </div>
+      )
+
     case 'tiers':
       return (
         <div className="space-y-8">
@@ -2292,7 +2798,7 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
           </div>
 
           <p className="text-gray-300">
-            RichDad offers three setup paths based on your needs and budget. You can change your configuration anytime in <span className="text-terminal-amber">Settings → Data Sources</span>.
+            RichDad offers three setup paths based on your needs and budget. You can change your configuration anytime in <span className="text-terminal-amber">Settings → Market Data</span>.
           </p>
 
           <div className="grid grid-cols-3 gap-4">

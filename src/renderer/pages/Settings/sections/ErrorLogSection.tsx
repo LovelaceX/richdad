@@ -1,7 +1,7 @@
 /**
- * ErrorLogSection
+ * ErrorLogSection (Activity Log)
  *
- * Settings section for viewing and resolving errors.
+ * Settings section for viewing and resolving activity/errors.
  * Provides self-service troubleshooting with actionable resolution hints.
  */
 
@@ -135,7 +135,7 @@ export function ErrorLogSection() {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-white text-lg font-medium">Error Log</h2>
+        <h2 className="text-white text-lg font-medium">Activity Log</h2>
         {totalErrors > 0 && (
           <button
             onClick={() => setShowResolveAllConfirm(true)}
@@ -145,7 +145,7 @@ export function ErrorLogSection() {
           </button>
         )}
       </div>
-      <p className="text-gray-500 text-sm mb-6">Review and resolve recent errors</p>
+      <p className="text-gray-500 text-sm mb-6">Review recent activity and resolve any issues</p>
 
       {loading ? (
         <div className="flex items-center justify-center py-12">

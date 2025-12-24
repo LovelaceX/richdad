@@ -147,7 +147,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
         return (
           <div className="space-y-4">
             <div className="text-center">
-              <p className="text-gray-400 text-sm mb-1">Step {stepNumber} of {totalSteps}</p>
+              <p className="text-terminal-amber text-sm mb-1">Step {stepNumber} of {totalSteps}</p>
               <h3 className="text-white text-lg font-medium">Choose Your Setup</h3>
               <p className="text-gray-500 text-sm mt-2">Select a path based on your needs - you can change these later in Settings</p>
             </div>
@@ -257,7 +257,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
         return (
           <div className="space-y-4">
             <div className="text-center">
-              <p className="text-gray-400 text-sm mb-1">Step {stepNumber} of {totalSteps}</p>
+              <p className="text-terminal-amber text-sm mb-1">Step {stepNumber} of {totalSteps}</p>
               <h3 className="text-white text-lg font-medium">Choose AI Provider</h3>
               <p className="text-gray-500 text-sm mt-2">Select your AI copilot for trading recommendations</p>
             </div>

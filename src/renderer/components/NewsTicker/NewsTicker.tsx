@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { Newspaper, Loader2 } from 'lucide-react'
+import { Newspaper, Loader2, Maximize2 } from 'lucide-react'
 import { useNewsStore } from '../../stores/newsStore'
 import { useSettingsStore } from '../../stores/settingsStore'
+import { useNewsPanelStore } from '../../stores/newsPanelStore'
 import { NewsItem } from './NewsItem'
 import { SetupPrompt } from '../common/SetupPrompt'
 
 export function NewsTicker() {
+  const openPanel = useNewsPanelStore(state => state.openPanel)
   const headlines = useNewsStore(state => state.headlines)
   const loading = useNewsStore(state => state.loading)
   const tickerSpeed = useSettingsStore(state => state.tickerSpeed)
@@ -56,9 +58,16 @@ export function NewsTicker() {
     <div className="panel h-full flex items-center overflow-hidden">
       {/* Fixed label section */}
       <div className="flex items-center gap-2 px-3 flex-shrink-0 z-10 bg-terminal-panel">
-        <Newspaper size={14} className="text-terminal-amber" />
-        <span className="text-[11px] font-semibold tracking-wider text-white uppercase">News Feed</span>
-        <span className="w-1.5 h-1.5 bg-semantic-up rounded-full animate-pulse" />
+        <button
+          onClick={openPanel}
+          className="flex items-center gap-2 hover:bg-terminal-border/50 px-2 py-1 -mx-2 -my-1 rounded transition-colors"
+          title="Open News Panel"
+        >
+          <Newspaper size={14} className="text-terminal-amber" />
+          <span className="text-[11px] font-semibold tracking-wider text-white uppercase">News Feed</span>
+          <span className="w-1.5 h-1.5 bg-semantic-up rounded-full animate-pulse" />
+          <Maximize2 size={12} className="text-gray-500 ml-1" />
+        </button>
         <span className="text-terminal-border text-lg font-light">|</span>
       </div>
 

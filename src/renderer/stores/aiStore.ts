@@ -9,6 +9,9 @@ import { canMakeAICall, recordAICall, getAIBudgetStatus } from '../../services/a
 const MAX_CHAT_MESSAGES = 100 // Maximum chat/info messages to keep
 const MAX_ALERT_MESSAGES = 3 // Maximum alert-type messages to keep
 
+// Track current request to prevent race conditions with rapid messages
+let currentRequestId = 0
+
 // Default analysis phases for the AI thinking animation
 export const DEFAULT_ANALYSIS_PHASES: Omit<AnalysisPhase, 'status' | 'result'>[] = [
   { id: 'regime', label: 'Checking Market Regime' },
@@ -201,10 +204,21 @@ export const useAIStore = create<AIState>((set, get) => ({
 
     setAnalyzing(true)
 
+    // Increment request ID to track this specific request
+    // This prevents race conditions when multiple messages are sent rapidly
+    const thisRequestId = ++currentRequestId
+
     try {
       // Get chat history for context (last 10 messages)
       const recentMessages = messages.slice(0, 10).reverse()
       const response = await sendChatMessage(content, recentMessages)
+
+      // Only process response if this is still the current request
+      // (prevents stale responses from appearing after newer requests)
+      if (thisRequestId !== currentRequestId) {
+        console.log('[AI Store] Ignoring stale response from request', thisRequestId)
+        return
+      }
 
       // Record the AI call AFTER successful response
       recordAICall()
@@ -216,6 +230,11 @@ export const useAIStore = create<AIState>((set, get) => ({
         content: response,
       })
     } catch (error) {
+      // Only show error if this is still the current request
+      if (thisRequestId !== currentRequestId) {
+        return
+      }
+
       console.error('Failed to send message:', error)
       addMessage({
         type: 'info',
@@ -225,7 +244,10 @@ export const useAIStore = create<AIState>((set, get) => ({
           : 'Failed to get response. Please check your API key in Settings.',
       })
     } finally {
-      setAnalyzing(false)
+      // Only update analyzing state if this is the current request
+      if (thisRequestId === currentRequestId) {
+        setAnalyzing(false)
+      }
     }
   },
 

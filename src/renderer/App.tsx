@@ -23,6 +23,8 @@ import { FindInPage } from './components/FindInPage'
 import { applyTheme } from './lib/themes'
 import { useHelpStore } from './stores/helpStore'
 import { useAIModalStore } from './stores/aiModalStore'
+import { useNewsPanelStore } from './stores/newsPanelStore'
+import { NewsPanel } from './components/News/NewsPanel'
 
 export default function App() {
   const cvdMode = useSettingsStore(state => state.cvdMode)
@@ -36,6 +38,10 @@ export default function App() {
   // Global AI Modal state
   const aiModalIsOpen = useAIModalStore(state => state.isOpen)
   const closeAIModal = useAIModalStore(state => state.closeModal)
+
+  // Global News Panel state
+  const newsPanelIsOpen = useNewsPanelStore(state => state.isOpen)
+  const closeNewsPanel = useNewsPanelStore(state => state.closePanel)
   const currentPage = useNavigationStore(state => state.currentPage)
   const zoomLevel = useSettingsStore(state => state.zoomLevel)
   const zoomScale = zoomLevel / 100
@@ -193,6 +199,12 @@ export default function App() {
       <AIModal
         isOpen={aiModalIsOpen}
         onClose={closeAIModal}
+      />
+
+      {/* News Panel Modal (controlled by newsPanelStore) */}
+      <NewsPanel
+        isOpen={newsPanelIsOpen}
+        onClose={closeNewsPanel}
       />
 
       {/* Toast Notifications (for API limit warnings, etc.) */}

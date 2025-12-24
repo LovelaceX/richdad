@@ -248,31 +248,32 @@ export function DisplaySection() {
           </div>
 
           <p className="text-gray-400 text-xs mb-4">
-            Adjust the scrolling speed of the news and economic calendar tickers.
+            Adjust the scrolling speed of the news and economic calendar tickers. Slower = more readable.
           </p>
 
           {/* Speed value display */}
           <div className="text-center text-terminal-amber text-sm font-mono mb-2">
-            {tickerSpeed}s
+            {tickerSpeed}s per headline
           </div>
 
           <div className="flex items-center gap-3">
-            <span title="Slow">
+            {/* Slow icon - aligned with slider */}
+            <div className="flex items-center h-8" title="Slower (more readable)">
               <Snail size={20} className="text-gray-400" />
-            </span>
+            </div>
             <div className="flex-1 flex flex-col">
               <input
                 type="range"
-                min="10"
-                max="60"
-                step="10"
-                value={tickerSpeed}
+                min="30"
+                max="120"
+                step="15"
+                value={tickerSpeed < 30 ? 30 : tickerSpeed}
                 onChange={(e) => setTickerSpeed(Number(e.target.value))}
                 className="w-full h-2 bg-terminal-border rounded-lg appearance-none cursor-pointer accent-terminal-amber"
               />
               {/* Tick marks - prominent vertical lines */}
               <div className="flex justify-between px-0 mt-2">
-                {[10, 20, 30, 40, 50, 60].map((val) => (
+                {[30, 45, 60, 75, 90, 105, 120].map((val) => (
                   <div key={val} className="flex flex-col items-center">
                     <div
                       className={`w-1 h-4 rounded-sm ${tickerSpeed === val ? 'bg-terminal-amber' : 'bg-gray-600'}`}
@@ -284,9 +285,10 @@ export function DisplaySection() {
                 ))}
               </div>
             </div>
-            <span title="Fast">
+            {/* Fast icon - aligned with slider */}
+            <div className="flex items-center h-8" title="Faster">
               <Rabbit size={20} className="text-gray-400" />
-            </span>
+            </div>
           </div>
         </div>
 

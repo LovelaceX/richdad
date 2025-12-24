@@ -5,6 +5,7 @@ import { generateId } from '../lib/utils'
 interface NewsState {
   headlines: NewsItem[]
   loading: boolean
+  lastUpdated: number | null  // Timestamp of last news update
 
   // Actions
   addHeadline: (headline: Omit<NewsItem, 'id' | 'timestamp'>) => void
@@ -17,6 +18,7 @@ interface NewsState {
 export const useNewsStore = create<NewsState>((set) => ({
   headlines: [],  // Empty until real data is fetched from API
   loading: false,
+  lastUpdated: null,
 
   addHeadline: (headline) => {
     set(state => ({
@@ -38,7 +40,7 @@ export const useNewsStore = create<NewsState>((set) => ({
   },
 
   setNews: (news: NewsItem[]) => {
-    set({ headlines: news })
+    set({ headlines: news, lastUpdated: Date.now() })
   },
 
   setLoading: (loading: boolean) => {

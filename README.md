@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-5.5.1-gold?style=for-the-badge" alt="Version 5.5.1"/>
+  <img src="https://img.shields.io/badge/version-6.0.0-gold?style=for-the-badge" alt="Version 6.0.0"/>
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License"/>
   <img src="https://img.shields.io/badge/tauri-2.x-blue?style=for-the-badge&logo=tauri" alt="Tauri 2.x"/>
   <img src="https://img.shields.io/badge/react-18-61DAFB?style=for-the-badge&logo=react" alt="React 18"/>
@@ -342,6 +342,36 @@ See [LICENSE](./LICENSE) for full text.
 ---
 
 ## Changelog
+
+### v6.0.0 - Stability & Self-Service Release
+
+**React Memory Leak Fixes (Critical)**
+- Fixed setTimeout memory leak in AI Modal (status message cleanup)
+- Added AbortController to AI chat requests (prevents race conditions)
+- Added mounted checks in AI Performance components (prevents setState on unmount)
+- Fixed WebSocket subscription memory leak (clear on disconnect)
+
+**AI Budget Tracker Improvements**
+- Added debounced persistence (100ms batching) for better performance
+- Added beforeunload hook to prevent data loss on browser close/crash
+- Singleton pattern for consistent state management
+
+**Help Modal Enhancements**
+- New "Verify Setup" interactive checklist (8 items, persisted to localStorage)
+- New "Support Us" tab with PayPal tip link for developer support
+- New "Why Do I Need API Keys?" FAQ explaining the free/open-source model
+- New "What to Watch For" quick reference for common troubleshooting issues
+- Updated all section paths to match current UI ("Market Data" vs "Data Sources")
+
+**News & Sentiment**
+- News Panel shows "Just updated" badge when fresh data arrives
+- Added lastUpdated timestamp tracking for data freshness indicators
+
+**UI Polish**
+- All Phase 1-5 improvements from previous development cycles
+- Improved error messaging and user feedback throughout
+
+---
 
 ### v5.5.1 - WebSocket UX Fix
 

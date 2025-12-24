@@ -281,6 +281,10 @@ export async function generateRecommendation(
     const aiSettings = await getAISettings()
     if (!aiSettings.apiKey) {
       console.warn('[AI Engine] No AI API key configured, skipping analysis')
+      // Dispatch event so UI can show helpful message
+      window.dispatchEvent(new CustomEvent('ai-status', {
+        detail: { status: 'no_api_key', message: 'AI Copilot needs an API key. Go to Settings → AI Copilot to configure.' }
+      }))
       return null
     }
 
@@ -288,6 +292,10 @@ export async function generateRecommendation(
     if (!canMakeAICall()) {
       const status = getAIBudgetStatus()
       console.warn(`[AI Engine] Daily AI budget exhausted (${status.used}/${status.limit} calls). Skipping analysis for ${symbol}`)
+      // Dispatch event so UI can show helpful message
+      window.dispatchEvent(new CustomEvent('ai-status', {
+        detail: { status: 'budget_exhausted', message: `AI budget exhausted (${status.used}/${status.limit} calls). Resets at midnight.` }
+      }))
       return null
     }
 
@@ -388,8 +396,8 @@ export async function generateRecommendation(
       return null
     }
 
-    // 10. Validate confidence threshold (configurable, default 80%)
-    const threshold = confidenceThreshold ?? 80
+    // 10. Validate confidence threshold (configurable, default 60% - lowered from 80% for more recommendations)
+    const threshold = confidenceThreshold ?? 60
     if (recommendation.confidence < threshold) {
       updatePhase('ai', 'complete', `Low conf: ${recommendation.confidence}%`)
       console.log(`[AI Engine] Confidence too low (${recommendation.confidence}% < ${threshold}%), skipping recommendation`)

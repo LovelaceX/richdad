@@ -3,9 +3,9 @@
  * Right-side sliding panel containing the AI Copilot interface
  */
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Bot, Loader2, Trash2 } from 'lucide-react'
+import { X, Bot, Loader2, Trash2, AlertTriangle } from 'lucide-react'
 import { ActivityLog } from './ActivityLog'
 import { ChatInput } from './ChatInput'
 import { AIPerformanceSummary } from './AIPerformanceSummary'
@@ -30,6 +30,30 @@ export function AIModal({ isOpen, onClose }: AIModalProps) {
   const selectedTicker = useMarketStore(state => state.selectedTicker)
   const intelPanelEnabled = useIntelStore(state => state.intelPanelEnabled)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
+  const statusTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Listen for AI status events (rate limits, budget exhausted, etc.)
+  useEffect(() => {
+    const handleAIStatus = (event: CustomEvent<{ status: string; message: string }>) => {
+      setStatusMessage(event.detail.message)
+      // Clear any existing timeout to prevent stale closures
+      if (statusTimeoutRef.current) {
+        clearTimeout(statusTimeoutRef.current)
+      }
+      // Auto-dismiss after 10 seconds
+      statusTimeoutRef.current = setTimeout(() => setStatusMessage(null), 10000)
+    }
+
+    window.addEventListener('ai-status', handleAIStatus as EventListener)
+    return () => {
+      window.removeEventListener('ai-status', handleAIStatus as EventListener)
+      // Clean up timeout on unmount to prevent memory leak
+      if (statusTimeoutRef.current) {
+        clearTimeout(statusTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -122,6 +146,29 @@ export function AIModal({ isOpen, onClose }: AIModalProps) {
               <div className="flex-1 flex flex-col overflow-hidden">
                 {/* Messages Area */}
                 <div className="flex-1 overflow-y-auto p-4">
+                  {/* Status Message (rate limits, etc.) */}
+                  <AnimatePresence>
+                    {statusMessage && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-start gap-3"
+                      >
+                        <AlertTriangle size={16} className="text-yellow-500 mt-0.5 flex-shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-yellow-200 text-sm">{statusMessage}</p>
+                        </div>
+                        <button
+                          onClick={() => setStatusMessage(null)}
+                          className="text-yellow-500/50 hover:text-yellow-500 transition-colors"
+                        >
+                          <X size={14} />
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   {/* Analysis Progress */}
                   <AnimatePresence>
                     {analysisProgress && (

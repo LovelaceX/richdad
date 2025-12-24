@@ -90,6 +90,11 @@ export interface UserSettings {
   // News Ticker
   tickerSpeed: 'slow' | 'normal' | 'fast'
 
+  // News Sources Settings
+  headlineLimit?: number           // Max headlines per hour (default: 20)
+  aiNewsFiltering?: boolean        // Enable AI-based news filtering by watchlist/market relevance
+  huggingFaceToken?: string        // Optional HF API token for faster sentiment analysis
+
   // Market View Selection
   selectedMarket?: {
     name: string   // "S&P 500", "NASDAQ-100", etc.

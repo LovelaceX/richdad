@@ -404,6 +404,11 @@ class WebSocketService {
       console.warn('[WebSocket] Max reconnect attempts reached, falling back to polling')
       this.updateState('failed', 'Max reconnect attempts reached')
 
+      // Clear subscriptions and cached data to prevent memory leak
+      // (subscriptions are useless if we can't reconnect)
+      this.subscriptions.clear()
+      this.lastPrices.clear()
+
       // Emit fallback event for other services to handle
       window.dispatchEvent(new CustomEvent('websocket-fallback', {
         detail: { reason: 'max_reconnect_attempts' }

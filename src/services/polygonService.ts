@@ -8,6 +8,7 @@
  */
 
 import type { Quote, CandleData } from '../renderer/types'
+import { safeJsonParse } from './safeJson'
 
 const POLYGON_BASE_URL = 'https://api.polygon.io'
 const RATE_LIMIT_DELAY_MS = 12000 // 5 calls/min = 12s between calls
@@ -70,17 +71,28 @@ export async function fetchPolygonQuotes(symbols: string[], apiKey: string): Pro
   try {
     const response = await fetch(url)
 
-    if (!response.ok) {
-      // Handle rate limit specifically
-      if (response.status === 429) {
-        console.warn('[Polygon] Rate limit hit (429), returning cached data')
-        return cachedQuotes.filter(q => symbols.includes(q.symbol))
-      }
-      throw new Error(`Polygon API error: ${response.status}`)
+    // Handle rate limit specifically before parsing
+    if (response.status === 429) {
+      console.warn('[Polygon] Rate limit hit (429), returning cached data')
+      return cachedQuotes.filter(q => symbols.includes(q.symbol))
     }
 
-    const data = await response.json()
+    const result = await safeJsonParse<{
+      status: string
+      tickers?: Array<{
+        ticker: string
+        day?: { c?: number; o?: number; h?: number; l?: number; v?: number }
+        prevDay?: { c?: number; o?: number }
+      }>
+    }>(response, 'Polygon')
 
+    if (!result.success) {
+      console.error('[Polygon] API error:', result.error)
+      // Return cached data on error
+      return cachedQuotes.filter(q => symbols.includes(q.symbol))
+    }
+
+    const data = result.data
     if (data.status !== 'OK' || !data.tickers || data.tickers.length === 0) {
       console.warn('[Polygon] No snapshot data returned, trying fallback')
       // Fallback to previous close for individual symbols (only if batch fails)
@@ -146,10 +158,17 @@ async function fetchPolygonQuotesFallback(symbols: string[], apiKey: string): Pr
       const url = `${POLYGON_BASE_URL}/v2/aggs/ticker/${symbol}/prev?adjusted=true&apiKey=${apiKey}`
       const response = await fetch(url)
 
-      if (!response.ok) continue
+      const parseResult = await safeJsonParse<{
+        status: string
+        results?: Array<{ c: number; o: number; h: number; l: number; v: number; t?: number }>
+      }>(response, 'Polygon')
 
-      const data = await response.json()
+      if (!parseResult.success) {
+        console.warn(`[Polygon] Fallback parse error for ${symbol}:`, parseResult.error)
+        continue
+      }
 
+      const data = parseResult.data
       if (data.status === 'OK' && data.results && data.results.length > 0) {
         const result = data.results[0]
         const price = result.c
@@ -210,11 +229,16 @@ export async function fetchPolygonHistorical(
   try {
     const response = await fetch(url)
 
-    if (!response.ok) {
-      throw new Error(`Polygon API error: ${response.status}`)
+    const result = await safeJsonParse<{
+      status: string
+      results?: Array<{ t: number; o: number; h: number; l: number; c: number; v: number }>
+    }>(response, 'Polygon')
+
+    if (!result.success) {
+      throw new Error(result.error)
     }
 
-    const data = await response.json()
+    const data = result.data
 
     if (data.status !== 'OK' || !data.results) {
       console.warn('[Polygon] No historical data returned')
@@ -421,18 +445,23 @@ export async function fetchPolygonHistoricalRange(
     try {
       const response = await fetch(url)
 
-      if (!response.ok) {
-        throw new Error(`Polygon API error: ${response.status}`)
+      const result = await safeJsonParse<{
+        status: string
+        results?: Array<{ t: number; o: number; h: number; l: number; c: number; v: number }>
+      }>(response, 'Polygon')
+
+      if (!result.success) {
+        console.error('[Polygon] Pagination error:', result.error)
+        break
       }
 
-      const data = await response.json()
-
+      const data = result.data
       if (data.status !== 'OK' || !data.results || data.results.length === 0) {
         console.log(`[Polygon] No more results from ${currentFrom}`)
         break
       }
 
-      const candles: CandleData[] = data.results.map((bar: any) => ({
+      const candles: CandleData[] = data.results.map((bar) => ({
         time: Math.floor(bar.t / 1000), // Convert ms to seconds
         open: bar.o,
         high: bar.h,

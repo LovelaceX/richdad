@@ -14,13 +14,15 @@ import {
   Bell,
   ChevronRight,
   Check,
-  Rss,
   BarChart3,
   User,
   Monitor,
   Briefcase,
   Trash2,
   AlertCircle,
+  Search,
+  X,
+  Newspaper,
 } from 'lucide-react'
 import {
   getSettings,
@@ -40,6 +42,7 @@ import { AICopilotSection } from './sections/AICopilotSection'
 import { APIKeysSection } from './sections/APIKeysSection'
 import { NotificationsSection } from './sections/NotificationsSection'
 import { RSSFeedsSection } from './sections/RSSFeedsSection'
+import { NewsSourcesSection } from './sections/NewsSourcesSection'
 import { PriceAlertsSection } from './sections/PriceAlertsSection'
 import { DangerZoneSection } from './sections/DangerZoneSection'
 import { ErrorLogSection } from './sections/ErrorLogSection'
@@ -52,6 +55,7 @@ type SettingsSection =
   | 'risk'
   | 'ai-copilot'
   | 'data-sources'
+  | 'news-sources'
   | 'sounds'
   | 'traders'
   | 'alerts'
@@ -59,17 +63,17 @@ type SettingsSection =
   | 'danger'
 
 const SECTIONS = [
-  { id: 'style' as const, label: 'My Profile', icon: User },
-  { id: 'portfolio' as const, label: 'Portfolio', icon: Briefcase },
-  { id: 'display' as const, label: 'Display', icon: Monitor },
-  { id: 'risk' as const, label: 'Risk Management', icon: Shield },
-  { id: 'ai-copilot' as const, label: 'AI Copilot', icon: Brain },
-  { id: 'data-sources' as const, label: 'API Keys', icon: BarChart3 },
-  { id: 'error-log' as const, label: 'Error Log', icon: AlertCircle },
-  { id: 'sounds' as const, label: 'Notifications', icon: Volume2 },
-  { id: 'traders' as const, label: 'RSS Feeds', icon: Rss },
-  { id: 'alerts' as const, label: 'Price Alerts', icon: Bell },
-  { id: 'danger' as const, label: 'Danger Zone', icon: Trash2 },
+  { id: 'style' as const, label: 'My Profile', icon: User, keywords: ['name', 'avatar', 'profile', 'account', 'user', 'experience'] },
+  { id: 'portfolio' as const, label: 'Portfolio', icon: Briefcase, keywords: ['cash', 'balance', 'capital', 'account', 'money', 'watchlist'] },
+  { id: 'display' as const, label: 'Display', icon: Monitor, keywords: ['theme', 'dark', 'light', 'color', 'zoom', 'ticker', 'speed', 'chart', 'appearance'] },
+  { id: 'risk' as const, label: 'Risk Management', icon: Shield, keywords: ['stop loss', 'position', 'size', 'risk', 'kelly', 'percentage'] },
+  { id: 'ai-copilot' as const, label: 'AI Copilot', icon: Brain, keywords: ['ai', 'openai', 'claude', 'groq', 'copilot', 'pattern', 'scan', 'confidence', 'budget'] },
+  { id: 'data-sources' as const, label: 'Market Data', icon: BarChart3, keywords: ['api', 'key', 'polygon', 'twelvedata', 'alpha vantage', 'finnhub', 'provider', 'free', 'data', 'market'] },
+  { id: 'news-sources' as const, label: 'News Sources', icon: Newspaper, keywords: ['news', 'rss', 'feed', 'headlines', 'sentiment', 'filter', 'hugging face'] },
+  { id: 'error-log' as const, label: 'Activity Log', icon: AlertCircle, keywords: ['activity', 'log', 'history', 'events', 'debug', 'issue', 'troubleshoot'] },
+  { id: 'sounds' as const, label: 'Notifications', icon: Volume2, keywords: ['sound', 'audio', 'notification', 'alert', 'beep', 'volume'] },
+  { id: 'alerts' as const, label: 'Price Alerts', icon: Bell, keywords: ['alert', 'price', 'notification', 'target', 'watchlist'] },
+  { id: 'danger' as const, label: 'Danger Zone', icon: Trash2, keywords: ['reset', 'delete', 'clear', 'data', 'cache', 'factory'] },
 ]
 
 export function Settings() {
@@ -80,8 +84,20 @@ export function Settings() {
   const [saving, setSaving] = useState(false)
   const [showSavedMessage, setShowSavedMessage] = useState(false)
   const [errorCount, setErrorCount] = useState(0)
+  const [searchQuery, setSearchQuery] = useState('')
   const getUnresolvedCount = useErrorLogStore((s) => s.getUnresolvedCount)
   const errorLogErrors = useErrorLogStore((s) => s.errors)
+
+  // Filter sections based on search query
+  const filteredSections = searchQuery.trim()
+    ? SECTIONS.filter((section) => {
+        const query = searchQuery.toLowerCase()
+        return (
+          section.label.toLowerCase().includes(query) ||
+          section.keywords.some((keyword) => keyword.toLowerCase().includes(query))
+        )
+      })
+    : SECTIONS
 
   // Load settings on mount
   useEffect(() => {
@@ -151,6 +167,8 @@ export function Settings() {
         )
       case 'data-sources':
         return <APIKeysSection settings={settings} onSave={saveSettings} />
+      case 'news-sources':
+        return <NewsSourcesSection />
       case 'sounds':
         return <NotificationsSection settings={settings} onSave={saveSettings} />
       case 'traders':
@@ -193,8 +211,35 @@ export function Settings() {
             <span className="text-white font-medium">Settings</span>
           </div>
         </div>
+
+        {/* Search Bar */}
+        <div className="p-2 border-b border-terminal-border">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search settings..."
+              className="w-full pl-8 pr-8 py-1.5 bg-terminal-bg border border-terminal-border rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-terminal-amber"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="py-2">
-          {SECTIONS.map((section) => (
+          {filteredSections.length === 0 ? (
+            <div className="px-4 py-6 text-center text-gray-500 text-sm">
+              No matching settings
+            </div>
+          ) : filteredSections.map((section) => (
             <button
               key={section.id}
               onClick={() => setActiveSection(section.id)}

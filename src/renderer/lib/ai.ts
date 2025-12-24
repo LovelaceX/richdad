@@ -118,6 +118,21 @@ interface ChatMessage {
 }
 
 /**
+ * Check if an error is a rate limit error
+ */
+function isRateLimitError(error: unknown): boolean {
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase()
+    return msg.includes('429') ||
+           msg.includes('rate limit') ||
+           msg.includes('too many requests') ||
+           msg.includes('quota exceeded') ||
+           msg.includes('rate_limit')
+  }
+  return false
+}
+
+/**
  * Send a chat message with automatic fallback to secondary providers
  */
 export async function sendChatMessage(
@@ -140,6 +155,7 @@ export async function sendChatMessage(
 
   // Try each provider in priority order
   const errors: string[] = []
+  let hitRateLimit = false
 
   for (const providerConfig of enabledProviders) {
     try {
@@ -151,8 +167,23 @@ export async function sendChatMessage(
       const errorMessage = error instanceof Error ? error.message : String(error)
       console.warn(`[AI] ${providerConfig.provider} failed: ${errorMessage}`)
       errors.push(`${AI_PROVIDERS[providerConfig.provider].name}: ${errorMessage}`)
+
+      // Track if we hit a rate limit
+      if (isRateLimitError(error)) {
+        hitRateLimit = true
+      }
       // Continue to next provider
     }
+  }
+
+  // All providers failed - dispatch appropriate event
+  if (hitRateLimit) {
+    window.dispatchEvent(new CustomEvent('ai-status', {
+      detail: {
+        status: 'rate_limited',
+        message: 'AI provider rate limit reached. Try again in a few minutes or switch to a different provider in Settings.'
+      }
+    }))
   }
 
   // All providers failed

@@ -1,15 +1,19 @@
 /**
  * AI Budget Tracker
- * Tracks AI API calls (Claude, OpenAI, Grok, Gemini, etc.) to protect free tier users
+ * Tracks AI API calls (Claude, OpenAI, Grok, Gemini, etc.)
  *
- * Default: 15 calls/day (conservative for free tiers)
+ * Default: Unlimited (AI providers handle their own rate limits)
  * User-configurable: 5-100 calls/day OR unlimited
- * Resets at midnight (local time)
+ * Shows helpful message when AI provider returns rate limit error
+ *
+ * Uses debounced persistence (100ms) to batch rapid updates and
+ * beforeunload hook to prevent data loss on browser close/crash.
  */
 
 const STORAGE_KEY = 'richdad_ai_budget'
-const DEFAULT_DAILY_LIMIT = 15
+const DEFAULT_DAILY_LIMIT = -1  // Unlimited by default - AI providers handle their own rate limits
 const UNLIMITED_VALUE = -1  // Special value for unlimited mode
+const PERSIST_DEBOUNCE_MS = 100  // Batch writes within 100ms
 
 export interface AIBudgetState {
   aiCallsToday: number
@@ -17,57 +21,117 @@ export interface AIBudgetState {
   dailyLimit: number     // User configurable, -1 = unlimited
 }
 
+// Singleton state - keeps budget in memory to avoid repeated localStorage reads
+let budgetSingleton: AIBudgetState | null = null
+
+// Debounce timer for batching writes
+let persistTimeout: ReturnType<typeof setTimeout> | null = null
+
 /**
- * Load AI budget from localStorage, auto-reset if new day
+ * Schedule a debounced write to localStorage
+ * Multiple rapid updates will be batched into a single write
  */
-function loadBudget(): AIBudgetState {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    const today = new Date().toISOString().split('T')[0]
-
-    if (!stored) {
-      // First time, create fresh budget
-      const freshBudget: AIBudgetState = {
-        aiCallsToday: 0,
-        lastResetDate: today,
-        dailyLimit: DEFAULT_DAILY_LIMIT
+function schedulePersist(): void {
+  if (persistTimeout) {
+    clearTimeout(persistTimeout)
+  }
+  persistTimeout = setTimeout(() => {
+    if (budgetSingleton) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(budgetSingleton))
+      } catch (error) {
+        console.error('[AI Budget] Failed to persist budget to localStorage:', error)
       }
-      saveBudget(freshBudget)
-      return freshBudget
     }
+    persistTimeout = null
+  }, PERSIST_DEBOUNCE_MS)
+}
 
-    const budget: AIBudgetState = JSON.parse(stored)
-
-    // Check if date has changed (midnight reset)
-    if (budget.lastResetDate !== today) {
-      console.log('[AI Budget] New day detected, resetting AI call counter')
-      budget.aiCallsToday = 0
-      budget.lastResetDate = today
-      saveBudget(budget)
-    }
-
-    return budget
-  } catch (error) {
-    console.error('[AI Budget] Failed to load budget from localStorage:', error)
-    // Return fresh budget on error
-    const today = new Date().toISOString().split('T')[0]
-    return {
-      aiCallsToday: 0,
-      lastResetDate: today,
-      dailyLimit: DEFAULT_DAILY_LIMIT
+/**
+ * Immediately flush any pending writes to localStorage
+ * Called on page unload to prevent data loss
+ */
+function forcePersist(): void {
+  if (persistTimeout) {
+    clearTimeout(persistTimeout)
+    persistTimeout = null
+  }
+  if (budgetSingleton) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(budgetSingleton))
+    } catch (error) {
+      console.error('[AI Budget] Failed to force persist budget:', error)
     }
   }
 }
 
+// Register beforeunload handler to flush pending writes before page close
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', forcePersist)
+}
+
 /**
- * Save AI budget to localStorage
+ * Load AI budget from localStorage (or singleton), auto-reset if new day
+ */
+function loadBudget(): AIBudgetState {
+  const today = new Date().toISOString().split('T')[0]
+
+  // If singleton exists, check for day reset and return
+  if (budgetSingleton) {
+    if (budgetSingleton.lastResetDate !== today) {
+      console.log('[AI Budget] New day detected, resetting AI call counter')
+      budgetSingleton.aiCallsToday = 0
+      budgetSingleton.lastResetDate = today
+      schedulePersist()
+    }
+    return budgetSingleton
+  }
+
+  // First load - read from localStorage
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+
+    if (!stored) {
+      // First time, create fresh budget
+      budgetSingleton = {
+        aiCallsToday: 0,
+        lastResetDate: today,
+        dailyLimit: DEFAULT_DAILY_LIMIT
+      }
+      schedulePersist()
+      return budgetSingleton
+    }
+
+    const parsed: AIBudgetState = JSON.parse(stored)
+
+    // Check if date has changed (midnight reset)
+    if (parsed.lastResetDate !== today) {
+      console.log('[AI Budget] New day detected, resetting AI call counter')
+      parsed.aiCallsToday = 0
+      parsed.lastResetDate = today
+    }
+
+    budgetSingleton = parsed
+    schedulePersist()
+    return budgetSingleton
+  } catch (error) {
+    console.error('[AI Budget] Failed to load budget from localStorage:', error)
+    // Return fresh budget on error
+    budgetSingleton = {
+      aiCallsToday: 0,
+      lastResetDate: today,
+      dailyLimit: DEFAULT_DAILY_LIMIT
+    }
+    return budgetSingleton
+  }
+}
+
+/**
+ * Save AI budget - updates singleton and schedules debounced persist
  */
 function saveBudget(budget: AIBudgetState): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(budget))
-  } catch (error) {
-    console.error('[AI Budget] Failed to save budget to localStorage:', error)
-  }
+  budgetSingleton = budget
+  schedulePersist()
 }
 
 /**

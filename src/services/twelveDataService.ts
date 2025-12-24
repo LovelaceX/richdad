@@ -8,6 +8,7 @@
  */
 
 import type { CandleData } from '../renderer/types'
+import { safeJsonParse } from './safeJson'
 
 const BASE_URL = 'https://api.twelvedata.com'
 
@@ -35,8 +36,16 @@ export async function testTwelveDataConnection(apiKey: string): Promise<{ succes
   try {
     const url = `${BASE_URL}/time_series?symbol=AAPL&interval=1min&outputsize=1&apikey=${apiKey}`
     const response = await rateLimitedFetch(url)
-    const data = await response.json()
+    const result = await safeJsonParse<{ status?: string; message?: string; values?: unknown[] }>(response, 'TwelveData')
 
+    if (!result.success) {
+      return {
+        success: false,
+        message: result.error
+      }
+    }
+
+    const data = result.data
     if (data.status === 'error') {
       return {
         success: false,
@@ -80,8 +89,25 @@ export async function fetchTwelveDataQuote(symbol: string, apiKey: string): Prom
   try {
     const url = `${BASE_URL}/quote?symbol=${symbol}&apikey=${apiKey}`
     const response = await rateLimitedFetch(url)
-    const data = await response.json()
+    const result = await safeJsonParse<{
+      status?: string
+      message?: string
+      close: string
+      change: string
+      percent_change: string
+      volume: string
+      high: string
+      low: string
+      open: string
+      previous_close: string
+    }>(response, 'TwelveData')
 
+    if (!result.success) {
+      console.error('[TwelveData] Quote error:', result.error)
+      return null
+    }
+
+    const data = result.data
     if (data.status === 'error') {
       console.error('[TwelveData] Quote error:', data.message)
       return null
@@ -156,8 +182,25 @@ export async function fetchTwelveDataCandles(
 
     const url = `${BASE_URL}/time_series?symbol=${symbol}&interval=${twelveInterval}&outputsize=${outputSize}&apikey=${apiKey}`
     const response = await rateLimitedFetch(url)
-    const data = await response.json()
+    const result = await safeJsonParse<{
+      status?: string
+      message?: string
+      values?: Array<{
+        datetime: string
+        open: string
+        high: string
+        low: string
+        close: string
+        volume: string
+      }>
+    }>(response, 'TwelveData')
 
+    if (!result.success) {
+      console.error('[TwelveData] Candles error:', result.error)
+      return []
+    }
+
+    const data = result.data
     if (data.status === 'error') {
       console.error('[TwelveData] Candles error:', data.message)
       return []
@@ -170,7 +213,7 @@ export async function fetchTwelveDataCandles(
 
     // TwelveData returns newest first, we need oldest first
     const candles: CandleData[] = data.values
-      .map((candle: any) => ({
+      .map((candle) => ({
         time: Math.floor(new Date(candle.datetime).getTime() / 1000),
         open: parseFloat(candle.open),
         high: parseFloat(candle.high),
@@ -215,16 +258,29 @@ export async function fetchTwelveDataBatchQuotes(
 
       const url = `${BASE_URL}/quote?symbol=${symbolList}&apikey=${apiKey}`
       const response = await rateLimitedFetch(url)
-      const data = await response.json()
+      const result = await safeJsonParse<Record<string, {
+        close?: string
+        change?: string
+        percent_change?: string
+        volume?: string
+      }>>(response, 'TwelveData')
+
+      if (!result.success) {
+        console.error('[TwelveData] Batch quote error:', result.error)
+        continue
+      }
+
+      const data = result.data
 
       // Handle single symbol response (object) vs multiple (array in different format)
       if (batch.length === 1) {
-        if (data.close) {
+        const singleData = data as unknown as { close?: string; change?: string; percent_change?: string; volume?: string }
+        if (singleData.close) {
           results.set(batch[0], {
-            price: parseFloat(data.close),
-            change: parseFloat(data.change),
-            changePercent: parseFloat(data.percent_change),
-            volume: parseInt(data.volume) || 0
+            price: parseFloat(singleData.close),
+            change: parseFloat(singleData.change || '0'),
+            changePercent: parseFloat(singleData.percent_change || '0'),
+            volume: parseInt(singleData.volume || '0') || 0
           })
         }
       } else {
@@ -234,9 +290,9 @@ export async function fetchTwelveDataBatchQuotes(
           if (quote && quote.close) {
             results.set(symbol, {
               price: parseFloat(quote.close),
-              change: parseFloat(quote.change),
-              changePercent: parseFloat(quote.percent_change),
-              volume: parseInt(quote.volume) || 0
+              change: parseFloat(quote.change || '0'),
+              changePercent: parseFloat(quote.percent_change || '0'),
+              volume: parseInt(quote.volume || '0') || 0
             })
           }
         }
@@ -260,8 +316,18 @@ export async function getTwelveDataUsage(apiKey: string): Promise<{
   try {
     const url = `${BASE_URL}/api_usage?apikey=${apiKey}`
     const response = await rateLimitedFetch(url)
-    const data = await response.json()
+    const result = await safeJsonParse<{
+      status?: string
+      current_usage?: number
+      plan_limit?: number
+    }>(response, 'TwelveData')
 
+    if (!result.success) {
+      console.error('[TwelveData] Usage error:', result.error)
+      return null
+    }
+
+    const data = result.data
     if (data.status === 'error') {
       return null
     }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { TrendingUp, TrendingDown, Trophy, User, Bot } from 'lucide-react'
 import { getPerformanceStatsBySource } from '../../lib/db'
 
@@ -20,13 +20,18 @@ export function AIPerformance() {
   const [humanStats, setHumanStats] = useState<SourceStats | null>(null)
   const [aiStats, setAiStats] = useState<SourceStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const isMountedRef = useRef(true)
 
   useEffect(() => {
+    isMountedRef.current = true
     loadStats()
 
     // Refresh stats every 5 minutes
     const interval = setInterval(loadStats, 300000)
-    return () => clearInterval(interval)
+    return () => {
+      isMountedRef.current = false
+      clearInterval(interval)
+    }
   }, [])
 
   async function loadStats() {
@@ -35,12 +40,17 @@ export function AIPerformance() {
         getPerformanceStatsBySource('manual', 30),
         getPerformanceStatsBySource('ai', 30)
       ])
-      setHumanStats(human)
-      setAiStats(ai)
+      // Only update state if component is still mounted
+      if (isMountedRef.current) {
+        setHumanStats(human)
+        setAiStats(ai)
+      }
     } catch (error) {
       console.error('Failed to load performance stats:', error)
     } finally {
-      setLoading(false)
+      if (isMountedRef.current) {
+        setLoading(false)
+      }
     }
   }
 

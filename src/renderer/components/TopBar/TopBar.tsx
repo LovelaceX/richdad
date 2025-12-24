@@ -50,7 +50,7 @@ export function TopBar() {
         {/* Left: Logo + Nav */}
         <div className="flex items-center gap-2 no-drag flex-shrink-0">
           <span className="text-terminal-amber font-bold text-lg tracking-tight">
-            richdad
+            RichDad
           </span>
           <div className="border-l border-terminal-border ml-2 pl-2 min-w-fit flex-shrink-0">
             <NavBar />

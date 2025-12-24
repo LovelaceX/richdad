@@ -41,8 +41,31 @@ const FINNHUB_TIERS: TierOption[] = [
   { value: 'premium', label: 'Premium (300 calls/min)' },
 ]
 
+// Map settings key to provider value for auto-default
+const KEY_TO_PROVIDER: Record<string, 'polygon' | 'alphavantage' | 'twelvedata' | 'finnhub' | 'fasttrack'> = {
+  polygonApiKey: 'polygon',
+  alphaVantageApiKey: 'alphavantage',
+  twelvedataApiKey: 'twelvedata',
+  finnhubApiKey: 'finnhub',
+  fasttrackApiKey: 'fasttrack',
+}
+
 export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
   const [showOnboardingWizard, setShowOnboardingWizard] = useState(false)
+
+  // Get list of configured API keys
+  const getConfiguredProviders = (overrides: Partial<UserSettings> = {}) => {
+    const merged = { ...settings, ...overrides }
+    const configured: Array<'polygon' | 'alphavantage' | 'twelvedata' | 'finnhub' | 'fasttrack'> = []
+
+    if (merged.polygonApiKey) configured.push('polygon')
+    if (merged.alphaVantageApiKey) configured.push('alphavantage')
+    if (merged.twelvedataApiKey) configured.push('twelvedata')
+    if (merged.finnhubApiKey) configured.push('finnhub')
+    if (merged.fasttrackApiKey) configured.push('fasttrack')
+
+    return configured
+  }
 
   // Handler to update API tier and sync with budget tracker
   const handleTierChange = async (
@@ -65,9 +88,21 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
     })
   }
 
-  // Handler for API key changes with auto-save
+  // Handler for API key changes with auto-save and auto-default
   const handleKeyChange = (key: keyof UserSettings) => async (value: string) => {
-    await onSave({ [key]: value })
+    const updates: Partial<UserSettings> = { [key]: value }
+
+    // Check if this is the only configured API key - if so, auto-set as default
+    const configuredAfter = getConfiguredProviders(updates)
+    const provider = KEY_TO_PROVIDER[key]
+
+    if (configuredAfter.length === 1 && provider && value) {
+      // Only one provider configured, auto-select it as default
+      updates.marketDataProvider = provider
+      console.log(`[APIKeys] Auto-selecting ${provider} as default (only configured provider)`)
+    }
+
+    await onSave(updates)
     // Notify heartbeat service to refresh data immediately
     window.dispatchEvent(new Event('api-settings-updated'))
   }

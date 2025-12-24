@@ -7,7 +7,7 @@ interface SettingsState {
   showVolume: boolean
   refreshInterval: number
   zoomLevel: number
-  tickerSpeed: number  // Duration in seconds (60-600)
+  tickerSpeed: number  // Duration in seconds per headline (30-120)
   theme: ThemeId
   isLiveDataEnabled: boolean  // Controls whether live data fetching is active
   panelSizes: {
@@ -49,7 +49,7 @@ export const useSettingsStore = create<SettingsState>()(
       showVolume: true,
       refreshInterval: 5000,
       zoomLevel: 100,
-      tickerSpeed: 30,  // Default middle speed (30 seconds)
+      tickerSpeed: 60,  // Default middle speed (60 seconds - readable pace)
       theme: getSavedTheme(),
       isLiveDataEnabled: false,  // Paused by default - user clicks to start
       panelSizes: {
@@ -192,15 +192,25 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'richdad-settings',
-      version: 1,
+      version: 2,
       migrate: (persistedState, version) => {
         const state = persistedState as SettingsState
-        // Migration v0 -> v1: Fix tickerSpeed if out of new range (10-60)
-        // Old default was 90, new slider range is 10-60 with default 30
+        // Migration v0 -> v1: Fix tickerSpeed if out of old range (10-60)
         if (version === 0) {
           if (state.tickerSpeed === undefined || state.tickerSpeed > 60 || state.tickerSpeed < 10) {
-            state.tickerSpeed = 30
-            console.log('[Settings] Migrated tickerSpeed to new default (30)')
+            state.tickerSpeed = 60
+            console.log('[Settings] Migrated tickerSpeed to new default (60)')
+          }
+        }
+        // Migration v1 -> v2: Expand tickerSpeed range to 30-120 for better readability
+        // Values below 30 should be bumped up, values above 120 should be capped
+        if (version <= 1) {
+          if (state.tickerSpeed === undefined || state.tickerSpeed < 30) {
+            state.tickerSpeed = 60
+            console.log('[Settings] Migrated tickerSpeed to readable default (60)')
+          } else if (state.tickerSpeed > 120) {
+            state.tickerSpeed = 120
+            console.log('[Settings] Capped tickerSpeed to max (120)')
           }
         }
         return state

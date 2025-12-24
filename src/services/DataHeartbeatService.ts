@@ -63,11 +63,13 @@ class DataHeartbeatService {
   private callbacks: Set<DataUpdateCallback> = new Set()
   private isRunning = false
   private cachedNews: NewsItem[] = []
-  private newsSourceMetadata: { source: string; hasSentiment: boolean } | null = null
   private lastPrices: Map<string, { price: number; timestamp: number }> = new Map() // For percentage-based alerts
   private lastPricesLRU: string[] = [] // Track access order for cleanup
   private websocketEnabled = false
   private websocketUnsubscribe: (() => void) | null = null
+
+  // Track in-flight AI analysis requests to prevent duplicates
+  private pendingAIAnalysis: Map<string, Promise<void>> = new Map()
 
   // Last update timestamps for service health monitoring
   private lastMarketUpdate: number = 0
@@ -367,10 +369,6 @@ class DataHeartbeatService {
 
       // Limit cached news to prevent unbounded memory growth
       this.cachedNews = newsResponse.articles.slice(0, MAX_CACHED_NEWS)
-      this.newsSourceMetadata = {
-        source: newsResponse.source,
-        hasSentiment: newsResponse.hasSentiment
-      }
 
       console.log(`[Heartbeat] News fetched from ${newsResponse.source} (hasSentiment: ${newsResponse.hasSentiment})`)
 
@@ -436,10 +434,10 @@ class DataHeartbeatService {
    */
   async updatePatternScan(): Promise<PatternScanReport | null> {
     try {
-      // Only run during market hours
-      if (!isMarketOpen()) {
-        console.log('[Heartbeat] Market closed, skipping pattern scan')
-        return null
+      // Note: Pattern scan now works after hours using cached data
+      const marketClosed = !isMarketOpen()
+      if (marketClosed) {
+        console.log('[Heartbeat] Market closed - pattern scan will use last available data')
       }
 
       // Get watchlist symbols from market store
@@ -478,16 +476,13 @@ class DataHeartbeatService {
     if (this.cachedNews.length === 0) return
 
     try {
-      // Skip FinBERT if news already has sentiment from Alpha Vantage
-      if (this.newsSourceMetadata?.hasSentiment) {
-        console.log('[Heartbeat] Skipping FinBERT - news from Alpha Vantage already has sentiment')
-        this.lastSentimentUpdate = Date.now()
-        reportServiceHealth.success('sentiment')
-        return
-      }
+      // Always analyze sentiment, even if source claims to have it
+      // This ensures consistent sentiment detection across all sources
+      // Note: If Alpha Vantage already provided sentiment, we could skip, but
+      // let's re-analyze to ensure our keyword fallback works consistently
 
-      // Only analyze headlines without sentiment (RSS news)
-      const unanalyzed = this.cachedNews.filter(n => !n.sentiment || n.sentiment === 'neutral')
+      // Only analyze headlines without sentiment or with "neutral" (which might be default)
+      const unanalyzed = this.cachedNews.filter(n => !n.sentiment)
 
       if (unanalyzed.length === 0) {
         console.log('[Heartbeat] All news already analyzed')
@@ -496,7 +491,7 @@ class DataHeartbeatService {
         return
       }
 
-      console.log(`[Heartbeat] Analyzing sentiment for ${unanalyzed.length} RSS headlines with FinBERT`)
+      console.log(`[Heartbeat] Analyzing sentiment for ${unanalyzed.length} headlines`)
 
       const sentiments = await analyzeSentiment(unanalyzed)
 
@@ -527,14 +522,38 @@ class DataHeartbeatService {
    * @param showProgress - Whether to emit phase update callbacks for UI animation
    */
   async updateAIAnalysis(symbol: string = 'SPY', showProgress: boolean = true): Promise<void> {
+    // Check if analysis is already in progress for this symbol
+    const existingAnalysis = this.pendingAIAnalysis.get(symbol)
+    if (existingAnalysis) {
+      console.log(`[Heartbeat] AI analysis for ${symbol} already in progress, skipping duplicate`)
+      return existingAnalysis
+    }
+
+    // Create and track the analysis promise
+    const analysisPromise = this.doAIAnalysis(symbol, showProgress)
+    this.pendingAIAnalysis.set(symbol, analysisPromise)
+
     try {
-      // Only run during market hours
-      if (!isMarketOpen()) {
-        console.log('[Heartbeat] Market closed, skipping AI analysis')
-        return
+      await analysisPromise
+    } finally {
+      // Always clean up the tracking when done
+      this.pendingAIAnalysis.delete(symbol)
+    }
+  }
+
+  /**
+   * Internal method to perform the actual AI analysis
+   */
+  private async doAIAnalysis(symbol: string, showProgress: boolean): Promise<void> {
+    try {
+      // Note: We no longer skip analysis during market closed hours
+      // Users installing after hours should still see the AI working with cached/last-known data
+      const marketClosed = !isMarketOpen()
+      if (marketClosed) {
+        console.log('[Heartbeat] Market closed - AI analysis will use last available data')
       }
 
-      console.log(`[Heartbeat] Running AI analysis for ${symbol}`)
+      console.log(`[Heartbeat] Running AI analysis for ${symbol}${marketClosed ? ' (market closed)' : ''}`)
 
       // Notify UI that analysis is starting (for animation)
       if (showProgress) {
