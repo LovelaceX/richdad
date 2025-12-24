@@ -9,7 +9,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m
 const News = lazy(() => import('./pages/News').then(m => ({ default: m.News })))
 const EconomicCalendar = lazy(() => import('./pages/EconomicCalendar').then(m => ({ default: m.EconomicCalendar })))
 const Backtest = lazy(() => import('./pages/Backtest').then(m => ({ default: m.Backtest })))
-const Settings = lazy(() => import('./pages/Settings').then(m => ({ default: m.Settings })))
+const Settings = lazy(() => import('./pages/Settings/Settings').then(m => ({ default: m.Settings })))
 import { useSettingsStore } from './stores/settingsStore'
 import { useMarketStore } from './stores/marketStore'
 import { useDataHeartbeat } from './hooks/useDataHeartbeat'
@@ -70,9 +70,8 @@ export default function App() {
     const checkOnboarding = async () => {
       const settings = await getSettings()
       const needsOnboarding = !settings.hasCompletedOnboarding &&
-                             !settings.alphaVantageApiKey &&
-                             !settings.polygonApiKey &&
-                             !settings.finnhubApiKey
+                             !settings.twelvedataApiKey &&
+                             !settings.polygonApiKey
       setShowWizard(needsOnboarding)
       setIsCheckingOnboarding(false)
     }

@@ -289,7 +289,8 @@ class DataHeartbeatService {
             break
           case 'percent_up': {
             const priceData = this.lastPrices.get(alert.symbol)
-            if (priceData) {
+            // Guard against division by zero
+            if (priceData && priceData.price > 0) {
               const percentChange = ((currentPrice - priceData.price) / priceData.price) * 100
               shouldTrigger = percentChange >= alert.value
             }
@@ -297,7 +298,8 @@ class DataHeartbeatService {
           }
           case 'percent_down': {
             const priceData = this.lastPrices.get(alert.symbol)
-            if (priceData) {
+            // Guard against division by zero
+            if (priceData && priceData.price > 0) {
               const percentChange = ((priceData.price - currentPrice) / priceData.price) * 100
               shouldTrigger = percentChange >= alert.value
             }

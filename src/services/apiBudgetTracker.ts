@@ -1,37 +1,25 @@
 /**
  * API Budget Tracker
- * Tracks API usage across ALL market data providers with tier-aware limits
+ * Tracks API usage across market data providers with tier-aware limits
  *
  * Supported Providers:
- * - Alpha Vantage: Free (25/day, 5/min) | Premium (unlimited)
- * - Finnhub: Free (60/min) | Premium (300/min)
- * - Polygon: Free (5/min) | Starter (100/min) | Developer (1K/min) | Advanced (unlimited)
  * - TwelveData: Free (8/min, 800/day) | Basic (30/min, 5K/day) | Pro (80/min, unlimited)
- *
- * Budget Split (Alpha Vantage Free):
- * - Market Data: 23 calls/day (BATCH_STOCK_QUOTES for SPY + top 9, hourly cache)
- * - Chart Data: 1 call/day (TIME_SERIES_INTRADAY for SPY 5-min, 24h cache)
- *               Other symbols use TIME_SERIES_DAILY (same budget)
- * - News: 1 call/day (hybrid RSS + Alpha Vantage fallback)
- * TOTAL: 25 calls/day
+ * - Polygon: Free (5/min) | Starter (100/min) | Developer (1K/min) | Advanced (unlimited)
+ * - Finnhub: Free (60/min) | Premium (300/min) - Used for Economic Calendar + News only
  *
  * Fallback Strategy:
  * When primary provider is exhausted, falls back to:
  * 1. Cached data (if < 24h old)
  * 2. Alternative provider (if configured)
- * 3. Mock data (last resort)
+ * 3. Empty state (no mock data)
  */
 
 const STORAGE_KEY = 'richdad_api_budget'
 
 export interface BudgetTracker {
-  // Alpha Vantage (daily)
-  marketCallsToday: number
-  chartCallsToday: number
-  newsCallsToday: number
-  lastResetDate: string // ISO date (YYYY-MM-DD)
+  lastResetDate: string // ISO date (YYYY-MM-DD) for daily resets
 
-  // Finnhub (minute-based)
+  // Finnhub (minute-based) - for Economic Calendar + News
   finnhubCallsThisMinute: number
   finnhubMinuteWindow: number  // Unix timestamp in minutes
 
@@ -44,11 +32,6 @@ export interface BudgetTracker {
   twelveDataMinuteWindow: number
   twelveDataCallsToday: number
 }
-
-// Alpha Vantage limits
-const MAX_MARKET_CALLS_PER_DAY = 23  // Reduced from 24
-const MAX_CHART_CALLS_PER_DAY = 1    // NEW - for historical data
-const MAX_NEWS_CALLS_PER_DAY = 1
 
 // Finnhub limits by tier
 const FINNHUB_LIMITS = {
@@ -130,9 +113,6 @@ function initializeBudget(): BudgetTracker {
     if (!stored) {
       // First time, create fresh budget
       return {
-        marketCallsToday: 0,
-        chartCallsToday: 0,
-        newsCallsToday: 0,
         lastResetDate: today,
         finnhubCallsThisMinute: 0,
         finnhubMinuteWindow: currentMinute,
@@ -161,9 +141,6 @@ function initializeBudget(): BudgetTracker {
   } catch (error) {
     console.error('[API Budget] Failed to load from localStorage:', error)
     return {
-      marketCallsToday: 0,
-      chartCallsToday: 0,
-      newsCallsToday: 0,
       lastResetDate: today,
       finnhubCallsThisMinute: 0,
       finnhubMinuteWindow: currentMinute,
@@ -190,12 +167,9 @@ function getBudget(): BudgetTracker {
   const today = new Date().toISOString().split('T')[0]
   const currentMinute = getCurrentMinuteWindow()
 
-  // Check for daily reset (midnight)
+  // Check for daily reset (midnight) - TwelveData has daily limits
   if (budgetSingleton.lastResetDate !== today) {
     console.log('[API Budget] New day detected, resetting daily counters')
-    budgetSingleton.marketCallsToday = 0
-    budgetSingleton.chartCallsToday = 0
-    budgetSingleton.newsCallsToday = 0
     budgetSingleton.twelveDataCallsToday = 0
     budgetSingleton.lastResetDate = today
     schedulePersist()
@@ -273,114 +247,6 @@ function saveBudget(_budget: BudgetTracker): void {
 }
 
 /**
- * Check if we can make an Alpha Vantage news call today
- */
-export function canUseAlphaVantageForNews(): boolean {
-  const budget = loadBudget()
-  const canUse = budget.newsCallsToday < MAX_NEWS_CALLS_PER_DAY
-
-  if (!canUse) {
-    console.warn(`[API Budget] News budget exhausted (${budget.newsCallsToday}/${MAX_NEWS_CALLS_PER_DAY} used today)`)
-  }
-
-  return canUse
-}
-
-/**
- * Check if we can make an Alpha Vantage market data call today
- */
-export function canUseAlphaVantageForMarket(): boolean {
-  const budget = loadBudget()
-  const canUse = budget.marketCallsToday < MAX_MARKET_CALLS_PER_DAY
-
-  if (!canUse) {
-    console.warn(`[API Budget] Market budget exhausted (${budget.marketCallsToday}/${MAX_MARKET_CALLS_PER_DAY} used today)`)
-  }
-
-  return canUse
-}
-
-/**
- * Check if we can make an Alpha Vantage chart data call today
- */
-export function canUseAlphaVantageForCharts(): boolean {
-  const budget = loadBudget()
-  const canUse = budget.chartCallsToday < MAX_CHART_CALLS_PER_DAY
-
-  if (!canUse) {
-    console.warn(`[API Budget] Chart budget exhausted (${budget.chartCallsToday}/${MAX_CHART_CALLS_PER_DAY} used today)`)
-  }
-
-  return canUse
-}
-
-/**
- * Record a news API call
- */
-export function recordNewsCall(): void {
-  const budget = loadBudget()
-  budget.newsCallsToday += 1
-  saveBudget(budget)
-
-  // Debug logging for testing
-  console.log(`[API Budget] News call recorded: ${budget.newsCallsToday}/${MAX_NEWS_CALLS_PER_DAY} used today`)
-}
-
-/**
- * Record a market data API call
- */
-export function recordMarketCall(): void {
-  const budget = loadBudget()
-  budget.marketCallsToday += 1
-  saveBudget(budget)
-
-  // Debug logging for testing
-  console.log(`[API Budget] Market call recorded: ${budget.marketCallsToday}/${MAX_MARKET_CALLS_PER_DAY} used today`)
-}
-
-/**
- * Record a chart data API call
- */
-export function recordChartCall(): void {
-  const budget = loadBudget()
-  budget.chartCallsToday += 1
-  saveBudget(budget)
-
-  // Debug logging for testing
-  console.log(`[API Budget] Chart call recorded: ${budget.chartCallsToday}/${MAX_CHART_CALLS_PER_DAY} used today`)
-}
-
-/**
- * Get current budget status (for UI display)
- */
-export function getBudgetStatus(): {
-  marketCallsUsed: number
-  marketCallsRemaining: number
-  chartCallsUsed: number
-  chartCallsRemaining: number
-  newsCallsUsed: number
-  newsCallsRemaining: number
-  resetsAt: string
-} {
-  const budget = loadBudget()
-
-  // Calculate reset time (midnight tonight)
-  const tomorrow = new Date()
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  tomorrow.setHours(0, 0, 0, 0)
-
-  return {
-    marketCallsUsed: budget.marketCallsToday,
-    marketCallsRemaining: Math.max(0, MAX_MARKET_CALLS_PER_DAY - budget.marketCallsToday),
-    chartCallsUsed: budget.chartCallsToday,
-    chartCallsRemaining: Math.max(0, MAX_CHART_CALLS_PER_DAY - budget.chartCallsToday),
-    newsCallsUsed: budget.newsCallsToday,
-    newsCallsRemaining: Math.max(0, MAX_NEWS_CALLS_PER_DAY - budget.newsCallsToday),
-    resetsAt: tomorrow.toISOString()
-  }
-}
-
-/**
  * Reset budget manually (for testing)
  * NOT exported by default - only used in tests
  */
@@ -390,9 +256,6 @@ export function __resetBudgetForTesting(): void {
 
   // Reset the singleton directly
   budgetSingleton = {
-    marketCallsToday: 0,
-    chartCallsToday: 0,
-    newsCallsToday: 0,
     lastResetDate: today,
     finnhubCallsThisMinute: 0,
     finnhubMinuteWindow: currentMinute,
@@ -615,30 +478,17 @@ export interface ProviderBudgetStatus {
 export function getAllProvidersBudgetStatus(): ProviderBudgetStatus[] {
   const statuses: ProviderBudgetStatus[] = []
 
-  // Alpha Vantage (daily limits)
-  const avStatus = getBudgetStatus()
+  // TwelveData (show daily limit as primary - recommended free tier)
+  const tdStatus = getTwelveDataBudgetStatus()
   statuses.push({
-    provider: 'Alpha Vantage',
-    used: avStatus.marketCallsUsed + avStatus.chartCallsUsed + avStatus.newsCallsUsed,
-    limit: MAX_MARKET_CALLS_PER_DAY + MAX_CHART_CALLS_PER_DAY + MAX_NEWS_CALLS_PER_DAY,
-    remaining: avStatus.marketCallsRemaining + avStatus.chartCallsRemaining + avStatus.newsCallsRemaining,
-    tier: 'free',
+    provider: 'TwelveData',
+    used: tdStatus.dailyUsed,
+    limit: tdStatus.dailyLimit,
+    remaining: tdStatus.dailyRemaining,
+    tier: tdStatus.tier,
     type: 'daily',
-    isUnlimited: false,
-    percentUsed: Math.round(((avStatus.marketCallsUsed + avStatus.chartCallsUsed + avStatus.newsCallsUsed) / 25) * 100)
-  })
-
-  // Finnhub
-  const finnhubStatus = getFinnhubBudgetStatus()
-  statuses.push({
-    provider: 'Finnhub',
-    used: finnhubStatus.used,
-    limit: finnhubStatus.limit,
-    remaining: finnhubStatus.remaining,
-    tier: finnhubStatus.tier,
-    type: 'minute',
-    isUnlimited: false,
-    percentUsed: Math.round((finnhubStatus.used / finnhubStatus.limit) * 100)
+    isUnlimited: tdStatus.isDailyUnlimited,
+    percentUsed: tdStatus.isDailyUnlimited ? 0 : Math.round((tdStatus.dailyUsed / tdStatus.dailyLimit) * 100)
   })
 
   // Polygon
@@ -654,17 +504,17 @@ export function getAllProvidersBudgetStatus(): ProviderBudgetStatus[] {
     percentUsed: polygonStatus.isUnlimited ? 0 : Math.round((polygonStatus.used / polygonStatus.limit) * 100)
   })
 
-  // TwelveData (show daily limit as primary)
-  const tdStatus = getTwelveDataBudgetStatus()
+  // Finnhub (for Economic Calendar + News)
+  const finnhubStatus = getFinnhubBudgetStatus()
   statuses.push({
-    provider: 'TwelveData',
-    used: tdStatus.dailyUsed,
-    limit: tdStatus.dailyLimit,
-    remaining: tdStatus.dailyRemaining,
-    tier: tdStatus.tier,
-    type: 'daily',
-    isUnlimited: tdStatus.isDailyUnlimited,
-    percentUsed: tdStatus.isDailyUnlimited ? 0 : Math.round((tdStatus.dailyUsed / tdStatus.dailyLimit) * 100)
+    provider: 'Finnhub',
+    used: finnhubStatus.used,
+    limit: finnhubStatus.limit,
+    remaining: finnhubStatus.remaining,
+    tier: finnhubStatus.tier,
+    type: 'minute',
+    isUnlimited: false,
+    percentUsed: Math.round((finnhubStatus.used / finnhubStatus.limit) * 100)
   })
 
   return statuses

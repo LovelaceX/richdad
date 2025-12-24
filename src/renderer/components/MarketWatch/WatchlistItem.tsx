@@ -54,29 +54,29 @@ export const WatchlistItem = memo(function WatchlistItem({ item, isSelected, onC
         {quote ? formatPercent(quote.changePercent) : '—'}
       </span>
 
-      {/* Data freshness indicator */}
-      {quote && (
-        <FreshnessBadge
-          isFresh={quote.isFresh}
-          cacheAge={quote.cacheAge}
-          className="ml-2 flex-shrink-0"
-        />
-      )}
+      {/* Data freshness indicator - fixed width column */}
+      <div className="w-12 flex-shrink-0 flex justify-center">
+        {quote && (
+          <FreshnessBadge
+            isFresh={quote.isFresh}
+            cacheAge={quote.cacheAge}
+          />
+        )}
+      </div>
 
-      {/* Spacer */}
-      <div className="flex-1" />
-
-      {/* Delete button - only visible on hover for non-Top10 items */}
-      {!isTop10 && (
-        <button
-          onClick={handleDelete}
-          className="p-0.5 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded transition-all flex-shrink-0 opacity-0 group-hover:opacity-100"
-          title="Remove from watchlist"
-          aria-label={`Remove ${item.symbol} from watchlist`}
-        >
-          <X size={12} />
-        </button>
-      )}
+      {/* Delete button column - fixed width, always present for alignment */}
+      <div className="w-5 flex-shrink-0 flex justify-center">
+        {!isTop10 && (
+          <button
+            onClick={handleDelete}
+            className="p-0.5 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded transition-all opacity-0 group-hover:opacity-100"
+            title="Remove from watchlist"
+            aria-label={`Remove ${item.symbol} from watchlist`}
+          >
+            <X size={12} />
+          </button>
+        )}
+      </div>
     </div>
   )
 })

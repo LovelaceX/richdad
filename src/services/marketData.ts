@@ -3,11 +3,6 @@ import type { Quote } from '../renderer/types'
 import type { DataProvider, DataSource } from '../renderer/stores/marketStore'
 import type { CandleData } from './technicalIndicators'
 import {
-  canUseAlphaVantageForMarket,
-  canUseAlphaVantageForCharts,
-  recordMarketCall,
-  recordChartCall,
-  getBudgetStatus,
   canUsePolygon,
   recordPolygonCall,
   canUseTwelveData,
@@ -15,8 +10,6 @@ import {
 } from './apiBudgetTracker'
 import { fetchPolygonQuotes, fetchPolygonHistorical, fetchPolygonHistoricalRange } from './polygonService'
 import { fetchTwelveDataBatchQuotes, fetchTwelveDataCandles } from './twelveDataService'
-
-const ALPHA_VANTAGE_BASE_URL = 'https://www.alphavantage.co/query'
 
 // ==========================================
 // RETRY LOGIC WITH EXPONENTIAL BACKOFF
@@ -193,10 +186,8 @@ export function formatApiError(error: unknown, provider: string): string {
 }
 
 const CACHE_DURATION_MS = 3600000 // 1 hour (3600 seconds)
-const RATE_LIMIT_DELAY_MS = 12000 // 5 calls/min = 12s between calls
 const FRESH_THRESHOLD_MS = 60000 // Data older than 1 minute is not "fresh"
 
-let lastCallTime = 0
 let cachedQuotes: Quote[] = []
 let cacheTimestamp = 0
 
@@ -249,7 +240,6 @@ const MAX_HISTORICAL_CACHE_ENTRIES = 50
 let cachedHistoricalData: Map<string, CandleData[]> = new Map()
 let historicalCacheTimestamps: Map<string, number> = new Map()
 let historicalCacheLRU: string[] = [] // Track access order for LRU eviction
-const HISTORICAL_CACHE_DURATION_MS = 86400000 // 24 hours
 
 /**
  * Track historical cache access for LRU cleanup
@@ -420,101 +410,9 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
     return []
   }
 
-  // Alpha Vantage path
-  const apiKey = settings.alphaVantageApiKey
-
-  // No API key configured
-  if (!apiKey) {
-    console.warn('[Market Data] No Alpha Vantage API key configured')
-    return [] // No data available - UI will show setup prompt
-  }
-
-  // Check cache first (1-hour cache)
-  const now = Date.now()
-  const currentCacheAge = now - cacheTimestamp
-
-  if (cachedQuotes.length > 0 && currentCacheAge < CACHE_DURATION_MS) {
-    console.log(`[Market Data] Serving from cache (age: ${Math.round(currentCacheAge / 60000)}m ${Math.round((currentCacheAge % 60000) / 1000)}s)`)
-    return addCacheMetadata(cachedQuotes, 'cache', currentCacheAge)
-  }
-
-  // Check API budget before making call
-  if (!canUseAlphaVantageForMarket()) {
-    console.warn('[Market Data] Budget exhausted, serving from stale cache')
-    if (cachedQuotes.length > 0) {
-      return addCacheMetadata(cachedQuotes, 'stale', currentCacheAge)
-    }
-    return [] // Budget exhausted, no cache - UI will show error state
-  }
-
-  try {
-    // Respect rate limit (5 calls/min)
-    const timeSinceLastCall = now - lastCallTime
-    if (timeSinceLastCall < RATE_LIMIT_DELAY_MS) {
-      await new Promise(resolve =>
-        setTimeout(resolve, RATE_LIMIT_DELAY_MS - timeSinceLastCall)
-      )
-    }
-    lastCallTime = Date.now()
-
-    // Batch quote endpoint (up to 100 symbols)
-    const symbolsParam = symbols.join(',')
-    const url = `${ALPHA_VANTAGE_BASE_URL}?function=BATCH_STOCK_QUOTES&symbols=${symbolsParam}&apikey=${apiKey}`
-
-    // Fetch with retry logic
-    const data = await withRetry(async () => {
-      const response = await fetch(url)
-
-      if (!response.ok) {
-        throw new Error(`Alpha Vantage API error: ${response.status}`)
-      }
-
-      const json = await response.json()
-
-      // Check for API error messages
-      if (json['Error Message']) {
-        throw new Error(json['Error Message'])
-      }
-
-      // Check for rate limit message
-      if (json['Note']) {
-        console.warn('Alpha Vantage rate limit hit:', json['Note'])
-        throw new Error('Rate limit exceeded')
-      }
-
-      return json
-    })
-
-    // Parse batch quotes
-    const quotes: Quote[] = data['Stock Quotes']?.map((item: any) => ({
-      symbol: item['1. symbol'],
-      price: parseFloat(item['2. price']),
-      change: parseFloat(item['3. change'] || '0'),
-      changePercent: parseFloat(item['4. change percent']?.replace('%', '') || '0'),
-      volume: parseInt(item['5. volume'] || '0', 10),
-      timestamp: Date.now()
-    })) || []
-
-    // Update cache
-    cachedQuotes = quotes
-    cacheTimestamp = Date.now()
-    console.log('[Market Data] Cache updated, fresh data fetched')
-
-    // Record API call in budget tracker
-    recordMarketCall()
-
-    return addCacheMetadata(quotes, 'api', 0)
-
-  } catch (error) {
-    console.error('Failed to fetch live prices after retries:', error)
-    // If we have stale cache, return it
-    if (cachedQuotes.length > 0) {
-      console.warn('[Market Data] Using stale cache due to API error')
-      const staleCacheAge = Date.now() - cacheTimestamp
-      return addCacheMetadata(cachedQuotes, 'stale', staleCacheAge)
-    }
-    return [] // No data available - UI will show error state
-  }
+  // Unknown provider - return empty (shouldn't happen with valid settings)
+  console.warn(`[Market Data] Unknown provider: ${provider}, no data available`)
+  return []
 }
 
 // Cache status type for UI display
@@ -530,53 +428,12 @@ export type CacheStatus = {
 export function getCacheStatus(): CacheStatus {
   const age = Date.now() - cacheTimestamp
   const isFresh = age < CACHE_DURATION_MS
-  const budget = getBudgetStatus()
 
   return {
     age,
     isFresh,
-    budgetRemaining: budget.marketCallsRemaining
+    budgetRemaining: -1 // Budget tracking is per-provider now, not global
   }
-}
-
-// Map custom intervals to base intervals for API calls
-const INTERVAL_MAPPING: Record<string, { baseInterval: string; aggregateCount: number }> = {
-  '1min': { baseInterval: '1min', aggregateCount: 1 },
-  '5min': { baseInterval: '5min', aggregateCount: 1 },
-  '15min': { baseInterval: '15min', aggregateCount: 1 },
-  '30min': { baseInterval: '30min', aggregateCount: 1 },
-  '45min': { baseInterval: '15min', aggregateCount: 3 },  // 3 x 15min = 45min
-  '60min': { baseInterval: '60min', aggregateCount: 1 },
-  '120min': { baseInterval: '60min', aggregateCount: 2 }, // 2 x 60min = 2H
-  '240min': { baseInterval: '60min', aggregateCount: 4 }, // 4 x 60min = 4H
-  '300min': { baseInterval: '60min', aggregateCount: 5 }, // 5 x 60min = 5H
-  'daily': { baseInterval: 'daily', aggregateCount: 1 },
-  'weekly': { baseInterval: 'daily', aggregateCount: 5 }, // 5 trading days = 1 week
-}
-
-/**
- * Aggregate candles into larger timeframes
- */
-function aggregateCandles(candles: CandleData[], count: number): CandleData[] {
-  if (count <= 1) return candles
-
-  const aggregated: CandleData[] = []
-
-  for (let i = 0; i < candles.length; i += count) {
-    const group = candles.slice(i, i + count)
-    if (group.length === 0) continue
-
-    aggregated.push({
-      time: group[0].time, // Use first candle's time
-      open: group[0].open,
-      high: Math.max(...group.map(c => c.high)),
-      low: Math.min(...group.map(c => c.low)),
-      close: group[group.length - 1].close,
-      volume: group.reduce((sum, c) => sum + (c.volume ?? 0), 0)
-    })
-  }
-
-  return aggregated
 }
 
 /**
@@ -746,135 +603,11 @@ async function fetchHistoricalDataInternal(
     }
   }
 
-  // Alpha Vantage path below
-  // Get base interval and aggregation config
-  const mapping = INTERVAL_MAPPING[interval] || { baseInterval: interval, aggregateCount: 1 }
-  const { baseInterval, aggregateCount } = mapping
-
-  // Check 24h cache first (cache key includes interval)
-  const cacheKey = `${symbol}-${interval}`
-  const cached = cachedHistoricalData.get(cacheKey)
-  const cacheTime = historicalCacheTimestamps.get(cacheKey) || 0
-  const cacheAge = Date.now() - cacheTime
-
-  if (cached && cacheAge < HISTORICAL_CACHE_DURATION_MS) {
-    console.log(`[Market Data] Serving ${symbol} (${interval}) chart from cache (age: ${Math.round(cacheAge / 3600000)}h)`)
-    return {
-      candles: cached,
-      source: createDataSource('alphavantage', false, cacheAge)
-    }
-  }
-
-  // Check API budget before making call
-  if (!canUseAlphaVantageForCharts()) {
-    console.warn('[Market Data] Chart budget exhausted, serving from stale cache')
-
-    if (cached) {
-      console.log('[Market Data] Returning stale cached data (budget exhausted)')
-      return {
-        candles: cached,
-        source: createDataSource('alphavantage', false, cacheAge)
-      }
-    }
-
-    // No cache available
-    return {
-      candles: [], // Budget exhausted, no cache - UI will show error state
-      source: createDataSource(null, false, 0)
-    }
-  }
-
-  const apiKey = settings.alphaVantageApiKey
-
-  if (!apiKey) {
-    console.warn('[Market Data] No API key configured')
-    return {
-      candles: [], // No data - UI will show setup prompt
-      source: createDataSource(null, false, 0)
-    }
-  }
-
-  try {
-    const functionName = baseInterval === 'daily'
-      ? 'TIME_SERIES_DAILY'
-      : 'TIME_SERIES_INTRADAY'
-
-    console.log(`[Market Data] Fetching historical data for ${symbol} (${interval}, base: ${baseInterval})`)
-
-    const params = new URLSearchParams({
-      function: functionName,
-      symbol,
-      apikey: apiKey,
-      ...(baseInterval !== 'daily' ? { interval: baseInterval } : {})
-    })
-
-    // Fetch with retry logic
-    const data = await withRetry(async () => {
-      const response = await fetch(`${ALPHA_VANTAGE_BASE_URL}?${params}`)
-      return response.json()
-    })
-
-    // Parse time series data
-    const timeSeriesKey = Object.keys(data).find(key => key.includes('Time Series'))
-    if (!timeSeriesKey) throw new Error('No time series data in response')
-
-    const timeSeries = data[timeSeriesKey]
-
-    // Transform to CandleData format
-    const candles = Object.entries(timeSeries).map(([date, values]: [string, any]) => ({
-      time: new Date(date).getTime() / 1000, // lightweight-charts expects seconds
-      open: parseFloat(values['1. open']),
-      high: parseFloat(values['2. high']),
-      low: parseFloat(values['3. low']),
-      close: parseFloat(values['4. close']),
-      volume: parseInt(values['5. volume'], 10)
-    }))
-
-    // Sort oldest to newest (required by lightweight-charts)
-    candles.sort((a, b) => a.time - b.time)
-
-    // Slice based on interval type
-    let filtered: any[]
-
-    if (baseInterval !== 'daily') {
-      // For intraday intervals: Show all available candles
-      filtered = candles
-      console.log(`[Market Data] Fetched ${filtered.length} base candles (${baseInterval} interval)`)
-    } else {
-      // For daily/weekly: Slice to last 90 days
-      const ninetyDaysAgo = Date.now() / 1000 - (90 * 24 * 60 * 60)
-      filtered = candles.filter(c => c.time >= ninetyDaysAgo)
-      console.log(`[Market Data] Filtered to ${filtered.length} daily candles (last 90 days)`)
-    }
-
-    // Aggregate if needed (for 45min, 2H, 4H, 5H, weekly)
-    if (aggregateCount > 1) {
-      filtered = aggregateCandles(filtered, aggregateCount)
-      console.log(`[Market Data] Aggregated to ${filtered.length} candles (${aggregateCount}x aggregation for ${interval})`)
-    }
-
-    // Cache the result for 24 hours
-    cachedHistoricalData.set(cacheKey, filtered)
-    historicalCacheTimestamps.set(cacheKey, Date.now())
-    trackHistoricalCacheAccess(cacheKey) // LRU tracking
-    console.log(`[Market Data] Cached ${filtered.length} candles for ${symbol} (${interval})`)
-
-    // Record API call in budget tracker
-    recordChartCall()
-
-    return {
-      candles: filtered,
-      source: createDataSource('alphavantage', false, 0)
-    }
-
-  } catch (error) {
-    console.error(`[Market Data] Historical data fetch failed for ${symbol} after retries:`, error)
-
-    // No data available
-    return {
-      candles: [], // API failed - UI will show error state
-      source: createDataSource(null, false, 0)
-    }
+  // Unknown provider - return empty (shouldn't happen with valid settings)
+  console.warn(`[Market Data] Unknown provider: ${provider}, no chart data available`)
+  return {
+    candles: [],
+    source: createDataSource(null, false, 0)
   }
 }
 

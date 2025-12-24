@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { X, AlertTriangle } from 'lucide-react'
-import { getBudgetStatus } from '../../../services/apiBudgetTracker'
+import { getTwelveDataBudgetStatus, getPolygonBudgetStatus } from '../../../services/apiBudgetTracker'
 import { getSettings } from '../../lib/db'
 
 interface ProviderStatus {
@@ -17,36 +17,32 @@ export function APIBudgetAlert() {
   useEffect(() => {
     const checkAllProviders = async () => {
       const statuses: ProviderStatus[] = []
+      const settings = await getSettings()
 
-      // Alpha Vantage
-      const budget = getBudgetStatus()
-      if (budget) {
-        const avUsed = budget.marketCallsUsed + budget.chartCallsUsed
-        statuses.push({
-          provider: 'Alpha Vantage',
-          used: avUsed,
-          limit: 25,
-          percentage: (avUsed / 25) * 100
-        })
+      // TwelveData (check if configured)
+      if (settings?.twelvedataApiKey) {
+        const tdStatus = getTwelveDataBudgetStatus()
+        if (!tdStatus.isDailyUnlimited) {
+          statuses.push({
+            provider: 'TwelveData',
+            used: tdStatus.dailyUsed,
+            limit: tdStatus.dailyLimit,
+            percentage: (tdStatus.dailyUsed / tdStatus.dailyLimit) * 100
+          })
+        }
       }
 
-      // TwelveData
-      try {
-        const settings = await getSettings()
-        if (settings?.twelvedataApiKey) {
-          const { getTwelveDataUsage } = await import('../../../services/twelveDataService')
-          const usage = await getTwelveDataUsage(settings.twelvedataApiKey)
-          if (usage) {
-            statuses.push({
-              provider: 'TwelveData',
-              used: usage.dailyUsage,
-              limit: usage.dailyLimit,
-              percentage: (usage.dailyUsage / usage.dailyLimit) * 100
-            })
-          }
+      // Polygon (check if configured)
+      if (settings?.polygonApiKey) {
+        const polygonStatus = getPolygonBudgetStatus()
+        if (!polygonStatus.isUnlimited) {
+          statuses.push({
+            provider: 'Polygon',
+            used: polygonStatus.used,
+            limit: polygonStatus.limit,
+            percentage: (polygonStatus.used / polygonStatus.limit) * 100
+          })
         }
-      } catch (error) {
-        console.error('[APIBudgetAlert] Failed to fetch TwelveData usage:', error)
       }
 
       setProviderStatuses(statuses)

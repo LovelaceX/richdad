@@ -99,28 +99,40 @@ export async function fetchPolygonQuotes(symbols: string[], apiKey: string): Pro
       return await fetchPolygonQuotesFallback(symbols, apiKey)
     }
 
-    const quotes: Quote[] = data.tickers.map((ticker: any) => {
-      const day = ticker.day || {}
-      const prevDay = ticker.prevDay || {}
-      const price = day.c || prevDay.c || 0
-      const open = day.o || prevDay.o || price
-      const previousClose = prevDay.c || price
-      const change = price - previousClose
-      const changePercent = previousClose > 0 ? ((change / previousClose) * 100) : 0
+    // Type for Polygon ticker response
+    interface PolygonTicker {
+      ticker: string
+      day?: { o?: number; h?: number; l?: number; c?: number; v?: number }
+      prevDay?: { c?: number; o?: number; h?: number; l?: number; v?: number }
+      updated?: number
+    }
 
-      return {
-        symbol: ticker.ticker,
-        price,
-        change,
-        changePercent,
-        volume: day.v || prevDay.v || 0,
-        high: day.h || prevDay.h || price,
-        low: day.l || prevDay.l || price,
-        open,
-        previousClose,
-        timestamp: ticker.updated || Date.now()
-      }
-    })
+    const quotes: Quote[] = (data.tickers as PolygonTicker[])
+      .map((ticker) => {
+        const day = ticker.day || {}
+        const prevDay = ticker.prevDay || {}
+        const price = day.c || prevDay.c || 0
+        const open = day.o || prevDay.o || price
+        const previousClose = prevDay.c || price
+        const change = price - previousClose
+        // Guard against division by zero
+        const changePercent = previousClose > 0 ? ((change / previousClose) * 100) : 0
+
+        return {
+          symbol: ticker.ticker,
+          price,
+          change,
+          changePercent,
+          volume: day.v || prevDay.v || 0,
+          high: day.h || prevDay.h || price,
+          low: day.l || prevDay.l || price,
+          open,
+          previousClose,
+          timestamp: ticker.updated || Date.now()
+        }
+      })
+      // Filter out quotes with invalid symbols or zero prices
+      .filter(q => q.symbol && q.price > 0)
 
     // Update cache
     if (quotes.length > 0) {

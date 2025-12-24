@@ -81,6 +81,21 @@ class WebSocketService {
     return new Promise((resolve) => {
       this.updateState('connecting')
 
+      // Track timers for proper cleanup in all exit paths
+      let connectionTimeout: NodeJS.Timeout | null = null
+      let checkAuth: NodeJS.Timeout | null = null
+
+      const cleanupTimers = () => {
+        if (connectionTimeout) {
+          clearTimeout(connectionTimeout)
+          connectionTimeout = null
+        }
+        if (checkAuth) {
+          clearInterval(checkAuth)
+          checkAuth = null
+        }
+      }
+
       try {
         this.ws = new WebSocket(this.WS_URL)
 
@@ -96,12 +111,14 @@ class WebSocketService {
 
         this.ws.onerror = (error) => {
           console.error('[WebSocket] Error:', error)
+          cleanupTimers() // Clear timers on error
           this.updateState('failed', 'Connection error')
           resolve(false)
         }
 
         this.ws.onclose = (event) => {
           console.log(`[WebSocket] Connection closed: ${event.code} ${event.reason}`)
+          cleanupTimers() // Clear timers on close
           this.stopHeartbeat()
 
           if (this.state !== 'disconnected') {
@@ -111,9 +128,10 @@ class WebSocketService {
         }
 
         // Set up a timeout for connection
-        const connectionTimeout = setTimeout(() => {
+        connectionTimeout = setTimeout(() => {
           if (this.state === 'connecting' || this.state === 'authenticating') {
             console.warn('[WebSocket] Connection timeout')
+            cleanupTimers()
             this.ws?.close()
             this.updateState('failed', 'Connection timeout')
             resolve(false)
@@ -121,20 +139,19 @@ class WebSocketService {
         }, 10000) // 10 second timeout
 
         // Resolve true when authenticated
-        const checkAuth = setInterval(() => {
+        checkAuth = setInterval(() => {
           if (this.state === 'connected') {
-            clearInterval(checkAuth)
-            clearTimeout(connectionTimeout)
+            cleanupTimers()
             resolve(true)
           } else if (this.state === 'failed' || this.state === 'disconnected') {
-            clearInterval(checkAuth)
-            clearTimeout(connectionTimeout)
+            cleanupTimers()
             resolve(false)
           }
         }, 100)
 
       } catch (error) {
         console.error('[WebSocket] Failed to create connection:', error)
+        cleanupTimers() // Clear timers on exception
         this.updateState('failed', String(error))
         resolve(false)
       }

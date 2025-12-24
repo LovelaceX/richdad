@@ -2,6 +2,7 @@
  * APIKeysSection
  *
  * Settings section for configuring market data API providers.
+ * Simplified architecture: TwelveData (free) or Polygon (paid)
  */
 
 import { useState } from 'react'
@@ -14,7 +15,6 @@ import {
   updateTierSettings,
   type PolygonTier,
   type TwelveDataTier,
-  type FinnhubTier,
 } from '../../../../services/apiBudgetTracker'
 
 interface APIKeysSectionProps {
@@ -36,18 +36,10 @@ const TWELVEDATA_TIERS: TierOption[] = [
   { value: 'pro', label: 'Pro (80/min, Unlimited daily)' },
 ]
 
-const FINNHUB_TIERS: TierOption[] = [
-  { value: 'free', label: 'Free (60 calls/min)' },
-  { value: 'premium', label: 'Premium (300 calls/min)' },
-]
-
 // Map settings key to provider value for auto-default
-const KEY_TO_PROVIDER: Record<string, 'polygon' | 'alphavantage' | 'twelvedata' | 'finnhub' | 'fasttrack'> = {
+const KEY_TO_PROVIDER: Record<string, 'polygon' | 'twelvedata'> = {
   polygonApiKey: 'polygon',
-  alphaVantageApiKey: 'alphavantage',
   twelvedataApiKey: 'twelvedata',
-  finnhubApiKey: 'finnhub',
-  fasttrackApiKey: 'fasttrack',
 }
 
 export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
@@ -56,20 +48,17 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
   // Get list of configured API keys
   const getConfiguredProviders = (overrides: Partial<UserSettings> = {}) => {
     const merged = { ...settings, ...overrides }
-    const configured: Array<'polygon' | 'alphavantage' | 'twelvedata' | 'finnhub' | 'fasttrack'> = []
+    const configured: Array<'polygon' | 'twelvedata'> = []
 
     if (merged.polygonApiKey) configured.push('polygon')
-    if (merged.alphaVantageApiKey) configured.push('alphavantage')
     if (merged.twelvedataApiKey) configured.push('twelvedata')
-    if (merged.finnhubApiKey) configured.push('finnhub')
-    if (merged.fasttrackApiKey) configured.push('fasttrack')
 
     return configured
   }
 
   // Handler to update API tier and sync with budget tracker
   const handleTierChange = async (
-    provider: 'polygon' | 'alphaVantage' | 'twelveData' | 'finnhub',
+    provider: 'polygon' | 'twelveData',
     tier: string
   ) => {
     const newTiers = {
@@ -84,7 +73,6 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
     updateTierSettings({
       polygon: newTiers.polygon as PolygonTier,
       twelveData: newTiers.twelveData as TwelveDataTier,
-      finnhub: newTiers.finnhub as FinnhubTier,
     })
   }
 
@@ -109,8 +97,8 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
 
   return (
     <div>
-      <h2 className="text-white text-lg font-medium mb-1">API Keys</h2>
-      <p className="text-gray-500 text-sm mb-6">Configure market data providers</p>
+      <h2 className="text-white text-lg font-medium mb-1">Market Data</h2>
+      <p className="text-gray-500 text-sm mb-6">Configure market data providers for quotes and charts</p>
 
       {/* Setup Wizard Button */}
       <button
@@ -135,68 +123,39 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
           </div>
 
           <p className="text-gray-400 text-xs mb-4">
-            Choose which provider to use for market data. Others will be used as fallbacks.
+            Choose which provider to use for market data. TwelveData is recommended for free users.
           </p>
 
           <select
-            value={settings.marketDataProvider || 'polygon'}
+            value={settings.marketDataProvider || 'twelvedata'}
             onChange={(e) =>
               onSave({
-                marketDataProvider: e.target.value as
-                  | 'polygon'
-                  | 'alphavantage'
-                  | 'finnhub'
-                  | 'fasttrack'
-                  | 'twelvedata',
+                marketDataProvider: e.target.value as 'polygon' | 'twelvedata',
               })
             }
             className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-terminal-amber/50"
           >
-            <option value="polygon">Massive.com (Recommended - 5/min, EOD data)</option>
-            <option value="twelvedata">TwelveData (800/day, real-time, all US markets)</option>
-            <option value="alphavantage">Alpha Vantage (25 calls/day, real-time)</option>
-            <option value="finnhub">Finnhub (60 calls/min)</option>
-            <option value="fasttrack">FastTrack.net (2K/month, 37yr history, analytics)</option>
+            <option value="twelvedata">TwelveData (800/day free - Recommended)</option>
+            <option value="polygon">Polygon (Unlimited - Paid plans)</option>
           </select>
         </div>
 
         <div className="border-t border-terminal-border" />
 
-        {/* Massive.com (Polygon.io) */}
-        <APIKeyProvider
-          provider="polygon"
-          label="Massive.com (Polygon.io)"
-          icon={BarChart3}
-          description="EOD & historical data. Best for charts and backtesting."
-          currentKey={settings.polygonApiKey}
-          onKeyChange={handleKeyChange('polygonApiKey')}
-          signupUrl="https://massive.com/dashboard/signup"
-          signupText="Get free Massive.com API key"
-          badge={{ text: 'Recommended', color: 'amber' }}
-          placeholder="e.g., abc123xyz456"
-          rateLimitInfo="Free tier: 5 calls/min • 2 years historical • EOD data • Best for charts"
-          noKeyMessage="No API key configured"
-          tierOptions={POLYGON_TIERS}
-          currentTier={settings.apiTiers?.polygon || 'free'}
-          onTierChange={(tier) => handleTierChange('polygon', tier)}
-        />
-
-        <div className="border-t border-terminal-border" />
-
-        {/* TwelveData */}
+        {/* TwelveData - Recommended for free users */}
         <APIKeyProvider
           provider="twelvedata"
           label="TwelveData"
           icon={TrendingUp}
-          description="Real-time data, all US markets."
+          description="Real-time data, all US markets. Best free tier for retail traders."
           currentKey={settings.twelvedataApiKey}
           onKeyChange={handleKeyChange('twelvedataApiKey')}
           signupUrl="https://twelvedata.com/register"
           signupText="Get free TwelveData API key"
           badge={{ text: 'Recommended', color: 'amber' }}
           placeholder="Your TwelveData API key"
-          rateLimitInfo="Limit based on tier selection • All US markets supported"
-          noKeyMessage="No API key configured - using fallback providers"
+          rateLimitInfo="Free tier: 800 calls/day, 8/min • All US markets supported"
+          noKeyMessage="No API key configured"
           tierOptions={TWELVEDATA_TIERS}
           currentTier={settings.apiTiers?.twelveData || 'free'}
           onTierChange={(tier) => handleTierChange('twelveData', tier)}
@@ -204,62 +163,23 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
 
         <div className="border-t border-terminal-border" />
 
-        {/* Alpha Vantage */}
+        {/* Polygon - For paid users */}
         <APIKeyProvider
-          provider="alphaVantage"
-          label="Alpha Vantage (Market Data)"
+          provider="polygon"
+          label="Polygon.io"
           icon={BarChart3}
-          description="Free API for real-time stock quotes."
-          currentKey={settings.alphaVantageApiKey}
-          onKeyChange={handleKeyChange('alphaVantageApiKey')}
-          signupUrl="https://www.alphavantage.co/support/#api-key"
-          signupText="Get free Alpha Vantage API key"
-          placeholder="e.g., KXZZ8Y7YJAZMNA41"
-          rateLimitInfo="Free tier: 25 calls/day • We cache data for 1 hour to stay within limits"
-          noKeyMessage="No API key configured - using mock data"
-        />
-
-        <div className="border-t border-terminal-border" />
-
-        {/* Finnhub */}
-        <APIKeyProvider
-          provider="finnhub"
-          label="Finnhub"
-          icon={TrendingUp}
-          description="Alternative market data provider with real-time news."
-          currentKey={settings.finnhubApiKey}
-          onKeyChange={handleKeyChange('finnhubApiKey')}
-          signupUrl="https://finnhub.io/register"
-          signupText="Get free Finnhub API key"
-          placeholder="e.g., abc123xyz456"
-          rateLimitInfo="Limit based on tier selection • Automatic fallback when other providers exhausted"
-          noKeyMessage="No API key configured - Alpha Vantage used as primary"
-          tierOptions={FINNHUB_TIERS}
-          currentTier={settings.apiTiers?.finnhub || 'free'}
-          onTierChange={(tier) => handleTierChange('finnhub', tier)}
-        />
-
-        <div className="border-t border-terminal-border" />
-
-        {/* FastTrack.net */}
-        <APIKeyProvider
-          provider="fasttrack"
-          label="FastTrack.net"
-          icon={TrendingUp}
-          description="40,000+ securities with 37 years of history. Risk metrics: Sharpe, Sortino, Alpha, Beta."
-          currentKey={settings.fasttrackApiKey}
-          onKeyChange={handleKeyChange('fasttrackApiKey')}
-          signupUrl="https://app.fasttrack.net/"
-          signupText="Get free FastTrack API key (2,000 credits/month)"
-          badge={{ text: 'Portfolio Analytics', color: 'purple' }}
-          placeholder="Your FastTrack API key"
-          rateLimitInfo="Free tier: 2,000 API calls/month • 37 years historical data • Risk analytics"
+          description="Unlimited calls with paid subscription. Best for active traders."
+          currentKey={settings.polygonApiKey}
+          onKeyChange={handleKeyChange('polygonApiKey')}
+          signupUrl="https://polygon.io/dashboard/signup"
+          signupText="Get Polygon API key"
+          badge={{ text: 'Paid', color: 'purple' }}
+          placeholder="Your Polygon API key"
+          rateLimitInfo="Free: 5/min (limited) • Paid: Unlimited • Real-time WebSocket streaming"
           noKeyMessage="No API key configured"
-          signupInstructions={[
-            'Sign up at <a href="https://app.fasttrack.net/" target="_blank" rel="noopener noreferrer" class="text-terminal-amber hover:underline">app.fasttrack.net</a>',
-            'Navigate to API Keys section in your dashboard',
-            'Generate a new API key',
-          ]}
+          tierOptions={POLYGON_TIERS}
+          currentTier={settings.apiTiers?.polygon || 'free'}
+          onTierChange={(tier) => handleTierChange('polygon', tier)}
         />
 
         <div className="border-t border-terminal-border" />
@@ -279,6 +199,15 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
           rateLimitInfo="Free: 120 requests/minute • GDP, inflation, unemployment, Fed funds rate"
           noKeyMessage="No API key configured - economic indicators unavailable"
         />
+
+        {/* Info about Finnhub */}
+        <div className="bg-terminal-bg/50 border border-terminal-border/50 rounded-lg p-4">
+          <p className="text-gray-400 text-xs">
+            <span className="text-terminal-amber font-medium">Looking for Economic Calendar or News?</span>
+            <br />
+            Configure your Finnhub API key in Settings → News Sources to enable Economic Calendar and ticker-specific news.
+          </p>
+        </div>
       </div>
 
       {/* Onboarding Wizard Modal */}

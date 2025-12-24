@@ -9,15 +9,28 @@
 
 import type { CandleData } from '../renderer/types'
 import { safeJsonParse } from './safeJson'
+import { canUseTwelveData, recordTwelveDataCall, getTwelveDataBudgetStatus } from './apiBudgetTracker'
 
 const BASE_URL = 'https://api.twelvedata.com'
 
-// Rate limiting: 800 calls/day = ~33/hour = ~0.5/minute
-// But burst of 8 per second allowed
+// Rate limiting: 800 calls/day, 8/min free tier
+// Burst of 8 per second allowed within the minute limit
 let lastCallTime = 0
 const MIN_CALL_INTERVAL = 125 // 8 calls/second max
 
+/**
+ * Fetch with rate limiting AND budget tracking
+ * Enforces both per-second rate limit and daily budget
+ */
 async function rateLimitedFetch(url: string): Promise<Response> {
+  // Check daily budget first
+  if (!canUseTwelveData()) {
+    const status = getTwelveDataBudgetStatus()
+    console.warn(`[TwelveData] Daily limit reached: ${status.dailyUsed}/${status.dailyLimit} calls used`)
+    throw new Error(`TwelveData daily limit reached (${status.dailyUsed}/${status.dailyLimit}). Resets at midnight.`)
+  }
+
+  // Apply per-second rate limiting
   const now = Date.now()
   const timeSinceLastCall = now - lastCallTime
 
@@ -26,6 +39,10 @@ async function rateLimitedFetch(url: string): Promise<Response> {
   }
 
   lastCallTime = Date.now()
+
+  // Record the call BEFORE making it (pessimistic tracking)
+  recordTwelveDataCall()
+
   return fetch(url)
 }
 
@@ -113,15 +130,30 @@ export async function fetchTwelveDataQuote(symbol: string, apiKey: string): Prom
       return null
     }
 
+    // Parse and validate price - critical field
+    const price = parseFloat(data.close)
+    if (isNaN(price) || price <= 0) {
+      console.warn('[TwelveData] Invalid price data:', data.close)
+      return null
+    }
+
+    // Parse other fields with NaN fallbacks
+    const change = parseFloat(data.change)
+    const changePercent = parseFloat(data.percent_change)
+    const high = parseFloat(data.high)
+    const low = parseFloat(data.low)
+    const open = parseFloat(data.open)
+    const previousClose = parseFloat(data.previous_close)
+
     return {
-      price: parseFloat(data.close),
-      change: parseFloat(data.change),
-      changePercent: parseFloat(data.percent_change),
+      price,
+      change: isNaN(change) ? 0 : change,
+      changePercent: isNaN(changePercent) ? 0 : changePercent,
       volume: parseInt(data.volume) || 0,
-      high: parseFloat(data.high),
-      low: parseFloat(data.low),
-      open: parseFloat(data.open),
-      previousClose: parseFloat(data.previous_close)
+      high: isNaN(high) ? price : high,
+      low: isNaN(low) ? price : low,
+      open: isNaN(open) ? price : open,
+      previousClose: isNaN(previousClose) ? price : previousClose
     }
   } catch (error) {
     console.error('[TwelveData] Failed to fetch quote:', error)
@@ -212,16 +244,33 @@ export async function fetchTwelveDataCandles(
     }
 
     // TwelveData returns newest first, we need oldest first
-    const candles: CandleData[] = data.values
-      .map((candle) => ({
-        time: Math.floor(new Date(candle.datetime).getTime() / 1000),
-        open: parseFloat(candle.open),
-        high: parseFloat(candle.high),
-        low: parseFloat(candle.low),
-        close: parseFloat(candle.close),
+    // Filter out candles with invalid price data
+    const candles: CandleData[] = []
+
+    for (const candle of data.values) {
+      const open = parseFloat(candle.open)
+      const high = parseFloat(candle.high)
+      const low = parseFloat(candle.low)
+      const close = parseFloat(candle.close)
+      const time = Math.floor(new Date(candle.datetime).getTime() / 1000)
+
+      // Validate critical fields - skip invalid candles
+      if (isNaN(close) || isNaN(time) || close <= 0 || time <= 0) {
+        continue
+      }
+
+      candles.push({
+        time,
+        open: isNaN(open) ? close : open,
+        high: isNaN(high) ? close : high,
+        low: isNaN(low) ? close : low,
+        close,
         volume: parseInt(candle.volume) || 0
-      }))
-      .reverse() // Oldest first for charting
+      })
+    }
+
+    // Reverse to get oldest first for charting
+    candles.reverse()
 
     console.log(`[TwelveData] Fetched ${candles.length} candles for ${symbol}`)
     return candles

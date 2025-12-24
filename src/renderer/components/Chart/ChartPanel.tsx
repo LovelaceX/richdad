@@ -278,7 +278,6 @@ export function ChartPanel() {
             <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded uppercase ${
               dataSource?.provider === 'polygon' ? 'bg-purple-500/20 text-purple-400' :
               dataSource?.provider === 'twelvedata' ? 'bg-blue-500/20 text-blue-400' :
-              dataSource?.provider === 'alphavantage' ? 'bg-green-500/20 text-green-400' :
               dataSource?.provider === 'mock' ? 'bg-gray-500/20 text-gray-400' :
               'bg-gray-500/20 text-gray-400'
             }`}>
@@ -317,9 +316,8 @@ export function ChartPanel() {
             {/* Tooltip on hover */}
             <div className="absolute top-full left-0 mt-1 px-2 py-1.5 bg-terminal-bg border border-terminal-border rounded text-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
               <div className="text-gray-400">
-                <span className="text-gray-500">Provider:</span> {dataSource?.provider === 'polygon' ? 'Polygon.io (Free Tier)' :
+                <span className="text-gray-500">Provider:</span> {dataSource?.provider === 'polygon' ? 'Polygon.io' :
                   dataSource?.provider === 'twelvedata' ? 'TwelveData' :
-                  dataSource?.provider === 'alphavantage' ? 'Alpha Vantage' :
                   dataSource?.provider === 'mock' ? 'Mock Data' : 'Unknown'}
               </div>
               <div className="text-gray-400">

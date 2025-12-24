@@ -29,7 +29,8 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
   const [aiKeyMessage, setAiKeyMessage] = useState('')
 
   // Derived state based on selected path
-  const selectedProvider: MarketDataProvider = setupPath === 'free' ? 'twelvedata' : 'polygon'
+  // Only Premium uses Polygon (paid tier) - Free and Standard use TwelveData
+  const selectedProvider: MarketDataProvider = setupPath === 'premium' ? 'polygon' : 'twelvedata'
 
   // Update AI provider when path changes
   const handlePathChange = (path: SetupPath) => {
@@ -201,7 +202,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
                     </div>
                     <div className="text-gray-400 text-sm mt-1">Best experience for most traders</div>
                     <div className="text-gray-500 text-xs mt-2 space-y-1">
-                      <div>• Polygon via Massive (5 calls/min free)</div>
+                      <div>• TwelveData (800 calls/day free)</div>
                       <div>• OpenAI GPT-4 (~$5-20/month usage)</div>
                       <div>• Finnhub News + Economic Calendar</div>
                     </div>
@@ -229,7 +230,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
                     </div>
                     <div className="text-gray-400 text-sm mt-1">Maximum speed & advanced analysis</div>
                     <div className="text-gray-500 text-xs mt-2 space-y-1">
-                      <div>• Polygon paid tier (faster, more data)</div>
+                      <div>• Polygon.io paid tier (unlimited calls)</div>
                       <div>• Anthropic Claude (superior reasoning)</div>
                       <div>• All news sources + Alpha Vantage</div>
                     </div>

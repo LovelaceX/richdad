@@ -48,9 +48,8 @@ export function NewsSourcesSection() {
   const [saving, setSaving] = useState(false)
   const [showSaved, setShowSaved] = useState(false)
 
-  // Check if API provider has built-in news
-  const providerHasNews = settings?.marketDataProvider === 'finnhub' ||
-    (settings?.marketDataProvider === 'alphavantage' && settings?.apiTiers?.alphaVantage === 'premium')
+  // Check if Finnhub is configured (provides ticker-specific news)
+  const providerHasNews = Boolean(settings?.finnhubApiKey)
 
   useEffect(() => {
     loadTraders()
@@ -227,8 +226,7 @@ export function NewsSourcesSection() {
               <div className="text-blue-200 text-xs">
                 <p className="font-medium mb-1">Your market data provider includes news</p>
                 <p className="text-blue-300/70">
-                  {settings.marketDataProvider === 'finnhub' ? 'Finnhub' : 'Alpha Vantage Premium'} provides
-                  ticker-specific news. RSS feeds are still available but may show duplicate headlines.
+                  Finnhub provides ticker-specific news. RSS feeds are still available but may show duplicate headlines.
                 </p>
               </div>
             </div>

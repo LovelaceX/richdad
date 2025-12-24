@@ -57,7 +57,7 @@ const sectionContent: Record<Section, { title: string; searchableText: string }>
   },
   'dashboard': {
     title: 'Dashboard',
-    searchableText: 'home main overview layout panels chart watchlist news ticker ai panel market data live prices real-time trading view candlestick technical analysis top bar navigation sidebar'
+    searchableText: 'home main overview layout panels chart watchlist news ticker ai panel market data live prices real-time trading view candlestick technical analysis top bar navigation sidebar default index spy qqq dia iwm vti smh vxx startup launch open'
   },
   'watchlist': {
     title: 'Watchlist',
@@ -428,22 +428,31 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
 
             <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5 space-y-4">
               <div>
-                <p className="text-green-400 font-medium mb-2">🌱 Free Path ($0/month)</p>
+                <p className="text-green-400 font-medium mb-2 flex items-center gap-2">
+                  <Leaf size={16} />
+                  Free Path ($0/month)
+                </p>
                 <Step><span className="text-white">TwelveData</span> - 800 calls/day free tier</Step>
                 <Step><span className="text-white">Groq (Llama 3)</span> - Completely free AI</Step>
                 <Step>RSS news feeds included</Step>
               </div>
 
               <div className="border-t border-terminal-border pt-4">
-                <p className="text-terminal-amber font-medium mb-2">⭐ Standard Path (Recommended)</p>
-                <Step><span className="text-white">Polygon.io</span> - Reliable market data (5 calls/min free)</Step>
+                <p className="text-terminal-amber font-medium mb-2 flex items-center gap-2">
+                  <Star size={16} />
+                  Standard Path (Recommended)
+                </p>
+                <Step><span className="text-white">TwelveData</span> - 800 calls/day free tier</Step>
                 <Step><span className="text-white">OpenAI GPT-4</span> - Best analysis (~$5-20/month)</Step>
                 <Step>Finnhub news + Economic calendar</Step>
               </div>
 
               <div className="border-t border-terminal-border pt-4">
-                <p className="text-purple-400 font-medium mb-2">👑 Premium Path</p>
-                <Step><span className="text-white">Polygon.io</span> paid tier (faster, more data)</Step>
+                <p className="text-purple-400 font-medium mb-2 flex items-center gap-2">
+                  <Crown size={16} />
+                  Premium Path
+                </p>
+                <Step><span className="text-white">Polygon.io</span> paid tier (unlimited calls)</Step>
                 <Step><span className="text-white">Anthropic Claude</span> - Superior reasoning</Step>
                 <Step>All news sources + Alpha Vantage</Step>
               </div>
@@ -896,6 +905,33 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               <Step><span className="text-white font-medium">VIX (VXX)</span> - Volatility tracker</Step>
               <Step><span className="text-white font-medium">AI Win Rate</span> - Your AI's performance record</Step>
             </div>
+          </div>
+
+          <div className="bg-terminal-amber/10 border border-terminal-amber/30 rounded-lg p-5">
+            <h3 className="text-terminal-amber font-semibold mb-4 flex items-center gap-2">
+              <BarChart3 size={18} />
+              Default Index
+            </h3>
+            <p className="text-gray-300 mb-3">
+              Choose which market index loads when you open RichDad. This sets your primary chart and watchlist constituents.
+            </p>
+            <div className="space-y-2 text-sm">
+              <div className="flex gap-2 items-start">
+                <span className="text-terminal-amber">→</span>
+                <span className="text-gray-300">Go to <span className="text-white font-medium">Settings → Display → Default Index</span></span>
+              </div>
+              <div className="flex gap-2 items-start">
+                <span className="text-terminal-amber">→</span>
+                <span className="text-gray-300">Select from: SPY, QQQ, DIA, IWM, VTI, SMH, or VXX</span>
+              </div>
+              <div className="flex gap-2 items-start">
+                <span className="text-terminal-amber">→</span>
+                <span className="text-gray-300">Your chart and Market Watch update immediately</span>
+              </div>
+            </div>
+            <p className="text-gray-500 text-xs mt-3">
+              Default: S&P 500 (SPY). Change this to focus on tech (QQQ), small caps (IWM), or volatility (VXX).
+            </p>
           </div>
         </div>
       )
@@ -1599,27 +1635,27 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               <h3 className="text-white text-lg font-semibold">Market Data Providers</h3>
             </div>
             <div className="space-y-3">
-              {/* Polygon.io */}
-              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-white font-medium">Massive.com (Polygon.io)</span>
-                  <span className="text-terminal-amber text-xs px-2 py-0.5 bg-terminal-amber/20 rounded">Recommended</span>
-                </div>
-                <div className="text-gray-400 text-sm space-y-1">
-                  <p>5 API calls/minute • End-of-day data • 2 years history</p>
-                  <p className="text-gray-500">Best for: Charts and historical analysis</p>
-                </div>
-              </div>
-
               {/* TwelveData */}
               <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-white font-medium">TwelveData</span>
-                  <span className="text-green-400 text-xs px-2 py-0.5 bg-green-400/20 rounded">Best Free Tier</span>
+                  <span className="text-terminal-amber text-xs px-2 py-0.5 bg-terminal-amber/20 rounded">Recommended</span>
                 </div>
                 <div className="text-gray-400 text-sm space-y-1">
                   <p>800 API calls/day • Real-time data • All US markets</p>
-                  <p className="text-gray-500">Best for: Live trading and real-time quotes</p>
+                  <p className="text-gray-500">Best for: Most users - generous free tier handles RichDad's needs</p>
+                </div>
+              </div>
+
+              {/* Polygon.io */}
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-white font-medium">Massive.com (Polygon.io)</span>
+                  <span className="text-purple-400 text-xs px-2 py-0.5 bg-purple-400/20 rounded">Paid Tier Only</span>
+                </div>
+                <div className="text-gray-400 text-sm space-y-1">
+                  <p>Free: 5 calls/min (too low) • Paid: unlimited • 2 years history</p>
+                  <p className="text-gray-500">Best for: Power users with paid subscription</p>
                 </div>
               </div>
 
@@ -2490,7 +2526,7 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
           <div className="bg-terminal-amber/10 border border-terminal-amber/30 rounded-lg p-6">
             <h3 className="text-terminal-amber text-lg font-bold mb-4 flex items-center gap-2">
               <Shield size={20} />
-              Security by Design
+              Secure by Design
             </h3>
             <div className="space-y-3">
               <div className="flex items-start gap-3">
@@ -2642,9 +2678,6 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
               <p>• <span className="text-white">You control your data</span> - Everything stays on your device</p>
               <p>• <span className="text-white">You own your strategy</span> - We provide tools, you make decisions</p>
             </div>
-            <p className="text-gray-500 text-xs mt-4 italic">
-              "Empowering retail investors with institutional-grade AI analysis."
-            </p>
           </div>
 
           <div>
@@ -2772,18 +2805,15 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
           <div className="flex justify-center">
             <button
               onClick={() => openUrl('https://www.paypal.com/ncp/payment/BWTA5MZYMTEDG')}
-              className="flex items-center gap-3 bg-[#0070ba] hover:bg-[#005ea6] text-white px-8 py-4 rounded-lg font-semibold transition-colors shadow-lg hover:shadow-xl"
+              className="bg-[#0070ba] hover:bg-[#005ea6] text-white px-8 py-4 rounded-lg font-semibold transition-colors shadow-lg hover:shadow-xl"
             >
-              <svg viewBox="0 0 24 24" className="w-6 h-6 fill-current">
-                <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.254-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 0 0-.556.479l-1.187 7.527h-.506l-.24 1.516a.56.56 0 0 0 .554.647h3.882c.46 0 .85-.334.922-.788.06-.26.76-4.852.816-5.09a.932.932 0 0 1 .923-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.777-4.471z"/>
-              </svg>
               Tip via PayPal
             </button>
           </div>
 
           <div className="text-center">
             <p className="text-gray-500 text-sm">
-              Built with ❤️ by <span className="text-terminal-amber">LovelaceX</span>
+              Built with 💛 by <span className="text-terminal-amber">LovelaceX</span>
             </p>
           </div>
         </div>
@@ -2846,7 +2876,7 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
               <div className="text-sm text-gray-300 space-y-2">
                 <div className="flex items-start gap-2">
                   <Check size={14} className="text-terminal-amber mt-0.5 flex-shrink-0" />
-                  <span>Polygon (5 calls/min)</span>
+                  <span>TwelveData (800 calls/day)</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <Check size={14} className="text-terminal-amber mt-0.5 flex-shrink-0" />
@@ -2862,7 +2892,7 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
                 </div>
                 <div className="flex items-start gap-2">
                   <Check size={14} className="text-terminal-amber mt-0.5 flex-shrink-0" />
-                  <span>15-min delayed (free tier)</span>
+                  <span>Real-time data</span>
                 </div>
               </div>
             </div>
@@ -2917,7 +2947,7 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
                   <tr className="border-b border-terminal-border/50">
                     <td className="py-2 px-4">Market Data Provider</td>
                     <td className="py-2 px-4 text-center">TwelveData</td>
-                    <td className="py-2 px-4 text-center">Polygon</td>
+                    <td className="py-2 px-4 text-center">TwelveData</td>
                     <td className="py-2 px-4 text-center">Polygon (paid)</td>
                   </tr>
                   <tr className="border-b border-terminal-border/50">

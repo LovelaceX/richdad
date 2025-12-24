@@ -5,13 +5,24 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Monitor, LayoutGrid, Eye, TrendingUp, X, Plus, Snail, Rabbit } from 'lucide-react'
+import { Monitor, LayoutGrid, Eye, TrendingUp, X, Plus, Snail, Rabbit, ChevronDown, BarChart3 } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { getSettings, updateSettings } from '../../../lib/db'
 
 // Default market symbols
 const DEFAULT_MARKET_SYMBOLS = ['SPY', 'QQQ', 'DIA', 'VXX']
 const MAX_SYMBOLS = 8
+
+// Available market indices for Default Index dropdown
+const AVAILABLE_INDICES = [
+  { etf: 'SPY', name: 'S&P 500', index: '^GSPC' },
+  { etf: 'QQQ', name: 'NASDAQ-100', index: '^NDX' },
+  { etf: 'DIA', name: 'Dow Jones', index: '^DJI' },
+  { etf: 'IWM', name: 'Russell 2000', index: '^RUT' },
+  { etf: 'VTI', name: 'Total Market', index: '^VTI' },
+  { etf: 'SMH', name: 'Semiconductors', index: '^SOX' },
+  { etf: 'VXX', name: 'Volatility', index: '^VIX' },
+] as const
 
 export function DisplaySection() {
   // Get state and actions from Zustand store
@@ -30,7 +41,10 @@ export function DisplaySection() {
   const [marketSymbols, setMarketSymbols] = useState<string[]>(DEFAULT_MARKET_SYMBOLS)
   const [newSymbol, setNewSymbol] = useState('')
 
-  // Load market symbols from settings
+  // Default Index state
+  const [defaultIndex, setDefaultIndex] = useState('SPY')
+
+  // Load market symbols and default index from settings
   useEffect(() => {
     async function loadSettings() {
       try {
@@ -38,8 +52,11 @@ export function DisplaySection() {
         if (settings.marketOverviewSymbols?.length) {
           setMarketSymbols(settings.marketOverviewSymbols)
         }
+        if (settings.selectedMarket?.etf) {
+          setDefaultIndex(settings.selectedMarket.etf)
+        }
       } catch (error) {
-        console.error('Failed to load market symbols:', error)
+        console.error('Failed to load settings:', error)
       }
     }
     loadSettings()
@@ -77,6 +94,23 @@ export function DisplaySection() {
   // Reset to defaults
   const handleResetSymbols = () => {
     saveMarketSymbols(DEFAULT_MARKET_SYMBOLS)
+  }
+
+  // Handle default index change
+  const handleDefaultIndexChange = async (etf: string) => {
+    const selectedIndex = AVAILABLE_INDICES.find(i => i.etf === etf)
+    if (!selectedIndex) return
+
+    setDefaultIndex(etf)
+    await updateSettings({
+      selectedMarket: {
+        name: selectedIndex.name,
+        etf: selectedIndex.etf,
+        index: selectedIndex.index
+      }
+    })
+    // Notify other components (triggers marketStore.loadSelectedMarket)
+    window.dispatchEvent(new Event('settings-updated'))
   }
 
   return (
@@ -131,6 +165,40 @@ export function DisplaySection() {
               </div>
             </div>
           </div>
+        </div>
+
+        <div className="border-t border-terminal-border" />
+
+        {/* Default Index */}
+        <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <BarChart3 className="w-4 h-4 text-terminal-amber" />
+            <span className="text-white text-sm font-medium">Default Index</span>
+          </div>
+
+          <p className="text-gray-400 text-xs mb-4">
+            Choose which market index loads when you open RichDad. This sets your primary chart and watchlist.
+          </p>
+
+          {/* Index Dropdown */}
+          <div className="relative">
+            <select
+              value={defaultIndex}
+              onChange={(e) => handleDefaultIndexChange(e.target.value)}
+              className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2.5 text-white text-sm font-medium appearance-none cursor-pointer hover:border-terminal-amber/50 focus:outline-none focus:border-terminal-amber transition-colors"
+            >
+              {AVAILABLE_INDICES.map((index) => (
+                <option key={index.etf} value={index.etf}>
+                  {index.name} ({index.etf})
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          </div>
+
+          <p className="text-gray-500 text-xs mt-3">
+            Changing this will update your chart and Market Watch panel immediately.
+          </p>
         </div>
 
         <div className="border-t border-terminal-border" />
@@ -248,20 +316,25 @@ export function DisplaySection() {
           </div>
 
           <p className="text-gray-400 text-xs mb-4">
-            Adjust the scrolling speed of the news and economic calendar tickers. Slower = more readable.
+            Control the scrolling speed of the News and Economic Calendar tickers.
           </p>
 
-          {/* Speed value display */}
-          <div className="text-center text-terminal-amber text-sm font-mono mb-2">
-            {tickerSpeed}s per headline
-          </div>
-
+          {/* Slider with aligned icons and inline tick marks */}
           <div className="flex items-center gap-3">
-            {/* Slow icon - aligned with slider */}
-            <div className="flex items-center h-8" title="Slower (more readable)">
-              <Snail size={20} className="text-gray-400" />
-            </div>
-            <div className="flex-1 flex flex-col">
+            <Snail size={20} className="text-gray-400 flex-shrink-0" />
+
+            <div className="flex-1 relative h-6 flex items-center">
+              {/* Tick marks behind slider */}
+              <div className="absolute inset-x-0 flex justify-between pointer-events-none">
+                {[30, 45, 60, 75, 90, 105, 120].map((val) => (
+                  <div
+                    key={val}
+                    className={`w-0.5 h-3 rounded-sm ${tickerSpeed === val ? 'bg-terminal-amber' : 'bg-gray-600'}`}
+                  />
+                ))}
+              </div>
+
+              {/* Slider on top */}
               <input
                 type="range"
                 min="30"
@@ -269,26 +342,11 @@ export function DisplaySection() {
                 step="15"
                 value={tickerSpeed < 30 ? 30 : tickerSpeed}
                 onChange={(e) => setTickerSpeed(Number(e.target.value))}
-                className="w-full h-2 bg-terminal-border rounded-lg appearance-none cursor-pointer accent-terminal-amber"
+                className="relative z-10 w-full h-2 bg-terminal-border/50 rounded-lg appearance-none cursor-pointer accent-terminal-amber"
               />
-              {/* Tick marks - prominent vertical lines */}
-              <div className="flex justify-between px-0 mt-2">
-                {[30, 45, 60, 75, 90, 105, 120].map((val) => (
-                  <div key={val} className="flex flex-col items-center">
-                    <div
-                      className={`w-1 h-4 rounded-sm ${tickerSpeed === val ? 'bg-terminal-amber' : 'bg-gray-600'}`}
-                    />
-                    <span className={`text-[9px] mt-0.5 ${tickerSpeed === val ? 'text-terminal-amber' : 'text-gray-500'}`}>
-                      {val}s
-                    </span>
-                  </div>
-                ))}
-              </div>
             </div>
-            {/* Fast icon - aligned with slider */}
-            <div className="flex items-center h-8" title="Faster">
-              <Rabbit size={20} className="text-gray-400" />
-            </div>
+
+            <Rabbit size={20} className="text-gray-400 flex-shrink-0" />
           </div>
         </div>
 

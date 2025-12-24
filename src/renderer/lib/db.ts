@@ -57,20 +57,16 @@ export interface UserSettings {
   soundCooldown: number            // Milliseconds between sounds (0 = no cooldown)
   lastSoundPlayed: number          // Timestamp of last sound
 
-  // Data Sources
-  marketDataProvider: 'alphavantage' | 'polygon' | 'finnhub' | 'fasttrack' | 'twelvedata'
-  alphaVantageApiKey?: string
+  // Data Sources (simplified: TwelveData for free, Polygon for paid)
+  marketDataProvider: 'polygon' | 'twelvedata'
   polygonApiKey?: string
-  useAlphaVantageForNews?: boolean
-  finnhubApiKey?: string
-  fasttrackApiKey?: string  // FastTrack.net Portfolio Analytics API
-  twelvedataApiKey?: string  // TwelveData.com - 800 calls/day free, real-time
+  finnhubApiKey?: string  // Optional: enables Economic Calendar + ticker-specific news
+  twelvedataApiKey?: string  // TwelveData.com - 800 calls/day free, real-time (default)
   fredApiKey?: string  // FRED (Federal Reserve Economic Data) - free, 120 calls/min
 
   // API Tier Selection (determines rate limits per provider)
   apiTiers?: {
     polygon: 'free' | 'starter' | 'developer' | 'advanced'
-    alphaVantage: 'free' | 'premium'
     twelveData: 'free' | 'basic' | 'pro'
     finnhub: 'free' | 'premium'
   }
@@ -531,20 +527,16 @@ export const DEFAULT_SETTINGS: UserSettings = {
   soundCooldown: 0,           // No cooldown by default
   lastSoundPlayed: 0,
 
-  // Data Sources
-  marketDataProvider: 'polygon',  // Polygon recommended: unlimited calls
-  alphaVantageApiKey: undefined,
+  // Data Sources (simplified: TwelveData for free, Polygon for paid)
+  marketDataProvider: 'twelvedata',  // TwelveData recommended: 800 calls/day free tier
   polygonApiKey: undefined,
-  useAlphaVantageForNews: false,
-  finnhubApiKey: undefined,
-  fasttrackApiKey: undefined,
+  finnhubApiKey: undefined,  // Optional: enables Economic Calendar + ticker-specific news
   twelvedataApiKey: undefined,
   fredApiKey: undefined,
 
   // API Tier Selection (defaults to free tier for all providers)
   apiTiers: {
     polygon: 'free',
-    alphaVantage: 'free',
     twelveData: 'free',
     finnhub: 'free'
   },
@@ -665,10 +657,8 @@ export async function initializeDatabase() {
 
 // API key field names for encryption/decryption
 const API_KEY_FIELDS: (keyof UserSettings)[] = [
-  'alphaVantageApiKey',
   'polygonApiKey',
   'finnhubApiKey',
-  'fasttrackApiKey',
   'twelvedataApiKey',
   'fredApiKey'
 ]

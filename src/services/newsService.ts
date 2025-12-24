@@ -1,16 +1,15 @@
 /**
  * News Service
- * Hybrid RSS + Alpha Vantage news architecture
- * - RSS feeds (primary): Native browser parsing, free
- * - Alpha Vantage NEWS_SENTIMENT (fallback): 1 call/day budget
+ * RSS + Finnhub news architecture
+ * - RSS feeds (primary): Native browser parsing, free, 21+ sources
+ * - Finnhub (optional): Ticker-specific news when API key configured
  */
 
 import { parseRSSFeed } from './rssParser'
-import { canUseAlphaVantageForNews, recordNewsCall, canUseFinnhub, recordFinnhubCall } from './apiBudgetTracker'
+import { canUseFinnhub, recordFinnhubCall } from './apiBudgetTracker'
 import { getSettings, db, DEFAULT_NEWS_SOURCES } from '../renderer/lib/db'
 import type { NewsItem } from '../renderer/types'
 
-const ALPHA_VANTAGE_BASE_URL = 'https://www.alphavantage.co/query'
 const FINNHUB_BASE_URL = 'https://finnhub.io/api/v1'
 const RSS_FETCH_TIMEOUT_MS = 10000 // 10 seconds per feed
 const FINNHUB_FETCH_TIMEOUT_MS = 15000 // 15 seconds for Finnhub
@@ -58,7 +57,7 @@ function sanitizeImageUrl(url: string | undefined | null): string | undefined {
 
 export interface NewsResponse {
   articles: NewsItem[]
-  source: 'rss' | 'alpha_vantage' | 'finnhub' | 'cache' | 'empty'
+  source: 'rss' | 'finnhub' | 'cache' | 'empty'
   hasSentiment: boolean
   error?: string
 }
@@ -155,83 +154,6 @@ export async function fetchNewsFromRSS(): Promise<NewsItem[]> {
 }
 
 /**
- * Fetch news from Alpha Vantage NEWS_SENTIMENT API
- * Uses 1 of 25 daily API calls
- */
-export async function fetchNewsFromAlphaVantage(): Promise<NewsItem[]> {
-  try {
-    const settings = await getSettings()
-    const apiKey = settings.alphaVantageApiKey
-
-    if (!apiKey) {
-      throw new Error('No Alpha Vantage API key configured')
-    }
-
-    if (!canUseAlphaVantageForNews()) {
-      throw new Error('News API budget exhausted (1 call/day)')
-    }
-
-    console.log('[News Service] Fetching from Alpha Vantage NEWS_SENTIMENT')
-
-    // Get watchlist tickers to filter news
-    const tickers = await getWatchlistTickers()
-    const tickersParam = tickers.length > 0 ? `&tickers=${tickers.slice(0, 50).join(',')}` : ''
-
-    const url = `${ALPHA_VANTAGE_BASE_URL}?function=NEWS_SENTIMENT${tickersParam}&limit=50&apikey=${apiKey}`
-
-    const response = await fetch(url)
-
-    if (!response.ok) {
-      throw new Error(`Alpha Vantage API error: ${response.status}`)
-    }
-
-    const data = await response.json()
-
-    // Check for API errors
-    if (data['Error Message']) {
-      throw new Error(`Alpha Vantage error: ${data['Error Message']}`)
-    }
-
-    if (data['Note']) {
-      throw new Error(`Rate limit: ${data['Note']}`)
-    }
-
-    if (data['Information']) {
-      // Premium tier required - this is a graceful failure, not an error
-      console.warn('[News Service] NEWS_SENTIMENT requires premium tier, falling back to RSS')
-      throw new Error('Premium tier required')
-    }
-
-    if (!data.feed || !Array.isArray(data.feed)) {
-      throw new Error('Invalid response format from NEWS_SENTIMENT')
-    }
-
-    // Parse feed items
-    const newsItems: NewsItem[] = data.feed.map((item: any) => ({
-      id: item.url || `av-${Date.now()}-${Math.random()}`,
-      headline: item.title || '',
-      source: item.source || 'Alpha Vantage',
-      url: item.url || '#',
-      timestamp: parseAVTimestamp(item.time_published),
-      summary: item.summary || '',
-      sentiment: mapAVSentiment(item.overall_sentiment_label),
-      tickers: item.ticker_sentiment?.map((t: any) => t.ticker) || [],
-      imageUrl: sanitizeImageUrl(item.banner_image)
-    }))
-
-    // Record the API call in budget
-    recordNewsCall()
-
-    console.log(`[News Service] Alpha Vantage fetch complete: ${newsItems.length} headlines`)
-
-    return newsItems
-  } catch (error) {
-    console.error('[News Service] Alpha Vantage fetch failed:', error)
-    throw error // Re-throw so caller can handle fallback
-  }
-}
-
-/**
  * Fetch ticker-specific news from Finnhub API
  * Uses minute-based rate limiting (60 calls/min)
  * @param symbol - Stock symbol (e.g., "AAPL") for company-specific news, or undefined for general market news
@@ -319,131 +241,33 @@ export async function fetchNewsFromFinnhub(symbol?: string): Promise<NewsItem[]>
 }
 
 /**
- * Unified news fetcher with intelligent fallback
- * Respects user preference toggle
+ * Unified news fetcher
+ * Uses RSS as primary source, with Finnhub fallback for ticker-specific news
  */
 export async function fetchNews(): Promise<NewsResponse> {
-  const settings = await getSettings()
-  const useAVForNews = settings.useAlphaVantageForNews || false
+  console.log('[News Service] Fetching news from RSS feeds')
 
-  console.log(`[News Service] Fetch strategy: ${useAVForNews ? 'AV Priority' : 'RSS Priority'}`)
-
-  // Strategy 1: Alpha Vantage Priority (toggle ON)
-  if (useAVForNews) {
-    // Try Alpha Vantage first
-    try {
-      const articles = await fetchNewsFromAlphaVantage()
-      return {
-        articles,
-        source: 'alpha_vantage',
-        hasSentiment: true
-      }
-    } catch (error) {
-      console.warn('[News Service] AV failed, falling back to RSS:', error)
-    }
-
-    // Fallback to RSS
-    try {
-      const articles = await fetchNewsFromRSS()
+  // Try RSS first (always available, free)
+  try {
+    const articles = await fetchNewsFromRSS()
+    if (articles.length > 0) {
       return {
         articles,
         source: 'rss',
         hasSentiment: false
       }
-    } catch (error) {
-      console.error('[News Service] RSS fallback failed:', error)
-      return {
-        articles: [],
-        source: 'empty',
-        hasSentiment: false,
-        error: String(error)
-      }
     }
-  }
-
-  // Strategy 2: RSS Priority (toggle OFF - default)
-  else {
-    // Try RSS first
-    try {
-      const articles = await fetchNewsFromRSS()
-      if (articles.length > 0) {
-        return {
-          articles,
-          source: 'rss',
-          hasSentiment: false
-        }
-      }
-      console.warn('[News Service] RSS returned no articles, trying AV fallback')
-    } catch (error) {
-      console.warn('[News Service] RSS failed, trying AV fallback:', error)
-    }
-
-    // Fallback to Alpha Vantage (if budget allows)
-    if (canUseAlphaVantageForNews()) {
-      try {
-        const articles = await fetchNewsFromAlphaVantage()
-        return {
-          articles,
-          source: 'alpha_vantage',
-          hasSentiment: true
-        }
-      } catch (error) {
-        console.warn('[News Service] AV fallback failed:', error)
-      }
-    } else {
-      console.warn('[News Service] AV budget exhausted, skipping fallback')
-    }
-
-    // Final fallback: empty
-    return {
-      articles: [],
-      source: 'empty',
-      hasSentiment: false,
-      error: 'All news sources failed'
-    }
-  }
-}
-
-/**
- * Helper: Get watchlist tickers for Alpha Vantage filtering
- */
-async function getWatchlistTickers(): Promise<string[]> {
-  try {
-    const watchlist = await db.watchlist.toArray()
-    return watchlist.map(entry => entry.symbol.toUpperCase())
+    console.warn('[News Service] RSS returned no articles')
   } catch (error) {
-    console.warn('[News Service] Failed to get watchlist tickers:', error)
-    return []
+    console.warn('[News Service] RSS fetch failed:', error)
+  }
+
+  // Final fallback: empty
+  return {
+    articles: [],
+    source: 'empty',
+    hasSentiment: false,
+    error: 'No news sources available'
   }
 }
 
-/**
- * Helper: Parse Alpha Vantage timestamp
- * Format: "20241215T120000"
- */
-function parseAVTimestamp(timeStr: string): number {
-  if (!timeStr) return Date.now()
-
-  try {
-    // Convert "20241215T120000" to "2024-12-15T12:00:00"
-    const formatted = timeStr.replace(/(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:$6')
-    const timestamp = new Date(formatted).getTime()
-    return isNaN(timestamp) ? Date.now() : timestamp
-  } catch {
-    return Date.now()
-  }
-}
-
-/**
- * Helper: Map Alpha Vantage sentiment labels to our type
- */
-function mapAVSentiment(label: string): 'positive' | 'negative' | 'neutral' {
-  if (!label) return 'neutral'
-
-  const normalized = label.toLowerCase()
-
-  if (normalized.includes('bullish')) return 'positive'
-  if (normalized.includes('bearish')) return 'negative'
-
-  return 'neutral'
-}

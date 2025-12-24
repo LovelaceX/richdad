@@ -2,14 +2,13 @@
  * useAPIKeyManager Hook
  *
  * Manages API key state, validation testing, and auto-saving for any provider.
- * Replaces 6 duplicated patterns in Settings.tsx (Alpha Vantage, Finnhub, Polygon,
- * FastTrack, TwelveData, FRED).
+ * Supports: Finnhub, Polygon, TwelveData, FRED
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { UserSettings } from '../../../lib/db'
 
-export type APIProvider = 'alphaVantage' | 'finnhub' | 'polygon' | 'fasttrack' | 'twelvedata' | 'fred'
+export type APIProvider = 'finnhub' | 'polygon' | 'twelvedata' | 'fred'
 
 export type ConnectionStatus = 'idle' | 'valid' | 'invalid'
 
@@ -45,11 +44,6 @@ export interface UseAPIKeyManagerReturn {
  * Provider-specific validation functions
  * Each returns { valid: boolean; message: string }
  */
-async function validateAlphaVantage(apiKey: string): Promise<{ valid: boolean; message: string }> {
-  const { testAlphaVantageKey } = await import('../../../../services/alphaVantageValidator')
-  return testAlphaVantageKey(apiKey)
-}
-
 async function validateFinnhub(apiKey: string): Promise<{ valid: boolean; message: string }> {
   const { testFinnhubKey } = await import('../../../../services/finnhubValidator')
   return testFinnhubKey(apiKey)
@@ -71,12 +65,6 @@ async function validatePolygon(apiKey: string): Promise<{ valid: boolean; messag
   }
 }
 
-async function validateFastTrack(apiKey: string): Promise<{ valid: boolean; message: string }> {
-  const { testFastTrackConnection } = await import('../../../../services/fasttrackService')
-  const result = await testFastTrackConnection(apiKey)
-  return { valid: result.success, message: result.message }
-}
-
 async function validateTwelveData(apiKey: string): Promise<{ valid: boolean; message: string }> {
   const { testTwelveDataConnection } = await import('../../../../services/twelveDataService')
   const result = await testTwelveDataConnection(apiKey)
@@ -89,10 +77,8 @@ async function validateFred(apiKey: string): Promise<{ valid: boolean; message: 
 }
 
 const VALIDATORS: Record<APIProvider, (key: string) => Promise<{ valid: boolean; message: string }>> = {
-  alphaVantage: validateAlphaVantage,
   finnhub: validateFinnhub,
   polygon: validatePolygon,
-  fasttrack: validateFastTrack,
   twelvedata: validateTwelveData,
   fred: validateFred,
 }
@@ -101,10 +87,8 @@ const VALIDATORS: Record<APIProvider, (key: string) => Promise<{ valid: boolean;
  * Settings key mapping for each provider
  */
 export const PROVIDER_SETTINGS_KEY: Record<APIProvider, keyof UserSettings> = {
-  alphaVantage: 'alphaVantageApiKey',
   finnhub: 'finnhubApiKey',
   polygon: 'polygonApiKey',
-  fasttrack: 'fasttrackApiKey',
   twelvedata: 'twelvedataApiKey',
   fred: 'fredApiKey',
 }

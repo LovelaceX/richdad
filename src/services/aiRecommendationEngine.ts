@@ -680,6 +680,7 @@ async function getRecentNews(symbol: string): Promise<string[]> {
 /**
  * Check if market is open (simple US market hours check)
  * 9:30 AM - 4:00 PM ET, Monday-Friday
+ * Uses Intl.DateTimeFormat for proper DST handling
  */
 export function isMarketOpen(): boolean {
   const now = new Date()
@@ -688,16 +689,26 @@ export function isMarketOpen(): boolean {
   // Weekend check
   if (day === 0 || day === 6) return false
 
-  // Convert to ET (simplified - doesn't account for DST properly)
-  const etOffset = -5 // ET is UTC-5 (or UTC-4 during DST)
-  const utcHours = now.getUTCHours()
-  const etHours = (utcHours + etOffset + 24) % 24
-  const minutes = now.getMinutes()
+  // Use Intl.DateTimeFormat for proper DST handling
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false
+  })
+
+  // Parse the formatted time (format: "HH:MM")
+  const parts = formatter.formatToParts(now)
+  const hourPart = parts.find(p => p.type === 'hour')
+  const minutePart = parts.find(p => p.type === 'minute')
+
+  const etHours = parseInt(hourPart?.value || '0', 10)
+  const etMinutes = parseInt(minutePart?.value || '0', 10)
 
   // Market hours: 9:30 AM - 4:00 PM ET
-  const marketStart = 9 * 60 + 30 // 9:30 AM in minutes
-  const marketEnd = 16 * 60 // 4:00 PM in minutes
-  const currentMinutes = etHours * 60 + minutes
+  const marketStart = 9 * 60 + 30 // 9:30 AM in minutes (570)
+  const marketEnd = 16 * 60 // 4:00 PM in minutes (960)
+  const currentMinutes = etHours * 60 + etMinutes
 
   return currentMinutes >= marketStart && currentMinutes < marketEnd
 }

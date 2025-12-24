@@ -269,7 +269,6 @@ export class CircuitBreaker {
 // Global circuit breakers for API providers
 export const circuitBreakers = {
   polygon: new CircuitBreaker('Polygon'),
-  alphaVantage: new CircuitBreaker('AlphaVantage'),
   twelveData: new CircuitBreaker('TwelveData'),
   finnhub: new CircuitBreaker('Finnhub'),
   ai: new CircuitBreaker('AI', { failureThreshold: 3, resetTimeoutMs: 60000 })
