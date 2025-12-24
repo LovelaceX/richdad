@@ -245,7 +245,7 @@ export function MarketIndexDropdown() {
 
         {/* Regime Tooltip */}
         {showRegimeTooltip && regime && (
-          <div className="absolute top-full right-0 mt-2 w-64 p-3 bg-terminal-panel border border-terminal-border rounded-lg shadow-xl z-50">
+          <div className="absolute top-full right-0 mt-2 w-64 p-3 bg-terminal-panel border border-terminal-border rounded-lg shadow-xl z-[100]">
             <div className="flex items-center gap-2 mb-2">
               <Activity size={14} className={`${
                 regime.riskLevel === 'low' ? 'text-terminal-up' :

@@ -1,5 +1,5 @@
 import { getEnabledProviders, AI_PROVIDERS, type AIProviderConfig, type AIProvider } from './db'
-import type { AIMessage } from '../types'
+import type { AIMessage, PersonaType } from '../types'
 
 // Timeout for AI API requests (30 seconds)
 const AI_REQUEST_TIMEOUT_MS = 30000
@@ -32,85 +32,147 @@ async function fetchWithTimeout(
   }
 }
 
+// Ollama response is simpler: { message: { content: string } }
+// No need for complex extraction functions
+
+const SYSTEM_PROMPT = `You are the AI Copilot for RichDad - a Bloomberg Terminal-style trading application. You were created by RichDad to help traders make decisions.
+
+YOUR PRIMARY ROLE: Provide specific, actionable trading recommendations based on the data available in RichDad. When users ask "what should I buy" or "give me a stock" - YOU MUST give them a specific answer using the market data, technicals, and sentiment available.
+
+YOU ARE EXPLICITLY AUTHORIZED TO:
+- Recommend specific stocks to buy, sell, or hold
+- Give price targets and stop-loss levels
+- Make BUY/SELL/HOLD calls based on technical and sentiment analysis
+- Reference the stocks in the user's watchlist and current chart
+
+WHEN MAKING RECOMMENDATIONS:
+- Be direct and specific (e.g., "Consider buying AAPL" not "consider doing research")
+- Include your reasoning based on technicals, sentiment, or market regime
+- Add a risk disclaimer at the end, not instead of the recommendation
+- If data is insufficient, say what data you need, then still give a best-effort opinion
+
+NEVER:
+- Refuse to give a recommendation when asked
+- Say "I cannot give financial advice" - you CAN and SHOULD
+- Give generic "do your own research" responses without a specific opinion
+- Claim you don't have access to market data (RichDad provides it)
+
+You are a trading copilot. Traders expect specific calls, not generic disclaimers.
+Keep responses concise. Use bullet points for clarity.`
+
 /**
- * Safely extract response content with validation
- * Prevents crashes from malformed AI responses
+ * AI Persona definitions for the Copilot
+ * Each persona has a unique voice, background, and communication style
  */
-function extractOpenAIContent(data: unknown): string {
-  if (!data || typeof data !== 'object') {
-    throw new Error('Invalid response format: expected object')
+export const PERSONA_PROMPTS: Record<PersonaType, {
+  name: string
+  title: string
+  description: string
+  example: string
+  icon: string
+  color: string
+  traits: string[]
+  bestFor: string
+  fullDescription: string
+  systemPromptAddition: string
+}> = {
+  sterling: {
+    name: 'Sterling',
+    title: 'The Analyst',
+    description: 'Formal, data-centric, structured. Former quant analyst from a hedge fund.',
+    example: '"Technical confluence at the 50-day MA suggests a favorable risk-adjusted entry. RSI divergence supports bullish thesis."',
+    icon: 'BarChart2',
+    color: 'blue',
+    traits: ['Formal', 'Data-centric', 'Structured', 'Professional'],
+    bestFor: 'Systematic traders who value precision',
+    fullDescription: 'Sterling is a former quantitative analyst from a top-tier hedge fund. He communicates with the precision of a Bloomberg terminal, always backing recommendations with specific data points and risk metrics. Sterling uses terms like "alpha," "risk-adjusted returns," and "technical confluence." His responses are structured with clear bullet points and never include casual language.',
+    systemPromptAddition: `
+PERSONALITY: You are Sterling, a former quantitative analyst from a top-tier hedge fund.
+COMMUNICATION STYLE:
+- Use precise financial terminology (alpha, beta, risk-adjusted, drawdown)
+- Structure output with clear bullet points
+- Reference specific data points and percentages
+- Maintain a formal, professional tone
+- Avoid colloquialisms or casual language
+EXAMPLE PHRASES: "The data suggests...", "Technical confluence indicates...", "Risk-adjusted analysis shows..."
+WORD LIMIT: Keep responses under 200 words. Be concise but thorough.`
+  },
+
+  jax: {
+    name: 'Jax',
+    title: 'The Veteran Trader',
+    description: 'Direct, gruff, pragmatic. 30-year pit trader veteran.',
+    example: '"Look kid, this chart\'s screaming buy. I\'ve seen this setup a thousand times. Get in before the train leaves."',
+    icon: 'Target',
+    color: 'orange',
+    traits: ['Direct', 'Pragmatic', 'Street-smart', 'No-nonsense'],
+    bestFor: 'Active traders who want quick calls',
+    fullDescription: 'Jax spent 30 years in the trading pits of Chicago before they went electronic. He\'s seen every market cycle and has the scars to prove it. Jax keeps sentences short and punchy, using trader slang like "catching a bid" and "this thing\'s ready to rip." He won\'t sugarcoat bad news and cuts through complexity with simple analogies.',
+    systemPromptAddition: `
+PERSONALITY: You are Jax, a grizzled 30-year veteran from the trading pits of Chicago.
+COMMUNICATION STYLE:
+- Keep sentences short and punchy
+- Use trader slang (catching a bid, getting filled, this thing's ready to rip)
+- Be direct - no sugar-coating bad news
+- Use simple analogies a rookie can understand
+- Occasionally reference your experience ("I've seen this before...")
+EXAMPLE PHRASES: "Look kid...", "The chart's telling you...", "Don't overthink it..."
+WORD LIMIT: Keep responses under 200 words. Get to the point fast.`
+  },
+
+  cipher: {
+    name: 'Cipher',
+    title: 'The Tech Wiz',
+    description: 'Energetic, pattern-obsessed. Algorithmic developer and data scientist.',
+    example: '"Whoa! This pattern just triggered three of my detection algos. Probability of upside move is statistically significant!"',
+    icon: 'Microscope',
+    color: 'green',
+    traits: ['Energetic', 'Pattern-obsessed', 'Probability-focused', 'Nerdy'],
+    bestFor: 'Algo/quant traders and tech enthusiasts',
+    fullDescription: 'Cipher is an algorithmic trading developer and data scientist who gets genuinely excited about statistical edges. He thinks in terms of signal-to-noise ratios, probability distributions, and backtested patterns. Cipher occasionally makes coding references and shows enthusiasm when multiple indicators align.',
+    systemPromptAddition: `
+PERSONALITY: You are Cipher, an algorithmic trading developer and data scientist.
+COMMUNICATION STYLE:
+- Use tech/data science metaphors (signal-to-noise, edge cases, optimization)
+- Show excitement about statistical edges and pattern recognition
+- Reference probability and backtesting
+- Be energetic and slightly nerdy
+- Occasionally make coding/tech references
+EXAMPLE PHRASES: "Whoa, this pattern triggered my alert...", "The probability distribution here...", "Running this through my mental backtest..."
+WORD LIMIT: Keep responses under 200 words. Stay focused despite enthusiasm.`
+  },
+
+  kai: {
+    name: 'Kai',
+    title: 'The Sage',
+    description: 'Calm, philosophical, patient. Trading mentor with market psychology focus.',
+    example: '"The market, like water, seeks its level. This consolidation teaches patience. When the breakout comes, you will be ready."',
+    icon: 'Leaf',
+    color: 'purple',
+    traits: ['Calm', 'Philosophical', 'Patient', 'Psychology-focused'],
+    bestFor: 'Swing traders focused on discipline',
+    fullDescription: 'Kai is a wise trading mentor with decades of experience and a deep focus on market psychology. He uses metaphors from nature and martial arts, emphasizing patience, discipline, and emotional control. Kai frames advice as timeless principles rather than urgent directives, always reminding about risk management.',
+    systemPromptAddition: `
+PERSONALITY: You are Kai, a wise trading mentor with decades of experience and a focus on market psychology.
+COMMUNICATION STYLE:
+- Use metaphors from nature, martial arts, or Eastern philosophy
+- Emphasize patience, discipline, and emotional control
+- Frame advice as principles rather than directives
+- Speak in a calm, measured tone
+- Remind about risk management
+EXAMPLE PHRASES: "The market, like water...", "Patience here is strategic...", "A trader who controls their emotions..."
+WORD LIMIT: Keep responses under 200 words. Choose words carefully.`
   }
-
-  const response = data as Record<string, unknown>
-
-  if (!Array.isArray(response.choices) || response.choices.length === 0) {
-    throw new Error('Invalid response format: missing choices array')
-  }
-
-  const choice = response.choices[0] as Record<string, unknown>
-  const message = choice?.message as Record<string, unknown>
-  const content = message?.content
-
-  if (typeof content !== 'string') {
-    return 'No response generated'
-  }
-
-  return content
 }
 
-function extractClaudeContent(data: unknown): string {
-  if (!data || typeof data !== 'object') {
-    throw new Error('Invalid response format: expected object')
-  }
-
-  const response = data as Record<string, unknown>
-
-  if (!Array.isArray(response.content) || response.content.length === 0) {
-    throw new Error('Invalid response format: missing content array')
-  }
-
-  const block = response.content[0] as Record<string, unknown>
-  const text = block?.text
-
-  if (typeof text !== 'string') {
-    return 'No response generated'
-  }
-
-  return text
+/**
+ * Build the complete system prompt with persona context
+ */
+export function buildPersonaSystemPrompt(persona: PersonaType): string {
+  const personaConfig = PERSONA_PROMPTS[persona]
+  return `${SYSTEM_PROMPT}
+${personaConfig.systemPromptAddition}`
 }
-
-function extractGeminiContent(data: unknown): string {
-  if (!data || typeof data !== 'object') {
-    throw new Error('Invalid response format: expected object')
-  }
-
-  const response = data as Record<string, unknown>
-
-  if (!Array.isArray(response.candidates) || response.candidates.length === 0) {
-    throw new Error('Invalid response format: missing candidates array')
-  }
-
-  const candidate = response.candidates[0] as Record<string, unknown>
-  const content = candidate?.content as Record<string, unknown>
-  const parts = content?.parts as Array<Record<string, unknown>>
-  const text = parts?.[0]?.text
-
-  if (typeof text !== 'string') {
-    return 'No response generated'
-  }
-
-  return text
-}
-
-const SYSTEM_PROMPT = `You are an AI trading co-pilot for richdad.app - a Bloomberg Terminal-style desktop application. You help traders make informed decisions by providing market analysis, explaining trading concepts, and offering insights based on current market conditions.
-
-Your personality should be professional and concise. Focus on actionable insights. When discussing stocks:
-- Reference technical indicators when relevant
-- Consider market sentiment and news
-- Be honest about uncertainty
-- Never guarantee returns or make promises about future performance
-
-Keep responses concise but informative. Use bullet points for clarity when appropriate.`
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -137,7 +199,8 @@ function isRateLimitError(error: unknown): boolean {
  */
 export async function sendChatMessage(
   userMessage: string,
-  history: AIMessage[]
+  history: AIMessage[],
+  persona: PersonaType = 'sterling'
 ): Promise<string> {
   const enabledProviders = await getEnabledProviders()
 
@@ -160,7 +223,7 @@ export async function sendChatMessage(
   for (const providerConfig of enabledProviders) {
     try {
       console.log(`[AI] Trying ${providerConfig.provider} (priority ${providerConfig.priority})...`)
-      const response = await callProvider(providerConfig, userMessage, chatHistory)
+      const response = await callProvider(providerConfig, userMessage, chatHistory, persona)
       console.log(`[AI] ${providerConfig.provider} succeeded`)
       return response
     } catch (error) {
@@ -196,23 +259,14 @@ export async function sendChatMessage(
 async function callProvider(
   config: AIProviderConfig,
   message: string,
-  history: ChatMessage[]
+  history: ChatMessage[],
+  persona: PersonaType
 ): Promise<string> {
   const model = config.model || AI_PROVIDERS[config.provider].models[0]
 
   switch (config.provider) {
-    case 'openai':
-      return sendOpenAI(config.apiKey, model, message, history)
-    case 'claude':
-      return sendClaude(config.apiKey, model, message, history)
-    case 'gemini':
-      return sendGemini(config.apiKey, model, message, history)
-    case 'grok':
-      return sendGrok(config.apiKey, model, message, history)
-    case 'deepseek':
-      return sendDeepSeek(config.apiKey, model, message, history)
-    case 'llama':
-      return sendLlama(config.apiKey, model, message, history)
+    case 'ollama':
+      return sendOllama(model, message, history, persona)
     default:
       throw new Error(`Unknown provider: ${config.provider}`)
   }
@@ -226,222 +280,47 @@ export async function getPrimaryProvider(): Promise<AIProvider | null> {
   return providers.length > 0 ? providers[0].provider : null
 }
 
-async function sendOpenAI(
-  apiKey: string,
+/**
+ * Send message to Ollama (local AI)
+ * Ollama runs on localhost:11434 and uses OpenAI-compatible chat format
+ */
+async function sendOllama(
   model: string,
   message: string,
-  history: ChatMessage[]
+  history: ChatMessage[],
+  persona: PersonaType
 ): Promise<string> {
+  const baseUrl = 'http://localhost:11434'
+
+  // Build system prompt with persona-specific additions
+  const systemPrompt = buildPersonaSystemPrompt(persona)
+
   const messages = [
-    { role: 'system', content: SYSTEM_PROMPT },
+    { role: 'system', content: systemPrompt },
     ...history,
     { role: 'user', content: message }
   ]
 
-  const response = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
+  const response = await fetchWithTimeout(`${baseUrl}/api/chat`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
+      'Content-Type': 'application/json'
     },
     body: JSON.stringify({
       model,
       messages,
-      max_tokens: 1000,
-      temperature: 0.7
+      stream: false
     })
   })
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}))
-    throw new Error(error.error?.message || `OpenAI API error: ${response.status}`)
-  }
-
-  const data = await response.json()
-  return extractOpenAIContent(data)
-}
-
-async function sendClaude(
-  apiKey: string,
-  model: string,
-  message: string,
-  history: ChatMessage[]
-): Promise<string> {
-  const messages = [
-    ...history,
-    { role: 'user', content: message }
-  ]
-
-  const response = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true'
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 1000,
-      system: SYSTEM_PROMPT,
-      messages
-    })
-  })
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}))
-    throw new Error(error.error?.message || `Claude API error: ${response.status}`)
-  }
-
-  const data = await response.json()
-  return extractClaudeContent(data)
-}
-
-async function sendGemini(
-  apiKey: string,
-  model: string,
-  message: string,
-  history: ChatMessage[]
-): Promise<string> {
-  const contents = [
-    ...history.map(m => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }]
-    })),
-    { role: 'user', parts: [{ text: message }] }
-  ]
-
-  const response = await fetchWithTimeout(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        contents,
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        generationConfig: {
-          maxOutputTokens: 1000,
-          temperature: 0.7
-        }
-      })
+    if (response.status === 0 || response.status === 404) {
+      throw new Error('Ollama not running. Start it with: ollama serve')
     }
-  )
-
-  if (!response.ok) {
     const error = await response.json().catch(() => ({}))
-    throw new Error(error.error?.message || `Gemini API error: ${response.status}`)
+    throw new Error(error.error || `Ollama error: ${response.status}`)
   }
 
   const data = await response.json()
-  return extractGeminiContent(data)
-}
-
-async function sendGrok(
-  apiKey: string,
-  model: string,
-  message: string,
-  history: ChatMessage[]
-): Promise<string> {
-  // Grok uses OpenAI-compatible API
-  const messages = [
-    { role: 'system', content: SYSTEM_PROMPT },
-    ...history,
-    { role: 'user', content: message }
-  ]
-
-  const response = await fetchWithTimeout('https://api.x.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      max_tokens: 1000,
-      temperature: 0.7
-    })
-  })
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}))
-    throw new Error(error.error?.message || `Grok API error: ${response.status}`)
-  }
-
-  const data = await response.json()
-  return extractOpenAIContent(data)
-}
-
-async function sendDeepSeek(
-  apiKey: string,
-  model: string,
-  message: string,
-  history: ChatMessage[]
-): Promise<string> {
-  // DeepSeek uses OpenAI-compatible API
-  const messages = [
-    { role: 'system', content: SYSTEM_PROMPT },
-    ...history,
-    { role: 'user', content: message }
-  ]
-
-  const response = await fetchWithTimeout('https://api.deepseek.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      max_tokens: 1000,
-      temperature: 0.7
-    })
-  })
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}))
-    throw new Error(error.error?.message || `DeepSeek API error: ${response.status}`)
-  }
-
-  const data = await response.json()
-  return extractOpenAIContent(data)
-}
-
-async function sendLlama(
-  apiKey: string,
-  model: string,
-  message: string,
-  history: ChatMessage[]
-): Promise<string> {
-  // Llama via Groq (OpenAI-compatible API)
-  const messages = [
-    { role: 'system', content: SYSTEM_PROMPT },
-    ...history,
-    { role: 'user', content: message }
-  ]
-
-  const response = await fetchWithTimeout('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      max_tokens: 1000,
-      temperature: 0.7
-    })
-  })
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}))
-    throw new Error(error.error?.message || `Llama API error: ${response.status}`)
-  }
-
-  const data = await response.json()
-  return extractOpenAIContent(data)
+  return data.message?.content || 'No response generated'
 }

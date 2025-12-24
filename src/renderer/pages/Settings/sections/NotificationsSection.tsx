@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { Play } from 'lucide-react'
 import type { UserSettings } from '../../../lib/db'
 import { previewSound, SOUND_DISPLAY_NAMES } from '../../../lib/sounds'
+import { HelpTooltip } from '../../../components/common'
 
 interface NotificationsSectionProps {
   settings: UserSettings
@@ -53,7 +54,10 @@ export function NotificationsSection({ settings, onSave }: NotificationsSectionP
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-white text-lg font-semibold mb-1">Notifications</h3>
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="text-white text-lg font-semibold">Notifications</h3>
+          <HelpTooltip content="Audio alerts for trading events. Choose different sounds for buy/sell/hold signals and trade confirmations." />
+        </div>
         <p className="text-gray-400 text-sm">
           Configure sound alerts for AI recommendations, news, and trades
         </p>

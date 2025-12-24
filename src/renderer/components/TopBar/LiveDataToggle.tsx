@@ -43,15 +43,13 @@ export function LiveDataToggle() {
   const statusConfig = {
     paused: {
       bg: 'bg-gray-500/10 hover:bg-gray-500/20',
-      dot: 'bg-gray-500',
       text: 'text-gray-400',
-      label: 'Paused',
-      title: 'Data paused. Click to start live updates.',
+      label: 'Go Live',
+      title: 'Click to start live data updates.',
       Icon: Pause
     },
     live: {
       bg: 'bg-green-500/10 hover:bg-green-500/20',
-      dot: 'bg-green-500',
       text: 'text-green-400',
       label: 'Live',
       title: 'Live data active. Click to pause.',
@@ -59,7 +57,6 @@ export function LiveDataToggle() {
     },
     'no-keys': {
       bg: 'bg-orange-500/10 hover:bg-orange-500/20',
-      dot: 'bg-orange-400',
       text: 'text-orange-400',
       label: 'No Keys',
       title: 'No market data API keys configured. Add Polygon or TwelveData key in Settings.',
@@ -76,14 +73,6 @@ export function LiveDataToggle() {
       className={`flex items-center gap-1.5 px-2 py-1 rounded transition-all ${config.bg}`}
       title={config.title}
     >
-      {/* Status indicator */}
-      <span className="relative flex h-2 w-2">
-        {status === 'live' && (
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-        )}
-        <span className={`relative inline-flex rounded-full h-2 w-2 ${config.dot}`} />
-      </span>
-
       {/* Icon */}
       <Icon size={12} className={config.text} />
 

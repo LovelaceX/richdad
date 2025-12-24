@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { useProTraderStore } from '../../../stores/proTraderStore'
 import { getSettings, updateSettings, type UserSettings } from '../../../lib/db'
+import { HelpTooltip } from '../../../components/common'
 
 interface RSSFeed {
   name: string
@@ -148,6 +149,7 @@ export function NewsSourcesSection() {
         <div className="flex items-center gap-2 mb-3">
           <Filter className="w-4 h-4 text-terminal-amber" />
           <h3 className="text-white text-sm font-medium">Headline Limit</h3>
+          <HelpTooltip content="Maximum headlines shown per hour. Lower values reduce noise, higher values ensure you don't miss news." />
         </div>
         <p className="text-gray-500 text-xs mb-4">
           Limit the number of headlines displayed per hour to avoid information overload.
@@ -171,6 +173,7 @@ export function NewsSourcesSection() {
           <div className="flex items-center gap-2">
             <Brain className="w-4 h-4 text-terminal-amber" />
             <h3 className="text-white text-sm font-medium">AI News Filtering</h3>
+            <HelpTooltip content="When enabled, only shows news related to your watchlist and currently viewed chart. Reduces irrelevant headlines." />
           </div>
           <button
             onClick={() => saveSettings({ aiNewsFiltering: !aiNewsFiltering })}
@@ -196,6 +199,7 @@ export function NewsSourcesSection() {
         <div className="flex items-center gap-2 mb-3">
           <Brain className="w-4 h-4 text-terminal-amber" />
           <h3 className="text-white text-sm font-medium">Sentiment Analysis</h3>
+          <HelpTooltip content="Uses FinBERT AI model to analyze news sentiment. Optional HuggingFace token improves speed and reliability." />
           <span className="text-green-400 text-xs flex items-center gap-1">
             <Check className="w-3 h-3" /> Working
           </span>
@@ -283,6 +287,7 @@ export function NewsSourcesSection() {
         <div className="flex items-center gap-2 mb-3">
           <Rss className="w-4 h-4 text-orange-400" />
           <h3 className="text-white text-sm font-medium">RSS Feeds</h3>
+          <HelpTooltip content="Add financial news RSS feeds. Headlines scroll in the news ticker. Popular sources include Reuters, Bloomberg, and CNBC." />
         </div>
 
         {/* Provider has news notice */}

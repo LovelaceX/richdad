@@ -9,6 +9,7 @@ import { Monitor, LayoutGrid, Eye, TrendingUp, X, Plus, Snail, Rabbit, ChevronDo
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { getSettings, updateSettings } from '../../../lib/db'
 import { useStockAutocomplete } from '../hooks/useStockAutocomplete'
+import { HelpTooltip } from '../../../components/common'
 
 // Default market symbols
 const DEFAULT_MARKET_SYMBOLS = ['SPY', 'QQQ', 'DIA', 'VXX']
@@ -135,6 +136,7 @@ export function DisplaySection() {
           <div className="flex items-center gap-2 mb-3">
             <Monitor className="w-4 h-4 text-terminal-amber" />
             <span className="text-white text-sm font-medium">Interface Zoom</span>
+            <HelpTooltip content="Scale the entire interface up or down. Useful for high-DPI displays or if you prefer larger text and controls." />
           </div>
 
           <p className="text-gray-400 text-xs mb-4">
@@ -185,6 +187,7 @@ export function DisplaySection() {
           <div className="flex items-center gap-2 mb-3">
             <BarChart3 className="w-4 h-4 text-terminal-amber" />
             <span className="text-white text-sm font-medium">Default Index</span>
+            <HelpTooltip content="The market index shown on startup. Sets your primary chart, watchlist, and market context for AI analysis." />
           </div>
 
           <p className="text-gray-400 text-xs mb-4">
@@ -219,6 +222,7 @@ export function DisplaySection() {
           <div className="flex items-center gap-2 mb-3">
             <LayoutGrid className="w-4 h-4 text-terminal-amber" />
             <span className="text-white text-sm font-medium">Panel Visibility</span>
+            <HelpTooltip content="Toggle dashboard panels on/off. Hide panels you don't use to maximize chart space." />
           </div>
 
           <p className="text-gray-400 text-xs mb-4">
@@ -256,6 +260,7 @@ export function DisplaySection() {
           <div className="flex items-center gap-2 mb-3">
             <TrendingUp className="w-4 h-4 text-terminal-amber" />
             <span className="text-white text-sm font-medium">Market Overview Symbols</span>
+            <HelpTooltip content="Symbols shown in the top bar for quick market reference. Add ETFs, indices, or stocks you monitor frequently." />
           </div>
 
           <p className="text-gray-400 text-xs mb-4">
@@ -351,6 +356,7 @@ export function DisplaySection() {
           <div className="flex items-center gap-2 mb-3">
             <Monitor className="w-4 h-4 text-terminal-amber" />
             <span className="text-white text-sm font-medium">Ticker Speed</span>
+            <HelpTooltip content="How long each news headline displays before scrolling. Slower = more time to read. Faster = see more headlines." />
           </div>
 
           <p className="text-gray-400 text-xs mb-4">
@@ -382,6 +388,7 @@ export function DisplaySection() {
           <div className="flex items-center gap-2 mb-3">
             <Eye className="w-4 h-4 text-terminal-amber" />
             <span className="text-white text-sm font-medium">Accessibility</span>
+            <HelpTooltip content="Visual accessibility options for users with color vision deficiency. Uses shapes and patterns instead of red/green." />
           </div>
 
           <div className="flex items-center justify-between">

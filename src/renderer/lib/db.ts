@@ -29,7 +29,10 @@ export interface TradeDecision {
 
 export interface UserSettings {
   id?: number
-  tone: 'conservative' | 'aggressive' | 'humorous' | 'professional'
+  // AI Persona (new - replaces tone)
+  persona: 'sterling' | 'jax' | 'cipher' | 'kai'
+  // Deprecated: kept for migration from older versions
+  tone?: 'conservative' | 'aggressive' | 'humorous' | 'professional'
   dailyBudget: number
   dailyLossLimit: number
   positionSizeLimit: number
@@ -186,7 +189,7 @@ export interface UserProfile {
   tradingPlatforms: string[]
 }
 
-export type AIProvider = 'openai' | 'claude' | 'gemini' | 'grok' | 'deepseek' | 'llama'
+export type AIProvider = 'ollama'
 
 export type RecommendationFormat = 'standard' | 'concise' | 'detailed'
 
@@ -214,50 +217,18 @@ export interface AISettings {
   aiDailyCallLimit?: number  // 5-100, default: 15 (free tier protection)
   // Options-aware suggestions
   includeOptionsLanguage?: boolean  // Include "Buy Call/Put" hints on high-confidence signals
+  // Recommendation filtering
+  showHoldRecommendations?: boolean  // Show HOLD recommendations in UI (default: true)
 }
 
 export const AI_PROVIDERS = {
-  openai: {
-    name: 'OpenAI',
-    models: ['gpt-4.0-turbo', 'gpt-4.0', 'gpt-4-turbo-preview', 'gpt-3.5-turbo'],
-    keyPlaceholder: 'sk-...',
-    instructions: 'Get your API key from platform.openai.com/api-keys',
-    endpoint: 'https://api.openai.com/v1/chat/completions'
-  },
-  claude: {
-    name: 'Claude (Anthropic)',
-    models: ['claude-opus-4-5-20251101', 'claude-sonnet-4-5-20250929', 'claude-3-5-sonnet-20241022', 'claude-3-opus-20240229'],
-    keyPlaceholder: 'sk-ant-...',
-    instructions: 'Get your API key from console.anthropic.com',
-    endpoint: 'https://api.anthropic.com/v1/messages'
-  },
-  gemini: {
-    name: 'Gemini (Google)',
-    models: ['gemini-2.0-flash-exp', 'gemini-1.5-pro-002', 'gemini-1.5-flash-002'],
-    keyPlaceholder: 'AI...',
-    instructions: 'Get your API key from aistudio.google.com/app/apikey',
-    endpoint: 'https://generativelanguage.googleapis.com/v1beta/models'
-  },
-  grok: {
-    name: 'Grok (xAI)',
-    models: ['grok-2-1212', 'grok-2-vision-1212', 'grok-beta'],
-    keyPlaceholder: 'xai-...',
-    instructions: 'Get your API key from console.x.ai',
-    endpoint: 'https://api.x.ai/v1/chat/completions'
-  },
-  deepseek: {
-    name: 'DeepSeek',
-    models: ['deepseek-chat', 'deepseek-coder'],
-    keyPlaceholder: 'sk-...',
-    instructions: 'Get your API key from platform.deepseek.com',
-    endpoint: 'https://api.deepseek.com/v1/chat/completions'
-  },
-  llama: {
-    name: 'Meta Llama',
-    models: ['llama-3.3-70b-versatile', 'llama-3.2-90b-text-preview', 'llama-3.1-70b-versatile', 'llama-3.1-8b-instant'],
-    keyPlaceholder: 'gsk_...',
-    instructions: 'Get your API key from console.groq.com (Llama via Groq)',
-    endpoint: 'https://api.groq.com/openai/v1/chat/completions'
+  ollama: {
+    name: 'Ollama (Local)',
+    models: ['dolphin-llama3:8b'],
+    keyPlaceholder: '',
+    instructions: 'Install Ollama from ollama.ai, then run: ollama pull dolphin-llama3:8b',
+    endpoint: 'http://localhost:11434',
+    requiresKey: false
   }
 } as const
 
@@ -268,12 +239,12 @@ export const DEFAULT_PROFILE: UserProfile = {
 }
 
 export const DEFAULT_AI_SETTINGS: AISettings = {
-  provider: 'openai',
-  apiKey: '',
-  model: 'gpt-4.0-turbo',
+  provider: 'ollama',
+  apiKey: '',  // Not needed for Ollama
+  model: 'dolphin-llama3:8b',
   recommendationInterval: 15,
   confidenceThreshold: 80,
-  aiDailyCallLimit: 15,  // Conservative default for free tier protection
+  aiDailyCallLimit: 999,  // Local model - no API limits
   includeOptionsLanguage: false  // Off by default, can be enabled in settings
 }
 
@@ -489,6 +460,38 @@ class DadAppDatabase extends Dexie {
       tradeMemories: '++id, timestamp, symbol, outcomeResult, [symbol+timestamp]',
       errorLogs: '++id, timestamp, service, severity, resolved, [resolved+timestamp]'
     })
+
+    // v10: Migrate tone to persona (AI Copilot personality system)
+    // Maps: professional→sterling, aggressive→jax, humorous→cipher, conservative→kai
+    this.version(10).stores({
+      tradeDecisions: '++id, timestamp, symbol, action, decision, source, [symbol+timestamp]',
+      userSettings: '++id',
+      newsSources: '++id, name, type, enabled, category',
+      proTraders: '++id, handle, source, enabled',
+      priceAlerts: '++id, symbol, triggered, createdAt',
+      pnlEntries: '++id, date',
+      userProfile: '++id',
+      aiSettings: '++id, provider',
+      watchlist: '++id, symbol, addedAt',
+      holdings: '++id, symbol, entryDate',
+      tradeMemories: '++id, timestamp, symbol, outcomeResult, [symbol+timestamp]',
+      errorLogs: '++id, timestamp, service, severity, resolved, [resolved+timestamp]'
+    }).upgrade(async tx => {
+      // Migration: Convert tone to persona
+      const TONE_TO_PERSONA: Record<string, string> = {
+        'professional': 'sterling',
+        'aggressive': 'jax',
+        'humorous': 'cipher',
+        'conservative': 'kai'
+      }
+
+      const settings = await tx.table('userSettings').toCollection().first()
+      if (settings && settings.tone && !settings.persona) {
+        const persona = TONE_TO_PERSONA[settings.tone] || 'sterling'
+        await tx.table('userSettings').update(settings.id, { persona })
+        console.log(`[DB Migration v10] Migrated tone '${settings.tone}' to persona '${persona}'`)
+      }
+    })
   }
 }
 
@@ -496,7 +499,8 @@ export const db = new DadAppDatabase()
 
 // Default settings
 export const DEFAULT_SETTINGS: UserSettings = {
-  tone: 'professional',
+  persona: 'sterling',  // Default AI persona (Sterling = formal, data-centric)
+  tone: 'professional', // Deprecated: kept for migration
   dailyBudget: 1000,
   dailyLossLimit: 2,
   positionSizeLimit: 5,

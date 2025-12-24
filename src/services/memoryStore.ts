@@ -108,9 +108,12 @@ export async function findSimilarScenarios(
 
 /**
  * Calculate similarity score between two signatures (0-1)
+ * IMPORTANT: If regimes don't match, similarity is reduced by 50% (regime penalty)
+ * This reflects that market conditions from different regimes are less relevant
  */
 function calculateSimilarity(a: ScenarioSignature, b: ScenarioSignature): number {
   let score = 0
+  let regimePenalty = 1 // No penalty by default
 
   // RSI bucket match (20%)
   if (a.rsiBucket === b.rsiBucket) score += 0.2
@@ -130,10 +133,16 @@ function calculateSimilarity(a: ScenarioSignature, b: ScenarioSignature): number
     score += (intersection.length / union.size) * 0.2
   }
 
-  // Regime match (20%)
-  if (a.regime === b.regime) score += 0.2
+  // Regime match (20%) OR regime penalty
+  if (a.regime === b.regime) {
+    score += 0.2
+  } else {
+    // Different regime: apply 50% penalty to overall score
+    // This significantly reduces relevance of scenarios from different market conditions
+    regimePenalty = 0.5
+  }
 
-  return score
+  return score * regimePenalty
 }
 
 /**
@@ -220,24 +229,46 @@ export async function clearAllMemories(): Promise<void> {
 
 /**
  * Build context string from similar scenarios for AI prompt
+ * @param similarScenarios - Past trade memories with similar signatures
+ * @param currentRegime - Current market regime to compare against (optional)
  */
-export function buildMemoryContext(similarScenarios: TradeMemory[]): string {
+export function buildMemoryContext(
+  similarScenarios: TradeMemory[],
+  currentRegime?: string
+): string {
   if (similarScenarios.length === 0) return ''
 
   const winCount = similarScenarios.filter(s => s.outcome.result === 'win').length
   const winRate = Math.round((winCount / similarScenarios.length) * 100)
+
+  // Count same vs different regime scenarios
+  const sameRegimeCount = currentRegime
+    ? similarScenarios.filter(s => s.signature.regime === currentRegime).length
+    : similarScenarios.length
 
   const scenarioDescriptions = similarScenarios.map((s, i) => {
     const date = new Date(s.timestamp).toLocaleDateString()
     const patterns = s.signature.patterns.join(', ') || 'none'
     const profitSign = s.outcome.profitPercent >= 0 ? '+' : ''
 
-    return `${i + 1}. ${date} - ${s.symbol}
+    // Add regime label if we know the current regime
+    const regimeLabel = currentRegime
+      ? (s.signature.regime === currentRegime
+          ? '[SAME REGIME]'
+          : `[Different: ${s.signature.regime}]`)
+      : ''
+
+    return `${i + 1}. ${date} - ${s.symbol} ${regimeLabel}
    Conditions: RSI ${s.signature.rsiBucket}, MACD ${s.signature.macdSignal}, trend ${s.signature.trend}
    Patterns: ${patterns}
    Recommended: ${s.recommendation.action} (${s.recommendation.confidence}% confidence)
    Outcome: ${s.outcome.result.toUpperCase()} (${profitSign}${s.outcome.profitPercent.toFixed(1)}% in ${s.outcome.daysHeld} days)`
   }).join('\n\n')
+
+  // Add warning if most scenarios are from different regimes
+  const regimeWarning = currentRegime && sameRegimeCount < similarScenarios.length / 2
+    ? `\n⚠️ Note: Most historical scenarios are from different market regimes. Weight their relevance accordingly.`
+    : ''
 
   return `
 **HISTORICAL CONTEXT (from past recommendations):**
@@ -245,7 +276,7 @@ Found ${similarScenarios.length} similar past scenarios:
 
 ${scenarioDescriptions}
 
-Overall win rate in similar conditions: ${winRate}%
+Overall win rate in similar conditions: ${winRate}%${regimeWarning}
 
 Consider this historical performance when making your recommendation.
 `

@@ -1,11 +1,29 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, Sparkles, Zap, Leaf, Crown, Brain, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
+import { X, Leaf, Crown, Brain, CheckCircle2, Download, Copy, Check, ExternalLink } from 'lucide-react'
+
+// Platform detection (Mac and Windows only)
+type Platform = 'mac' | 'windows'
+
+const getPlatform = (): Platform => {
+  const userAgent = navigator.userAgent.toLowerCase()
+  if (userAgent.includes('win')) return 'windows'
+  return 'mac' // Default to Mac
+}
+
+const PLATFORM_NAMES: Record<Platform, string> = {
+  mac: 'macOS',
+  windows: 'Windows'
+}
+
+const DOWNLOAD_URLS: Record<Platform, string> = {
+  mac: 'https://ollama.ai/download/mac',
+  windows: 'https://ollama.ai/download/windows'
+}
 import { WelcomeStep } from './WelcomeStep'
 import { TermsStep } from './TermsStep'
 import { WizardStep } from './WizardStep'
 import { updateSettings, updateAISettings, getTierLimitsFromPlan } from '../../lib/db'
-import { testAIKey, type AIProvider } from '../../../services/aiKeyValidator'
 import { updateTierSettings } from '../../../services/apiBudgetTracker'
 
 interface OnboardingWizardProps {
@@ -14,7 +32,6 @@ interface OnboardingWizardProps {
 }
 
 type MarketDataProvider = 'polygon' | 'twelvedata'
-type AIProviderChoice = 'openai' | 'groq' | 'anthropic'
 type SetupPath = 'free' | 'pro'
 type WizardStepType = 'welcome' | 'terms' | 'path-selection' | 'api-key' | 'ai-provider'
 
@@ -24,42 +41,25 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
   const [setupPath, setSetupPath] = useState<SetupPath>('free')
   const [polygonKey, setPolygonKey] = useState('')
   const [twelvedataKey, setTwelvedataKey] = useState('')
-  const [selectedAIProvider, setSelectedAIProvider] = useState<AIProviderChoice>('groq')
-  const [aiApiKey, setAiApiKey] = useState('')
-  const [aiKeyStatus, setAiKeyStatus] = useState<'idle' | 'testing' | 'valid' | 'invalid'>('idle')
-  const [aiKeyMessage, setAiKeyMessage] = useState('')
+  const [copied, setCopied] = useState(false)
+
+  // Platform detection for download links
+  const platform = getPlatform()
+  const platformName = PLATFORM_NAMES[platform]
+
+  const copyCommand = () => {
+    navigator.clipboard.writeText('ollama pull dolphin-llama3:8b')
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   // Derived state based on selected path
   // Free uses TwelveData, Pro uses Polygon
   const selectedProvider: MarketDataProvider = setupPath === 'pro' ? 'polygon' : 'twelvedata'
 
-  // Update AI provider when path changes
+  // Update path selection
   const handlePathChange = (path: SetupPath) => {
     setSetupPath(path)
-    // Free defaults to Groq (free AI), Pro defaults to OpenAI
-    setSelectedAIProvider(path === 'free' ? 'groq' : 'openai')
-    // Reset AI key status when provider changes
-    setAiKeyStatus('idle')
-    setAiKeyMessage('')
-  }
-
-  // Test AI API key
-  const handleTestAIKey = async () => {
-    if (!aiApiKey.trim()) return
-
-    setAiKeyStatus('testing')
-    setAiKeyMessage('')
-
-    // Map wizard provider to validator provider type
-    const providerMap: Record<AIProviderChoice, AIProvider> = {
-      openai: 'openai',
-      anthropic: 'anthropic',
-      groq: 'groq'
-    }
-
-    const result = await testAIKey(providerMap[selectedAIProvider], aiApiKey)
-    setAiKeyStatus(result.valid ? 'valid' : 'invalid')
-    setAiKeyMessage(result.message)
   }
 
   const handleSkip = async () => {
@@ -96,22 +96,12 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
       }
       setCurrentStep('ai-provider')
     } else {
-      // Save AI provider choice and complete onboarding
-      if (aiApiKey) {
-        // Map providers to internal names (AIProvider type uses 'claude' not 'anthropic')
-        let provider: 'openai' | 'claude' | 'llama' = 'openai'
-        let model = 'gpt-4.0-turbo'
-
-        if (selectedAIProvider === 'groq') {
-          provider = 'llama'
-          model = 'llama-3.3-70b-versatile'
-        } else if (selectedAIProvider === 'anthropic') {
-          provider = 'claude'
-          model = 'claude-sonnet-4-20250514'
-        }
-
-        await updateAISettings({ provider, apiKey: aiApiKey, model })
-      }
+      // Save Ollama as the AI provider and complete onboarding
+      await updateAISettings({
+        provider: 'ollama',
+        apiKey: '',  // Not needed for Ollama
+        model: 'dolphin-llama3:8b'
+      })
       await updateSettings({ hasCompletedOnboarding: true })
       onClose()
     }
@@ -243,144 +233,98 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
           <div className="space-y-4">
             <div className="text-center">
               <p className="text-terminal-amber text-sm mb-1">Step {stepNumber} of {totalSteps}</p>
-              <h3 className="text-white text-lg font-medium">Choose AI Provider</h3>
-              <p className="text-gray-500 text-sm mt-2">Select your AI copilot for trading recommendations</p>
+              <h3 className="text-white text-lg font-medium">AI Copilot Setup</h3>
+              <p className="text-gray-500 text-sm mt-2">RichDad uses local AI for trading recommendations</p>
             </div>
 
+            {/* Ollama Info Card */}
+            <div className="p-4 rounded-lg border border-terminal-amber bg-terminal-amber/10">
+              <div className="flex items-center gap-3 mb-3">
+                <Brain className="w-6 h-6 text-terminal-amber flex-shrink-0" />
+                <div>
+                  <div className="text-white font-medium">Ollama (Local AI)</div>
+                  <div className="text-gray-400 text-sm">Free, private, uncensored trading analysis</div>
+                </div>
+              </div>
+
+              <div className="space-y-2 text-sm text-gray-300">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-terminal-up" />
+                  <span>No API costs - runs entirely on your computer</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-terminal-up" />
+                  <span>Private - your data never leaves your machine</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-terminal-up" />
+                  <span>Gives direct trading recommendations (no disclaimers)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Step-by-Step Setup Guide */}
             <div className="space-y-3">
-              {/* Groq Option - Show first for Free plan */}
-              <button
-                onClick={() => setSelectedAIProvider('groq')}
-                className={`w-full p-4 rounded-lg border text-left transition-colors ${
-                  selectedAIProvider === 'groq'
-                    ? 'border-green-500 bg-green-500/10'
-                    : 'border-terminal-border hover:border-gray-600'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Zap className="w-5 h-5 text-green-400 flex-shrink-0" />
-                    <div>
-                      <div className="text-white font-medium">Groq (Llama 3)</div>
-                      <div className="text-gray-400 text-sm mt-1">Fast inference, completely free</div>
-                    </div>
-                  </div>
-                  {setupPath === 'free' && (
-                    <span className="text-green-400 text-xs font-medium px-2 py-1 bg-green-400/20 rounded">
-                      Recommended
-                    </span>
-                  )}
+              {/* Step 1: Download */}
+              <div className="p-3 rounded-lg border border-terminal-border">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-6 h-6 rounded-full bg-terminal-amber flex items-center justify-center text-xs font-bold text-black">1</div>
+                  <span className="text-white font-medium text-sm">Download Ollama</span>
                 </div>
-              </button>
-
-              {/* OpenAI Option */}
-              <button
-                onClick={() => setSelectedAIProvider('openai')}
-                className={`w-full p-4 rounded-lg border text-left transition-colors ${
-                  selectedAIProvider === 'openai'
-                    ? 'border-terminal-amber bg-terminal-amber/10'
-                    : 'border-terminal-border hover:border-gray-600'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Sparkles className="w-5 h-5 text-terminal-amber flex-shrink-0" />
-                    <div>
-                      <div className="text-white font-medium">OpenAI (GPT-4)</div>
-                      <div className="text-gray-400 text-sm mt-1">Most capable, ~$5-20/month</div>
-                    </div>
-                  </div>
-                  {setupPath === 'pro' && (
-                    <span className="text-terminal-amber text-xs font-medium px-2 py-1 bg-terminal-amber/20 rounded">
-                      Recommended
-                    </span>
-                  )}
-                </div>
-              </button>
-
-              {/* Anthropic Option */}
-              <button
-                onClick={() => setSelectedAIProvider('anthropic')}
-                className={`w-full p-4 rounded-lg border text-left transition-colors ${
-                  selectedAIProvider === 'anthropic'
-                    ? 'border-purple-500 bg-purple-500/10'
-                    : 'border-terminal-border hover:border-gray-600'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Brain className="w-5 h-5 text-purple-400 flex-shrink-0" />
-                    <div>
-                      <div className="text-white font-medium">Anthropic (Claude)</div>
-                      <div className="text-gray-400 text-sm mt-1">Superior reasoning, ~$10-30/month</div>
-                    </div>
-                  </div>
-                </div>
-              </button>
-            </div>
-
-            {/* API Key Input with Test Button */}
-            <div className="space-y-2">
-              <label className="text-gray-400 text-sm">
-                {selectedAIProvider === 'openai' ? 'OpenAI API Key' : selectedAIProvider === 'anthropic' ? 'Anthropic API Key' : 'Groq API Key'}
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="password"
-                  value={aiApiKey}
-                  onChange={(e) => {
-                    setAiApiKey(e.target.value)
-                    setAiKeyStatus('idle')
-                    setAiKeyMessage('')
-                  }}
-                  placeholder={selectedAIProvider === 'openai' ? 'sk-...' : selectedAIProvider === 'anthropic' ? 'sk-ant-...' : 'gsk_...'}
-                  className={`flex-1 bg-terminal-bg border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none transition-colors ${
-                    aiKeyStatus === 'valid' ? 'border-terminal-up' :
-                    aiKeyStatus === 'invalid' ? 'border-terminal-down' :
-                    'border-terminal-border focus:border-terminal-amber'
-                  }`}
-                />
+                <p className="text-gray-400 text-sm ml-8 mb-2">
+                  Free AI that runs on your computer - no account needed
+                </p>
                 <button
-                  onClick={handleTestAIKey}
-                  disabled={!aiApiKey.trim() || aiKeyStatus === 'testing'}
-                  className={`px-4 py-3 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 ${
-                    aiKeyStatus === 'testing'
-                      ? 'bg-terminal-border text-gray-400 cursor-wait'
-                      : aiKeyStatus === 'valid'
-                      ? 'bg-terminal-up/20 text-terminal-up border border-terminal-up/30'
-                      : aiKeyStatus === 'invalid'
-                      ? 'bg-terminal-down/20 text-terminal-down border border-terminal-down/30'
-                      : 'bg-terminal-amber/20 text-terminal-amber hover:bg-terminal-amber/30 border border-terminal-amber/30'
-                  }`}
+                  onClick={() => window.open(DOWNLOAD_URLS[platform], '_blank')}
+                  className="ml-8 px-4 py-2 bg-terminal-amber text-black rounded font-medium hover:bg-amber-500 transition-colors flex items-center gap-2 text-sm"
                 >
-                  {aiKeyStatus === 'testing' ? (
-                    <><Loader2 size={14} className="animate-spin" /> Testing...</>
-                  ) : aiKeyStatus === 'valid' ? (
-                    <><CheckCircle2 size={14} /> Valid</>
-                  ) : aiKeyStatus === 'invalid' ? (
-                    <><XCircle size={14} /> Invalid</>
-                  ) : (
-                    'Test'
-                  )}
+                  <Download size={16} />
+                  Download for {platformName}
+                  <ExternalLink size={12} />
                 </button>
               </div>
-              {aiKeyMessage && (
-                <p className={`text-xs ${aiKeyStatus === 'valid' ? 'text-terminal-up' : 'text-terminal-down'}`}>
-                  {aiKeyMessage}
+
+              {/* Step 2: Install Model */}
+              <div className="p-3 rounded-lg border border-terminal-border">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-6 h-6 rounded-full bg-terminal-border flex items-center justify-center text-xs font-bold text-white">2</div>
+                  <span className="text-white font-medium text-sm">Install the AI Model</span>
+                </div>
+                <p className="text-gray-400 text-sm ml-8 mb-2">
+                  Open {platform === 'mac' ? 'Terminal' : platform === 'windows' ? 'Command Prompt' : 'Terminal'} and paste this:
                 </p>
-              )}
-              <p className="text-gray-500 text-xs">
-                {selectedAIProvider === 'openai'
-                  ? 'Get your key at platform.openai.com/api-keys'
-                  : selectedAIProvider === 'anthropic'
-                  ? 'Get your key at console.anthropic.com/settings/keys'
-                  : 'Get your free key at console.groq.com/keys'}
-              </p>
+                <div className="ml-8 flex items-center gap-2">
+                  <code className="flex-1 bg-terminal-bg px-3 py-2 rounded text-sm text-terminal-amber font-mono">
+                    ollama pull dolphin-llama3:8b
+                  </code>
+                  <button
+                    onClick={copyCommand}
+                    className="px-3 py-2 bg-terminal-border hover:bg-gray-600 rounded text-white text-sm flex items-center gap-1.5 transition-colors"
+                  >
+                    {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+                    {copied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+                <p className="text-gray-500 text-xs ml-8 mt-2">
+                  This downloads ~5GB - grab a coffee while it installs
+                </p>
+              </div>
+
+              {/* Step 3: Done */}
+              <div className="p-3 rounded-lg border border-terminal-border">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-6 h-6 rounded-full bg-terminal-border flex items-center justify-center text-xs font-bold text-white">3</div>
+                  <span className="text-white font-medium text-sm">You're All Set!</span>
+                </div>
+                <p className="text-gray-400 text-sm ml-8">
+                  Keep Ollama running in the background (it starts automatically)
+                </p>
+              </div>
             </div>
 
             <div className="text-center">
               <p className="text-gray-500 text-xs">
-                You can skip this and set up AI later in Settings
+                Click Finish to complete setup. You can configure AI later in Settings.
               </p>
             </div>
           </div>

@@ -8,6 +8,7 @@
 import { useState } from 'react'
 import { BarChart3, TrendingUp, Crown, Leaf } from 'lucide-react'
 import type { UserSettings } from '../../../lib/db'
+import { HelpTooltip } from '../../../components/common'
 import { getTierLimitsFromPlan } from '../../../lib/db'
 import { APIKeyProvider } from '../components/APIKeyProvider'
 import { APIBudgetMeter } from '../../../components/Settings/APIBudgetMeter'
@@ -90,6 +91,7 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
         <div className="flex items-center gap-2 mb-3">
           <Crown className="w-4 h-4 text-terminal-amber" />
           <span className="text-white text-sm font-medium">Your Plan</span>
+          <HelpTooltip content="Free uses conservative API limits to stay within free tiers. Pro unlocks higher rate limits for paid API subscriptions." />
         </div>
 
         <p className="text-gray-400 text-xs mb-4">
@@ -155,6 +157,7 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
           <div className="flex items-center gap-2 mb-3">
             <TrendingUp className="w-4 h-4 text-terminal-amber" />
             <span className="text-white text-sm font-medium">Default Market Data Provider</span>
+            <HelpTooltip content="Primary source for stock quotes and charts. TwelveData is free (800/day), Polygon requires paid subscription but offers real-time WebSocket." />
           </div>
 
           <p className="text-gray-400 text-xs mb-4">

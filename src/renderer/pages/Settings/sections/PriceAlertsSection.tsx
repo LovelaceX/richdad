@@ -9,6 +9,7 @@ import { Plus, Bell, Trash2, Volume2, Monitor, MessageSquare } from 'lucide-reac
 import { useAlertStore } from '../../../stores/alertStore'
 import { useStockAutocomplete } from '../hooks/useStockAutocomplete'
 import { getSettings, updateSettings } from '../../../lib/db'
+import { HelpTooltip } from '../../../components/common'
 
 type AlertCondition = 'above' | 'below' | 'percent_up' | 'percent_down'
 
@@ -83,7 +84,10 @@ export function PriceAlertsSection() {
 
   return (
     <div>
-      <h2 className="text-white text-lg font-medium mb-1">Price Alerts</h2>
+      <div className="flex items-center gap-2 mb-1">
+        <h2 className="text-white text-lg font-medium">Price Alerts</h2>
+        <HelpTooltip content="Get notified when a stock hits your target price. Set alerts for specific prices or percentage moves." />
+      </div>
       <p className="text-gray-500 text-sm mb-6">Set alerts for price movements</p>
 
       {/* Notification Settings */}
@@ -91,6 +95,7 @@ export function PriceAlertsSection() {
         <div className="flex items-center gap-2 mb-4">
           <Bell className="w-4 h-4 text-terminal-amber" />
           <h3 className="text-white text-sm font-medium">Notification Settings</h3>
+          <HelpTooltip content="Choose how you want to be notified: sound, desktop popup, or in-app toast message." />
         </div>
 
         <div className="space-y-3">

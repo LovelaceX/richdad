@@ -1,325 +1,313 @@
-import { useState } from 'react'
-import { Plus, Trash2, ChevronUp, ChevronDown, Check, AlertCircle, Cpu, Loader2, X } from 'lucide-react'
-import { AI_PROVIDERS, type AIProvider, type AIProviderConfig } from '../../lib/db'
-import { SetupPrompt } from '../common/SetupPrompt'
-import { testAIProviderKey, type AIValidationResult } from '../../../services/aiProviderValidator'
+import { useState, useEffect } from 'react'
+import { Check, AlertCircle, Cpu, Loader2, Download, Copy, RefreshCw, ExternalLink } from 'lucide-react'
+import { AI_PROVIDERS, type AIProviderConfig } from '../../lib/db'
+
+// Platform detection (Mac and Windows only)
+type Platform = 'mac' | 'windows'
+
+const getPlatform = (): Platform => {
+  const userAgent = navigator.userAgent.toLowerCase()
+  if (userAgent.includes('win')) return 'windows'
+  return 'mac' // Default to Mac
+}
+
+const PLATFORM_NAMES: Record<Platform, string> = {
+  mac: 'macOS',
+  windows: 'Windows'
+}
+
+const DOWNLOAD_URLS: Record<Platform, string> = {
+  mac: 'https://ollama.ai/download/mac',
+  windows: 'https://ollama.ai/download/windows'
+}
 
 interface MultiProviderManagerProps {
   providers: AIProviderConfig[]
   onChange: (providers: AIProviderConfig[]) => void
 }
 
+type OllamaStatus = 'checking' | 'running' | 'not_running' | 'model_missing'
+
+interface OllamaInfo {
+  status: OllamaStatus
+  models: string[]
+  error?: string
+}
+
 export function MultiProviderManager({ providers, onChange }: MultiProviderManagerProps) {
-  const [showAddProvider, setShowAddProvider] = useState(false)
-  const [newProvider, setNewProvider] = useState<AIProvider>('openai')
-  const [testing, setTesting] = useState<Record<AIProvider, boolean>>({} as Record<AIProvider, boolean>)
-  const [testResults, setTestResults] = useState<Record<AIProvider, AIValidationResult>>({} as Record<AIProvider, AIValidationResult>)
+  const [ollamaInfo, setOllamaInfo] = useState<OllamaInfo>({ status: 'checking', models: [] })
+  const [copied, setCopied] = useState(false)
+  const platform = getPlatform()
+  const platformName = PLATFORM_NAMES[platform]
 
-  const handleTestProvider = async (provider: AIProvider, apiKey: string) => {
-    if (!apiKey || testing[provider]) return
+  const copyCommand = () => {
+    navigator.clipboard.writeText('ollama pull dolphin-llama3:8b')
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
-    setTesting(prev => ({ ...prev, [provider]: true }))
-    setTestResults(prev => {
-      const next = { ...prev }
-      delete next[provider]
-      return next
-    })
+  // Check Ollama status on mount and periodically
+  useEffect(() => {
+    checkOllamaStatus()
+    const interval = setInterval(checkOllamaStatus, 30000) // Check every 30s
+    return () => clearInterval(interval)
+  }, [])
 
+  const checkOllamaStatus = async () => {
     try {
-      // Map provider to validator type
-      const validatorProvider = provider === 'llama' ? 'groq' : provider as 'openai' | 'claude' | 'groq'
-      const result = await testAIProviderKey(validatorProvider, apiKey)
-      setTestResults(prev => ({ ...prev, [provider]: result }))
+      // Check if Ollama is running by hitting the tags endpoint
+      const response = await fetch('http://localhost:11434/api/tags', {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000)
+      })
+
+      if (!response.ok) {
+        setOllamaInfo({ status: 'not_running', models: [], error: 'Ollama not responding' })
+        return
+      }
+
+      const data = await response.json()
+      const models = (data.models || []).map((m: { name: string }) => m.name)
+
+      // Check if the required model is installed
+      const requiredModel = 'dolphin-llama3:8b'
+      const hasRequiredModel = models.some((m: string) =>
+        m.includes('dolphin-llama3') || m === requiredModel
+      )
+
+      if (hasRequiredModel) {
+        setOllamaInfo({ status: 'running', models })
+
+        // Auto-configure Ollama if not already configured
+        if (providers.length === 0) {
+          onChange([{
+            provider: 'ollama',
+            apiKey: '',  // Not needed
+            model: requiredModel,
+            enabled: true,
+            priority: 1
+          }])
+        }
+      } else {
+        setOllamaInfo({
+          status: 'model_missing',
+          models,
+          error: `Model ${requiredModel} not found. Run: ollama pull ${requiredModel}`
+        })
+      }
     } catch (error) {
-      setTestResults(prev => ({
-        ...prev,
-        [provider]: { valid: false, message: 'Test failed' }
-      }))
-    } finally {
-      setTesting(prev => ({ ...prev, [provider]: false }))
+      setOllamaInfo({
+        status: 'not_running',
+        models: [],
+        error: 'Cannot connect to Ollama. Is it running?'
+      })
     }
   }
 
-  // Get providers that haven't been added yet
-  const availableProviders = (Object.keys(AI_PROVIDERS) as AIProvider[]).filter(
-    p => !providers.some(existing => existing.provider === p)
-  )
-
-  const handleAddProvider = () => {
-    if (availableProviders.length === 0) return
-
-    const providerToAdd = newProvider || availableProviders[0]
-    const newConfig: AIProviderConfig = {
-      provider: providerToAdd,
-      apiKey: '',
-      model: AI_PROVIDERS[providerToAdd].models[0],
-      enabled: true,
-      priority: providers.length + 1
+  const getStatusBadge = () => {
+    switch (ollamaInfo.status) {
+      case 'checking':
+        return (
+          <span className="flex items-center gap-1 text-gray-400 text-xs">
+            <Loader2 size={12} className="animate-spin" />
+            Checking...
+          </span>
+        )
+      case 'running':
+        return (
+          <span className="flex items-center gap-1 text-terminal-up text-xs">
+            <Check size={12} />
+            Running
+          </span>
+        )
+      case 'model_missing':
+        return (
+          <span className="flex items-center gap-1 text-yellow-500 text-xs">
+            <AlertCircle size={12} />
+            Model Missing
+          </span>
+        )
+      case 'not_running':
+        return (
+          <span className="flex items-center gap-1 text-red-400 text-xs">
+            <AlertCircle size={12} />
+            Not Running
+          </span>
+        )
     }
-
-    onChange([...providers, newConfig])
-    setShowAddProvider(false)
-    setNewProvider(availableProviders.find(p => p !== providerToAdd) || 'openai')
   }
 
-  const handleRemoveProvider = (provider: AIProvider) => {
-    const updated = providers
-      .filter(p => p.provider !== provider)
-      .map((p, idx) => ({ ...p, priority: idx + 1 }))
-    onChange(updated)
-  }
-
-  const handleUpdateProvider = (provider: AIProvider, updates: Partial<AIProviderConfig>) => {
-    const updated = providers.map(p =>
-      p.provider === provider ? { ...p, ...updates } : p
-    )
-    onChange(updated)
-  }
-
-  const handleMovePriority = (provider: AIProvider, direction: 'up' | 'down') => {
-    const idx = providers.findIndex(p => p.provider === provider)
-    if (idx === -1) return
-    if (direction === 'up' && idx === 0) return
-    if (direction === 'down' && idx === providers.length - 1) return
-
-    const newIdx = direction === 'up' ? idx - 1 : idx + 1
-    const updated = [...providers]
-    const temp = updated[idx]
-    updated[idx] = updated[newIdx]
-    updated[newIdx] = temp
-
-    // Update priorities
-    const withPriorities = updated.map((p, i) => ({ ...p, priority: i + 1 }))
-    onChange(withPriorities)
-  }
-
-  const getPriorityLabel = (priority: number) => {
-    if (priority === 1) return 'Primary'
-    if (priority === 2) return 'Fallback 1'
-    return `Fallback ${priority - 1}`
-  }
+  // Determine step completion states
+  // Step 1 complete = Ollama is installed (running or has models, just missing the specific model)
+  const step1Complete = ollamaInfo.status === 'running' || ollamaInfo.status === 'model_missing'
+  // Step 2 complete = The specific model is installed and running
+  const step2Complete = ollamaInfo.status === 'running'
+  // Step 3 complete = Everything is ready
+  const step3Complete = ollamaInfo.status === 'running'
 
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-white text-sm font-medium">AI Providers</h3>
+          <h3 className="text-white text-sm font-medium">AI Provider</h3>
           <p className="text-gray-500 text-xs mt-1">
-            Configure multiple providers with automatic fallback
+            Local AI powered by Ollama - free, private, uncensored
           </p>
         </div>
-        {availableProviders.length > 0 && (
-          <button
-            onClick={() => setShowAddProvider(true)}
-            className="flex items-center gap-1 px-3 py-1.5 bg-terminal-amber/20 text-terminal-amber rounded text-xs hover:bg-terminal-amber/30 transition-colors"
-          >
-            <Plus size={12} />
-            Add Provider
-          </button>
-        )}
+        <button
+          onClick={checkOllamaStatus}
+          className="p-2 text-gray-400 hover:text-white hover:bg-terminal-border rounded transition-colors"
+          title="Refresh status"
+        >
+          <RefreshCw size={14} className={ollamaInfo.status === 'checking' ? 'animate-spin' : ''} />
+        </button>
       </div>
 
-      {/* Provider List */}
-      {providers.length === 0 ? (
-        <div className="bg-terminal-panel border border-terminal-border rounded-lg">
-          <SetupPrompt
-            icon={<Cpu className="w-6 h-6 text-gray-500" />}
-            title="No AI providers configured"
-            description="Add a provider to enable AI features like recommendations and analysis"
-            helpSection="ai-copilot"
-            settingsPath="AI Copilot"
-          />
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {providers.sort((a, b) => a.priority - b.priority).map((config, index) => (
-            <div
-              key={config.provider}
-              className={`bg-terminal-panel border rounded-lg p-4 transition-colors ${
-                config.enabled ? 'border-terminal-border' : 'border-gray-700 opacity-60'
-              }`}
-            >
-              {/* Provider Header */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <Cpu size={16} className={config.enabled ? 'text-terminal-amber' : 'text-gray-500'} />
-                  <div>
-                    <span className="text-white text-sm font-medium">
-                      {AI_PROVIDERS[config.provider].name}
-                    </span>
-                    <span className={`ml-2 text-xs px-2 py-0.5 rounded ${
-                      config.priority === 1
-                        ? 'bg-terminal-amber/20 text-terminal-amber'
-                        : 'bg-gray-700 text-gray-400'
-                    }`}>
-                      {getPriorityLabel(config.priority)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {/* Priority Controls */}
-                  <div className="flex flex-col">
-                    <button
-                      onClick={() => handleMovePriority(config.provider, 'up')}
-                      disabled={index === 0}
-                      className="p-0.5 text-gray-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
-                      title="Move up (higher priority)"
-                    >
-                      <ChevronUp size={14} />
-                    </button>
-                    <button
-                      onClick={() => handleMovePriority(config.provider, 'down')}
-                      disabled={index === providers.length - 1}
-                      className="p-0.5 text-gray-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
-                      title="Move down (lower priority)"
-                    >
-                      <ChevronDown size={14} />
-                    </button>
-                  </div>
-
-                  {/* Enable/Disable Toggle */}
-                  <button
-                    onClick={() => handleUpdateProvider(config.provider, { enabled: !config.enabled })}
-                    className={`relative w-10 h-5 rounded-full transition-colors ${
-                      config.enabled ? 'bg-terminal-amber' : 'bg-terminal-border'
-                    }`}
-                    title={config.enabled ? 'Disable' : 'Enable'}
-                  >
-                    <div
-                      className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${
-                        config.enabled ? 'left-5' : 'left-0.5'
-                      }`}
-                    />
-                  </button>
-
-                  {/* Remove Button */}
-                  <button
-                    onClick={() => handleRemoveProvider(config.provider)}
-                    className="p-1 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                    title="Remove provider"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Provider Config */}
-              {config.enabled && (
-                <div className="space-y-3 mt-3 pt-3 border-t border-terminal-border">
-                  <div>
-                    <label className="text-gray-500 text-xs mb-1 block">API Key</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="password"
-                        value={config.apiKey}
-                        onChange={(e) => handleUpdateProvider(config.provider, { apiKey: e.target.value })}
-                        placeholder={AI_PROVIDERS[config.provider].keyPlaceholder}
-                        className="flex-1 bg-terminal-bg border border-terminal-border rounded px-2 py-1.5 text-xs text-white placeholder:text-gray-600 font-mono"
-                      />
-                      <button
-                        onClick={() => handleTestProvider(config.provider, config.apiKey)}
-                        disabled={!config.apiKey || testing[config.provider]}
-                        className="px-3 py-1.5 bg-terminal-border text-white rounded text-xs hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
-                        title="Test API key"
-                      >
-                        {testing[config.provider] ? (
-                          <Loader2 size={12} className="animate-spin" />
-                        ) : (
-                          'Test'
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Test Result */}
-                  {testResults[config.provider] && (
-                    <div className={`flex items-center gap-2 text-xs p-2 rounded ${
-                      testResults[config.provider].valid
-                        ? 'bg-terminal-up/10 text-terminal-up'
-                        : 'bg-red-500/10 text-red-400'
-                    }`}>
-                      {testResults[config.provider].valid ? (
-                        <Check size={12} />
-                      ) : (
-                        <X size={12} />
-                      )}
-                      <span>{testResults[config.provider].message}</span>
-                      {testResults[config.provider].model && (
-                        <span className="text-gray-500">({testResults[config.provider].model})</span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Status */}
-                  {!testResults[config.provider] && (
-                    <div className="flex items-center gap-2 text-xs">
-                      {config.apiKey ? (
-                        <span className="text-terminal-up flex items-center gap-1">
-                          <Check size={12} /> API key configured
-                        </span>
-                      ) : (
-                        <span className="text-yellow-500 flex items-center gap-1">
-                          <AlertCircle size={12} /> API key required
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Instructions */}
-                  <p className="text-gray-600 text-xs">
-                    {AI_PROVIDERS[config.provider].instructions}
-                  </p>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Add Provider Modal */}
-      {showAddProvider && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-terminal-panel border border-terminal-border rounded-lg p-6 w-96">
-            <h3 className="text-white text-lg font-medium mb-4">Add AI Provider</h3>
-
-            <select
-              value={newProvider}
-              onChange={(e) => setNewProvider(e.target.value as AIProvider)}
-              className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white mb-4"
-            >
-              {availableProviders.map(provider => (
-                <option key={provider} value={provider}>
-                  {AI_PROVIDERS[provider].name}
-                </option>
-              ))}
-            </select>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowAddProvider(false)}
-                className="flex-1 px-4 py-2 bg-terminal-border text-white rounded text-sm hover:bg-terminal-border/70 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleAddProvider}
-                className="flex-1 px-4 py-2 bg-terminal-amber text-black rounded text-sm hover:bg-amber-500 transition-colors"
-              >
-                Add Provider
-              </button>
-            </div>
+      {/* Status Badge */}
+      <div className="flex items-center gap-3 bg-terminal-panel border border-terminal-border rounded-lg p-3">
+        <Cpu size={18} className={ollamaInfo.status === 'running' ? 'text-terminal-amber' : 'text-gray-500'} />
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <span className="text-white text-sm font-medium">{AI_PROVIDERS.ollama.name}</span>
+            <span className="text-xs px-2 py-0.5 rounded bg-terminal-amber/20 text-terminal-amber">Primary</span>
           </div>
+          <p className="text-gray-500 text-xs">dolphin-llama3:8b - uncensored trading analysis</p>
+        </div>
+        {getStatusBadge()}
+      </div>
+
+      {/* Step-by-Step Setup Guide */}
+      <div className="space-y-3">
+        {/* Step 1: Download Ollama */}
+        <div className={`p-3 rounded-lg border transition-colors ${
+          step1Complete ? 'border-green-500/50 bg-green-500/5' : 'border-terminal-border'
+        }`}>
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+              step1Complete ? 'bg-green-500 text-black' : 'bg-terminal-border text-white'
+            }`}>
+              {step1Complete ? <Check size={14} /> : '1'}
+            </div>
+            <span className="text-white font-medium text-sm">Download Ollama</span>
+          </div>
+          <p className="text-gray-400 text-sm ml-8 mb-2">
+            Free AI that runs on your computer - no account needed
+          </p>
+          <button
+            onClick={() => window.open(DOWNLOAD_URLS[platform], '_blank')}
+            className="ml-8 px-4 py-2 bg-terminal-amber text-black rounded font-medium hover:bg-amber-500 transition-colors flex items-center gap-2 text-sm"
+          >
+            <Download size={16} />
+            Download for {platformName}
+            <ExternalLink size={12} />
+          </button>
+        </div>
+
+        {/* Step 2: Install the AI Model */}
+        <div className={`p-3 rounded-lg border transition-colors ${
+          step2Complete ? 'border-green-500/50 bg-green-500/5' : 'border-terminal-border'
+        }`}>
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+              step2Complete ? 'bg-green-500 text-black' : 'bg-terminal-border text-white'
+            }`}>
+              {step2Complete ? <Check size={14} /> : '2'}
+            </div>
+            <span className="text-white font-medium text-sm">Install the AI Model</span>
+          </div>
+          <p className="text-gray-400 text-sm ml-8 mb-2">
+            Open {platform === 'mac' ? 'Terminal' : platform === 'windows' ? 'Command Prompt' : 'Terminal'} and paste this command:
+          </p>
+          <div className="ml-8 flex items-center gap-2">
+            <code className="flex-1 bg-terminal-bg px-3 py-2 rounded text-sm text-terminal-amber font-mono">
+              ollama pull dolphin-llama3:8b
+            </code>
+            <button
+              onClick={copyCommand}
+              className="px-3 py-2 bg-terminal-border hover:bg-gray-600 rounded text-white text-sm flex items-center gap-1.5 transition-colors"
+            >
+              {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+          <p className="text-gray-500 text-xs ml-8 mt-2">
+            This downloads ~5GB - grab a coffee while it installs
+          </p>
+        </div>
+
+        {/* Step 3: Ready! */}
+        <div className={`p-3 rounded-lg border transition-colors ${
+          step3Complete ? 'border-green-500/50 bg-green-500/5' : 'border-terminal-border'
+        }`}>
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+              step3Complete ? 'bg-green-500 text-black' : 'bg-terminal-border text-white'
+            }`}>
+              {step3Complete ? <Check size={14} /> : '3'}
+            </div>
+            <span className="text-white font-medium text-sm">You're All Set!</span>
+          </div>
+          <p className="text-gray-400 text-sm ml-8">
+            {ollamaInfo.status === 'running'
+              ? 'Ollama is running and ready to analyze trades!'
+              : 'Keep Ollama running in the background (it starts automatically on your computer)'}
+          </p>
+        </div>
+      </div>
+
+      {/* Status-specific feedback */}
+      {ollamaInfo.status === 'model_missing' && (
+        <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+          <p className="text-yellow-400 text-sm mb-1">
+            <strong>Almost there!</strong> Just need to download the AI model.
+          </p>
+          <p className="text-gray-400 text-xs">
+            Complete step 2 above to finish setup.
+            {ollamaInfo.models.length > 0 && (
+              <span className="block mt-1">
+                You have other models installed: {ollamaInfo.models.slice(0, 2).join(', ')}
+                {ollamaInfo.models.length > 2 && ` +${ollamaInfo.models.length - 2} more`}
+              </span>
+            )}
+          </p>
         </div>
       )}
 
-      {/* Info */}
-      <div className="text-xs text-gray-500 bg-terminal-bg/50 rounded p-3">
-        <p>
-          <strong>How it works:</strong> If the primary provider fails (rate limit, API error, etc.),
-          the system automatically tries the next enabled provider in priority order.
-        </p>
+      {ollamaInfo.status === 'running' && (
+        <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+          <p className="text-green-400 text-sm flex items-center gap-2">
+            <Check size={16} />
+            <strong>Ready!</strong> AI Copilot will use your local Ollama for trading analysis.
+          </p>
+        </div>
+      )}
+
+      {/* Troubleshooting (collapsible) */}
+      {ollamaInfo.status === 'not_running' && (
+        <details className="group">
+          <summary className="text-gray-400 text-sm cursor-pointer hover:text-white flex items-center gap-2">
+            <AlertCircle size={14} />
+            Ollama not detected? Click for troubleshooting
+          </summary>
+          <div className="mt-2 p-3 bg-terminal-bg rounded-lg text-sm text-gray-400 space-y-2">
+            <p className="font-medium text-white">Common solutions:</p>
+            <ul className="list-disc list-inside ml-2 space-y-1">
+              {platform === 'mac' && <li>Open Ollama from your Applications folder</li>}
+              {platform === 'windows' && <li>Run "Ollama" from the Start menu</li>}
+              <li>Make sure Ollama finished installing completely</li>
+              <li>Try restarting your computer</li>
+            </ul>
+            <p className="text-gray-500 text-xs mt-2">
+              Still stuck? Visit <a href="https://ollama.ai" target="_blank" rel="noopener noreferrer" className="text-terminal-amber hover:underline">ollama.ai</a> for help.
+            </p>
+          </div>
+        </details>
+      )}
+
+      {/* Why Ollama */}
+      <div className="text-xs text-gray-600 pt-2 border-t border-terminal-border">
+        <strong className="text-gray-500">Why Ollama?</strong> Free, runs locally, no API keys, no rate limits, and the dolphin model gives honest trading advice without disclaimers.
       </div>
     </div>
   )

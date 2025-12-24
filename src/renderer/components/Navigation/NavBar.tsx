@@ -83,11 +83,6 @@ export const NavBar = memo(function NavBar() {
         label="Settings"
         shortcut="⌘4"
       />
-
-      {/* Divider */}
-      <div className="w-px h-4 bg-terminal-border mx-1" />
-
-      {/* Notification Bell */}
       <NotificationBell />
     </div>
   )

@@ -8,13 +8,22 @@
  * - Candlestick patterns: cached for 15 minutes per symbol
  */
 
-import { getAISettings } from '../renderer/lib/db'
+import { getAISettings, getSettings } from '../renderer/lib/db'
 import { fetchHistoricalData, fetchLivePrices } from './marketData'
-import { calculateIndicators, type TechnicalIndicators } from './technicalIndicators'
+import {
+  calculateIndicators,
+  calculateRSI,
+  calculateRelativeStrength,
+  formatRelativeStrengthForPrompt,
+  getCachedSpyRSI,
+  setSpyRSICache,
+  type TechnicalIndicators,
+  type RelativeStrength,
+  type CandleData
+} from './technicalIndicators'
 import { calculateMarketRegime, formatRegimeForPrompt, type MarketRegime } from './marketRegime'
 import { detectPatterns, type DetectedPattern } from './candlestickPatterns'
 import type { AIRecommendation, Quote, AnalysisPhase } from '../renderer/types'
-import type { CandleData } from './technicalIndicators'
 import { generateId } from '../renderer/lib/utils'
 import { canMakeAICall, recordAICall, getAIBudgetStatus } from './aiBudgetTracker'
 import { findSimilarScenarios, extractSignature, buildMemoryContext } from './memoryStore'
@@ -243,6 +252,16 @@ interface RecommendationResponse {
   rationale: string
   priceTarget?: number
   stopLoss?: number
+  // Position sizing based on user risk settings
+  suggestedShares?: number
+  suggestedDollarAmount?: number
+}
+
+// Risk settings passed to AI for position sizing
+interface RiskSettings {
+  dailyBudget: number
+  dailyLossLimit: number      // percentage
+  positionSizeLimit: number   // percentage
 }
 
 // Type for phase update callback
@@ -333,6 +352,37 @@ export async function generateRecommendation(
     const rsiLabel = indicators.rsi14 ? `RSI ${indicators.rsi14}` : 'Calculating...'
     updatePhase('technicals', 'complete', rsiLabel)
 
+    // Calculate relative strength vs SPY (skip for SPY itself)
+    let relativeStrength: RelativeStrength | null = null
+    if (symbol.toUpperCase() !== 'SPY' && indicators.rsi14) {
+      try {
+        // Check SPY RSI cache first
+        let spyRSI = getCachedSpyRSI()
+
+        if (spyRSI === null) {
+          // Fetch SPY data and calculate RSI
+          console.log('[AI Engine] Fetching SPY data for relative strength...')
+          const spyHistory = await fetchHistoricalData('SPY', 'daily')
+          if (spyHistory.candles.length >= 15) {
+            spyRSI = calculateRSI(spyHistory.candles)
+            if (spyRSI !== null) {
+              setSpyRSICache(spyRSI)
+              console.log(`[AI Engine] Cached SPY RSI: ${spyRSI}`)
+            }
+          }
+        } else {
+          console.log(`[AI Engine] Using cached SPY RSI: ${spyRSI}`)
+        }
+
+        if (spyRSI !== null) {
+          relativeStrength = calculateRelativeStrength(indicators.rsi14, spyRSI)
+          console.log(`[AI Engine] Relative strength: ${relativeStrength.interpretation} (diff: ${relativeStrength.differential})`)
+        }
+      } catch (error) {
+        console.warn('[AI Engine] Failed to calculate relative strength:', error)
+      }
+    }
+
     // Phase 4: Detect candlestick patterns (uses cache)
     updatePhase('patterns', 'active')
     const allPatterns = getCachedPatterns(symbol, candles)
@@ -357,7 +407,8 @@ export async function generateRecommendation(
       })
       const similarScenarios = await findSimilarScenarios(signature, 5)
       if (similarScenarios.length > 0) {
-        memoryContext = buildMemoryContext(similarScenarios)
+        // Pass current regime to help label scenarios as same/different regime
+        memoryContext = buildMemoryContext(similarScenarios, marketRegime?.regime)
         console.log(`[AI Engine] Found ${similarScenarios.length} similar past scenarios for context`)
       }
     } catch (error) {
@@ -375,8 +426,21 @@ export async function generateRecommendation(
     // Phase 6: Build prompt and send to AI
     updatePhase('ai', 'active')
     const includeOptionsLanguage = aiSettings.includeOptionsLanguage ?? false
-    const prompt = buildAnalysisPrompt(symbol, quote, indicators, newsHeadlines, marketRegime, recentPatterns, memoryContext, includeOptionsLanguage)
-    const aiResponse = await sendAnalysisToAI(prompt, aiSettings.provider, aiSettings.apiKey, aiSettings.model)
+    const recommendationFormat = aiSettings.recommendationFormat ?? 'standard'
+
+    // Get user's settings for persona and risk parameters
+    const userSettings = await getSettings()
+    const persona = userSettings.persona || 'sterling'
+
+    // Extract risk settings for position sizing
+    const riskSettings: RiskSettings = {
+      dailyBudget: userSettings.dailyBudget ?? 1000,
+      dailyLossLimit: userSettings.dailyLossLimit ?? 2,
+      positionSizeLimit: userSettings.positionSizeLimit ?? 5
+    }
+
+    const prompt = buildAnalysisPrompt(symbol, quote, indicators, newsHeadlines, marketRegime, recentPatterns, memoryContext, includeOptionsLanguage, relativeStrength, recommendationFormat, riskSettings)
+    const aiResponse = await sendAnalysisToAI(prompt, aiSettings.provider, aiSettings.apiKey, aiSettings.model, persona)
 
     // Record the AI call (budget tracking)
     recordAICall()
@@ -420,7 +484,10 @@ export async function generateRecommendation(
       ],
       timestamp: Date.now(),
       priceTarget: recommendation.priceTarget,
-      stopLoss: recommendation.stopLoss
+      stopLoss: recommendation.stopLoss,
+      // Position sizing based on user risk settings
+      suggestedShares: recommendation.suggestedShares,
+      suggestedDollarAmount: recommendation.suggestedDollarAmount
     }
 
     console.log(`[AI Engine] Generated ${recommendation.action} recommendation for ${symbol} (${recommendation.confidence}% confidence)`)
@@ -443,7 +510,10 @@ function buildAnalysisPrompt(
   marketRegime: MarketRegime | null,
   patterns: DetectedPattern[],
   memoryContext: string = '',
-  includeOptionsLanguage: boolean = false
+  includeOptionsLanguage: boolean = false,
+  relativeStrength: RelativeStrength | null = null,
+  recommendationFormat: 'standard' | 'concise' | 'detailed' = 'standard',
+  riskSettings?: RiskSettings
 ): string {
   // Sanitize all external inputs before including in prompt
   const safeSymbol = sanitizeSymbol(symbol)
@@ -482,7 +552,9 @@ ${indicators.ma200 ? `- MA(200): $${indicators.ma200}` : ''}
 - Trend: ${indicators.trend}
 - Momentum: ${indicators.momentum}
 ${indicators.volatility ? `- Volatility: ${indicators.volatility}` : ''}
-
+${relativeStrength ? `
+${formatRelativeStrengthForPrompt(safeSymbol, relativeStrength)}
+` : ''}
 **RECENT CANDLESTICK PATTERNS:**
 ${patternSection}
 
@@ -508,13 +580,28 @@ When confidence is 75% or higher, include optional options strategy suggestions 
 - For BUY recommendations: Mention "or Buy Call for leverage" as an alternative
 - For SELL recommendations: Mention "or Buy Put for downside protection" as an alternative
 - Only suggest options when conviction is high and risk/reward is clear` : ''}
+${riskSettings ? `
+**USER RISK PARAMETERS:**
+- Daily Trading Budget: $${riskSettings.dailyBudget.toLocaleString()}
+- Max Position Size: ${riskSettings.positionSizeLimit}% of portfolio ($${Math.round(riskSettings.dailyBudget * riskSettings.positionSizeLimit / 100)})
+- Daily Loss Limit: ${riskSettings.dailyLossLimit}% ($${Math.round(riskSettings.dailyBudget * riskSettings.dailyLossLimit / 100)})
+
+**POSITION SIZING RULES:**
+- Calculate suggestedDollarAmount based on the position size limit above
+- Calculate suggestedShares = suggestedDollarAmount / current price (round down to whole number)
+- Stop-loss should limit potential loss to the daily loss limit
+- In HIGH_VOL regimes, reduce position size by 50%` : ''}
+
+**OUTPUT FORMAT:** ${recommendationFormat === 'concise' ? 'Keep rationale under 50 words. Be direct and actionable.' : recommendationFormat === 'detailed' ? 'Provide comprehensive breakdown with all indicators, patterns, risk factors, and confidence reasoning.' : 'Include 2-3 sentences with key data points and reasoning.'}
 
 Respond ONLY with valid JSON in this exact format:
 
 {
   "action": "BUY" | "SELL" | "HOLD",
   "confidence": 0-100,
-  "rationale": "Brief 2-3 sentence explanation referencing market regime, candlestick patterns, and specific data points${includeOptionsLanguage ? '. Include options alternative if confidence >= 75%' : ''}",
+  "rationale": "Brief 2-3 sentence explanation referencing market regime, candlestick patterns, and specific data points${includeOptionsLanguage ? '. Include options alternative if confidence >= 75%' : ''}"${riskSettings ? `,
+  "suggestedShares": number or null,
+  "suggestedDollarAmount": number or null` : ''},
   "priceTarget": number or null,
   "stopLoss": number or null
 }
@@ -525,7 +612,9 @@ Rules:
 - When ATR is available, use it for stop-loss sizing: stopLoss = current price - (2 × ATR) for BUY, current price + (2 × ATR) for SELL
 - When Bollinger Bands show %B < 0.2 (near lower band), this supports BUY signals; %B > 0.8 (near upper band) supports SELL signals
 - rationale MUST reference the market regime, any significant candlestick patterns, AND specific technical data (RSI, MACD, Bollinger Bands, etc.)
-- In high volatility regimes or when volatility is "high", recommend tighter stops and lower position sizes
+- In high volatility regimes or when volatility is "high", recommend tighter stops and lower position sizes${riskSettings ? `
+- suggestedShares and suggestedDollarAmount should respect the user's position size limit
+- For HOLD recommendations, suggestedShares and suggestedDollarAmount should be null` : ''}
 - Be honest about uncertainty - lower confidence if data is mixed or regime is risky
 
 Respond with ONLY the JSON object, no additional text.`
@@ -540,15 +629,16 @@ async function sendAnalysisToAI(
   prompt: string,
   _provider: string,
   _apiKey: string,
-  _model?: string
+  _model?: string,
+  persona: 'sterling' | 'jax' | 'cipher' | 'kai' = 'sterling'
 ): Promise<string | null> {
   try {
     // Import AI library functions
     const { sendChatMessage } = await import('../renderer/lib/ai')
 
     // Note: We're reusing the chat function but with an empty history
-    // In production, you might want a dedicated recommendation endpoint
-    const response = await sendChatMessage(prompt, [])
+    // Persona affects the AI's communication style in recommendations
+    const response = await sendChatMessage(prompt, [], persona)
 
     return response
   } catch (error) {
@@ -615,7 +705,10 @@ function parseAIResponse(response: string, _symbol: string, currentPrice: number
       confidence,
       rationale: parsed.rationale,
       priceTarget: priceTarget || undefined,
-      stopLoss: stopLoss || undefined
+      stopLoss: stopLoss || undefined,
+      // Position sizing fields (optional, depends on risk settings being passed)
+      suggestedShares: typeof parsed.suggestedShares === 'number' ? Math.floor(parsed.suggestedShares) : undefined,
+      suggestedDollarAmount: typeof parsed.suggestedDollarAmount === 'number' ? Math.round(parsed.suggestedDollarAmount) : undefined
     }
 
   } catch (error) {
@@ -837,11 +930,15 @@ export async function generateRecommendationForBacktest(
     )
 
     // 10. Send to AI
+    // Get user's selected persona for AI communication style
+    const userSettings = await getSettings()
+    const persona = userSettings.persona || 'sterling'
     const aiResponse = await sendAnalysisToAI(
       prompt,
       aiSettings.provider,
       aiSettings.apiKey,
-      aiSettings.model
+      aiSettings.model,
+      persona
     )
 
     // Record the AI call (unless skipped)

@@ -5,16 +5,17 @@
  */
 
 // React import not needed for JSX in modern TypeScript
-import { Cpu, AlertCircle, Check, Search, HelpCircle } from 'lucide-react'
+import { Cpu, AlertCircle, Check, Search, BarChart2, Target, Microscope, Leaf, type LucideIcon } from 'lucide-react'
 import { MultiProviderManager } from '../../../components/Settings/MultiProviderManager'
-import { AIBudgetMeter } from '../../../components/Settings/AIBudgetMeter'
+import { HelpTooltip } from '../../../components/common'
+import { PERSONA_PROMPTS } from '../../../lib/ai'
 import type {
   UserSettings,
   AISettings,
   AIProviderConfig,
   RecommendationFormat,
 } from '../../../lib/db'
-import type { ToneType } from '../../../types'
+import type { PersonaType } from '../../../types'
 
 interface AICopilotSectionProps {
   settings: UserSettings
@@ -23,27 +24,23 @@ interface AICopilotSectionProps {
   onSaveAISettings: (updates: Partial<AISettings>) => Promise<void>
 }
 
-const TONE_DESCRIPTIONS: Record<ToneType, { label: string; example: string }> = {
-  conservative: {
-    label: 'Conservative',
-    example:
-      '"Consider waiting for confirmation before entering. Risk/reward ratio suggests caution."',
-  },
-  aggressive: {
-    label: 'Aggressive',
-    example:
-      '"Strong momentum detected! This could run fast. Consider sizing up on this one."',
-  },
-  humorous: {
-    label: 'Humorous',
-    example:
-      '"This stock is looking spicier than my grandma\'s salsa. Might want to take a bite"',
-  },
-  professional: {
-    label: 'Professional',
-    example:
-      '"Technical indicators suggest bullish divergence. Volume supports upward movement."',
-  },
+// Persona display order
+const PERSONA_ORDER: PersonaType[] = ['sterling', 'jax', 'cipher', 'kai']
+
+// Lucide icon mapping for personas
+const PERSONA_ICONS: Record<PersonaType, LucideIcon> = {
+  sterling: BarChart2,
+  jax: Target,
+  cipher: Microscope,
+  kai: Leaf,
+}
+
+// Color class mapping for icons
+const PERSONA_ICON_COLORS: Record<string, string> = {
+  blue: 'text-blue-400',
+  orange: 'text-orange-400',
+  green: 'text-green-400',
+  purple: 'text-purple-400',
 }
 
 export function AICopilotSection({
@@ -98,6 +95,7 @@ export function AICopilotSection({
           <div className="flex items-center gap-2 mb-3">
             <Cpu className="w-4 h-4 text-terminal-amber" />
             <span className="text-white text-sm font-medium">AI Output Settings</span>
+            <HelpTooltip content="Control how AI presents its analysis. Standard includes data sources, Concise is brief, Detailed gives full breakdown." />
           </div>
 
           <div>
@@ -123,7 +121,10 @@ export function AICopilotSection({
 
         {/* AI Recommendation Interval */}
         <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-          <label className="text-white text-sm block mb-3">Recommendation Interval</label>
+          <div className="flex items-center gap-2 mb-3">
+            <label className="text-white text-sm">Recommendation Interval</label>
+            <HelpTooltip content="How often AI generates new analysis during market hours. Shorter intervals use more API calls but catch faster moves." />
+          </div>
           <div className="flex gap-2">
             {([5, 10, 15] as const).map((interval) => (
               <button
@@ -147,7 +148,10 @@ export function AICopilotSection({
         {/* Confidence Threshold */}
         <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-white text-sm">Minimum Confidence Threshold</span>
+            <div className="flex items-center gap-2">
+              <span className="text-white text-sm">Minimum Confidence Threshold</span>
+              <HelpTooltip content="Only show trades where AI confidence meets this threshold. Higher = fewer but more reliable signals." />
+            </div>
             <span className="text-terminal-amber font-mono">
               {aiSettings.confidenceThreshold ?? 80}%
             </span>
@@ -191,6 +195,25 @@ export function AICopilotSection({
           </label>
         </div>
 
+        {/* Show HOLD Recommendations Toggle */}
+        <div>
+          <h3 className="text-white text-sm font-medium mb-3">Recommendation Filtering</h3>
+          <label className="flex items-center justify-between p-3 rounded-lg border border-terminal-border hover:border-gray-600 cursor-pointer">
+            <div>
+              <span className="text-white text-sm">Show HOLD recommendations</span>
+              <p className="text-gray-500 text-xs mt-1">
+                When disabled, only BUY and SELL signals are shown. Turn off if you only want actionable alerts.
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={aiSettings.showHoldRecommendations ?? true}
+              onChange={(e) => onSaveAISettings({ showHoldRecommendations: e.target.checked })}
+              className="w-5 h-5 accent-terminal-amber"
+            />
+          </label>
+        </div>
+
         <div className="border-t border-terminal-border" />
 
         {/* Automatic Pattern Scanning */}
@@ -199,12 +222,7 @@ export function AICopilotSection({
             <div className="flex items-center gap-2">
               <Search className="w-4 h-4 text-terminal-amber" />
               <span className="text-white text-sm font-medium">Automatic Pattern Scanning</span>
-              <div className="relative group">
-                <HelpCircle size={14} className="text-gray-500 cursor-help" />
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-terminal-bg border border-terminal-border rounded-lg text-xs text-gray-300 w-64 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
-                  Uses 1 API call per symbol every 15 minutes. Only enable if you have a paid API tier with higher rate limits.
-                </div>
-              </div>
+              <HelpTooltip content="Uses 1 API call per symbol every 15 minutes. Only enable if you have a paid API tier with higher rate limits." />
             </div>
             <button
               onClick={() => onSaveSettings({ autoPatternScan: !settings.autoPatternScan })}
@@ -239,41 +257,43 @@ export function AICopilotSection({
           )}
         </div>
 
-        {/* AI Budget (Free Tier Protection) */}
-        <div>
-          <h3 className="text-white text-sm font-medium mb-3">AI Budget (Free Tier Protection)</h3>
-          <p className="text-gray-400 text-xs mb-4">
-            Limit daily AI API calls to protect free tier usage. Adjust based on your API plan.
-          </p>
-          <AIBudgetMeter showControls={true} />
-        </div>
 
-        <div className="border-t border-terminal-border" />
-
-        {/* Response Style / Personality */}
+        {/* AI Persona Selection */}
         <div>
-          <h3 className="text-white text-sm font-medium mb-3">Response Style</h3>
-          <p className="text-gray-400 text-xs mb-4">
-            Choose how your AI co-pilot communicates with you
+          <h3 className="text-white text-sm font-medium mb-3">AI Persona</h3>
+          <p className="text-gray-400 text-xs mb-3">
+            Choose your AI co-pilot's personality
           </p>
-          <div className="space-y-3">
-            {(Object.keys(TONE_DESCRIPTIONS) as ToneType[]).map((tone) => (
-              <button
-                key={tone}
-                onClick={() => onSaveSettings({ tone })}
-                className={`w-full p-4 rounded-lg border text-left transition-colors ${
-                  settings.tone === tone
-                    ? 'border-terminal-amber bg-terminal-amber/10'
-                    : 'border-terminal-border hover:border-gray-600'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-white font-medium">{TONE_DESCRIPTIONS[tone].label}</span>
-                  {settings.tone === tone && <Check className="w-4 h-4 text-terminal-amber" />}
-                </div>
-                <p className="text-gray-500 text-sm italic">{TONE_DESCRIPTIONS[tone].example}</p>
-              </button>
-            ))}
+          <div className="space-y-2">
+            {PERSONA_ORDER.map((personaId) => {
+              const persona = PERSONA_PROMPTS[personaId]
+              const isSelected = settings.persona === personaId
+              const IconComponent = PERSONA_ICONS[personaId]
+              const iconColorClass = PERSONA_ICON_COLORS[persona.color] || 'text-gray-400'
+              return (
+                <button
+                  key={personaId}
+                  onClick={() => onSaveSettings({ persona: personaId })}
+                  className={`w-full px-3 py-2.5 rounded-lg border text-left transition-colors ${
+                    isSelected
+                      ? 'border-terminal-amber bg-terminal-amber/10'
+                      : 'border-terminal-border hover:border-gray-600'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <IconComponent className={`w-4 h-4 ${iconColorClass}`} />
+                      <span className="text-white font-medium text-sm">{persona.name}</span>
+                      <span className="text-gray-500 text-xs">{persona.title}</span>
+                    </div>
+                    {isSelected && <Check className="w-4 h-4 text-terminal-amber" />}
+                  </div>
+                  <p className="text-gray-500 text-xs mt-1.5 ml-7">
+                    {persona.description.split('.')[0]}. Best for {persona.bestFor.toLowerCase()}.
+                  </p>
+                </button>
+              )
+            })}
           </div>
         </div>
       </div>

@@ -7,6 +7,7 @@
 import React, { useState } from 'react'
 import { AlertCircle } from 'lucide-react'
 import type { UserSettings } from '../../../lib/db'
+import { HelpTooltip } from '../../../components/common'
 
 interface RiskManagementSectionProps {
   settings: UserSettings
@@ -46,7 +47,10 @@ export function RiskManagementSection({ settings, onSave }: RiskManagementSectio
       <div className="space-y-6">
         {/* Daily Budget */}
         <div>
-          <label className="text-white text-sm mb-3 block">Daily Budget</label>
+          <div className="flex items-center gap-2 mb-3">
+            <label className="text-white text-sm">Daily Budget</label>
+            <HelpTooltip content="Your maximum capital at risk per trading day. When losses reach this amount, AI recommendations become more conservative." />
+          </div>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
             <input
@@ -64,7 +68,10 @@ export function RiskManagementSection({ settings, onSave }: RiskManagementSectio
 
         {/* Daily Loss Limit */}
         <div>
-          <label className="text-white text-sm mb-3 block">Daily Loss Limit</label>
+          <div className="flex items-center gap-2 mb-3">
+            <label className="text-white text-sm">Daily Loss Limit</label>
+            <HelpTooltip content="Maximum percentage of your daily budget you're willing to lose. Professional traders typically use 2-5%. Higher values increase risk." />
+          </div>
           <div className="flex items-center gap-4">
             <input
               type="range"
@@ -88,7 +95,10 @@ export function RiskManagementSection({ settings, onSave }: RiskManagementSectio
 
         {/* Position Size Limit */}
         <div>
-          <label className="text-white text-sm mb-3 block">Position Size Limit</label>
+          <div className="flex items-center gap-2 mb-3">
+            <label className="text-white text-sm">Position Size Limit</label>
+            <HelpTooltip content="Maximum percentage of your portfolio to allocate to a single position. Limits concentration risk and prevents overexposure to one stock." />
+          </div>
           <div className="flex items-center gap-4">
             <input
               type="range"
@@ -105,7 +115,10 @@ export function RiskManagementSection({ settings, onSave }: RiskManagementSectio
 
         {/* Pattern Lookback Period */}
         <div>
-          <label className="text-white text-sm mb-3 block">Pattern Lookback Period</label>
+          <div className="flex items-center gap-2 mb-3">
+            <label className="text-white text-sm">Pattern Lookback Period</label>
+            <HelpTooltip content="Number of days of historical data the AI analyzes. Longer periods find more patterns but may include outdated market conditions." />
+          </div>
           <div className="flex items-center gap-4">
             <input
               type="range"

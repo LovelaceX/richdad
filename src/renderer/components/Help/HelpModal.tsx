@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   X, BookOpen, Zap, BarChart3, Keyboard, HelpCircle, Shield, FileText, Mail,
   Search, Gauge, AlertTriangle, Database, TrendingUp, Bell, Eye, Check, ExternalLink, Bug, Sparkles, Activity,
-  Crown, Leaf, Heart, ClipboardCheck, Square, CheckSquare
+  Crown, Leaf, Heart, ClipboardCheck, Square, CheckSquare, Settings,
+  BarChart2, Target, Microscope
 } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 
@@ -24,6 +25,7 @@ type Section =
   | 'intel-panel'
   | 'price-alerts'
   | 'chart-guide'
+  | 'settings-guide'
   | 'ai-copilot'
   | 'api-limits'
   | 'shortcuts'
@@ -78,9 +80,13 @@ const sectionContent: Record<Section, { title: string; searchableText: string }>
     title: 'Chart Controls',
     searchableText: 'candlestick timeframe zoom pan daily intraday weekly monthly 1 minute 5 minute 15 minute 1 hour 4 hour drawing tools trendline support resistance fibonacci moving average bollinger bands volume indicator overlay'
   },
+  'settings-guide': {
+    title: 'Settings Guide',
+    searchableText: 'settings configuration preferences my profile portfolio display risk management ai copilot market data news sources activity log notifications price alerts danger zone trading style experience level cash balance position size stop loss kelly criterion zoom ticker speed cvd mode color vision api key provider tier rss feed huggingface sentiment sound volume reset clear cache factory reset export backup'
+  },
   'ai-copilot': {
     title: 'AI Copilot',
-    searchableText: 'openai claude gemini grok deepseek groq llama recommendation chat provider thinking animation phases finnhub news buy call buy put options options-aware call put leverage buy sell hold confidence technical analysis sentiment market regime risk management position size stop loss take profit price target rationale explanation ai analysis automatic manual trigger chat interface conversation history performance tracking win rate accuracy options trading suggestions rate limit unlimited fallback'
+    searchableText: 'openai claude gemini grok deepseek groq llama recommendation chat provider thinking animation phases finnhub news buy call buy put options options-aware call put leverage buy sell hold confidence technical analysis sentiment market regime risk management position size stop loss take profit price target rationale explanation ai analysis automatic manual trigger chat interface conversation history performance tracking win rate accuracy options trading suggestions rate limit unlimited fallback persona personality sterling analyst jax veteran trader cipher tech wiz kai sage quant formal professional direct pragmatic energetic nerdy calm philosophical patient communication style voice character traits'
   },
   'api-limits': {
     title: 'API Limits & Usage',
@@ -183,6 +189,7 @@ export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
     { id: 'intel-panel', label: 'Intelligence Panel', icon: Activity },
     { id: 'price-alerts', label: 'Price Alerts', icon: Bell },
     { id: 'chart-guide', label: 'Chart Controls', icon: BarChart3 },
+    { id: 'settings-guide', label: 'Settings Guide', icon: Settings },
     { id: 'ai-copilot', label: 'AI Copilot', icon: Zap },
     { id: 'api-limits', label: 'API Limits & Usage', icon: Gauge },
     { id: 'shortcuts', label: 'Keyboard Shortcuts', icon: Keyboard },
@@ -400,7 +407,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               Quick Links
             </h3>
             <div className="grid grid-cols-2 gap-x-8 gap-y-3">
-              <Step><QuickLink to="ai-copilot">Setting Up AI Providers</QuickLink></Step>
+              <Step><QuickLink to="ai-copilot">Setting Up AI Copilot (Ollama)</QuickLink></Step>
               <Step><QuickLink to="dashboard">Understanding the Dashboard</QuickLink></Step>
               <Step><QuickLink to="watchlist">Managing Your Watchlist</QuickLink></Step>
               <Step><QuickLink to="news">Reading Market News</QuickLink></Step>
@@ -425,17 +432,17 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                   Free Path ($0/month)
                 </p>
                 <Step><span className="text-white">TwelveData</span> - 800 calls/day free tier</Step>
-                <Step><span className="text-white">Groq (Llama 3)</span> - Completely free AI</Step>
+                <Step><span className="text-white">Ollama (Local AI)</span> - Free, runs on your computer</Step>
                 <Step>RSS news feeds included</Step>
               </div>
 
               <div className="border-t border-terminal-border pt-4">
                 <p className="text-terminal-amber font-medium mb-2 flex items-center gap-2">
                   <Crown size={16} />
-                  Pro Path (Recommended)
+                  Pro Path (More Data)
                 </p>
                 <Step><span className="text-white">Polygon.io</span> - Unlimited market data (paid)</Step>
-                <Step><span className="text-white">OpenAI or Claude</span> - Premium AI analysis</Step>
+                <Step><span className="text-white">Same Ollama AI</span> - No API costs for AI</Step>
                 <Step>Finnhub Calendar + All news sources</Step>
               </div>
             </div>
@@ -448,7 +455,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               <Step>Click <span className="text-terminal-amber font-medium">Setup Wizard</span> button in API Keys section</Step>
               <Step>Follow the wizard to select your path and enter API keys</Step>
               <Step>Or manually: Navigate to <span className="text-white font-medium">API Keys</span> → enter your market data key</Step>
-              <Step>Then: Navigate to <span className="text-white font-medium">AI Copilot</span> → configure your AI provider</Step>
+              <Step>Then: Navigate to <span className="text-white font-medium">AI Copilot</span> → verify Ollama is running</Step>
               <Step>Settings auto-save when changed</Step>
             </div>
           </div>
@@ -1065,7 +1072,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               <div className="flex items-center gap-3">
                 <span className="text-white font-medium w-20">Fallback</span>
                 <span className="text-gray-400">→</span>
-                <span className="text-gray-300">Your AI provider (OpenAI/Claude/Groq)</span>
+                <span className="text-gray-300">Ollama (local AI)</span>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-white font-medium w-20">Backup</span>
@@ -1322,6 +1329,263 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
         </div>
       )
 
+    case 'settings-guide':
+      return (
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Settings Guide</h2>
+            <p className="text-gray-400">Complete reference for all settings tabs</p>
+          </div>
+
+          {/* My Profile */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white text-lg font-semibold mb-3 flex items-center gap-2">
+              <span className="w-6 h-6 rounded bg-terminal-amber/20 flex items-center justify-center text-terminal-amber text-xs">1</span>
+              My Profile
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Display Name</span>
+                <span className="text-gray-400">Your name shown in the app (for personalization)</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Trading Style</span>
+                <span className="text-gray-400">Day Trader, Swing Trader, Position Trader, or Investor. Affects AI analysis context.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Experience Level</span>
+                <span className="text-gray-400">Beginner, Intermediate, or Advanced. Unlocks achievement badges.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Portfolio */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white text-lg font-semibold mb-3 flex items-center gap-2">
+              <span className="w-6 h-6 rounded bg-terminal-amber/20 flex items-center justify-center text-terminal-amber text-xs">2</span>
+              Portfolio
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Cash Balance</span>
+                <span className="text-gray-400">Your starting capital. Used for position sizing calculations and simulated P&L.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Watchlist</span>
+                <span className="text-gray-400">Stocks you're tracking. Add symbols to monitor prices and get AI analysis.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Display */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white text-lg font-semibold mb-3 flex items-center gap-2">
+              <span className="w-6 h-6 rounded bg-terminal-amber/20 flex items-center justify-center text-terminal-amber text-xs">3</span>
+              Display
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Interface Zoom</span>
+                <span className="text-gray-400">Scale the UI from 90% to 125%. Use Cmd/Ctrl +/- to adjust quickly.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Panel Visibility</span>
+                <span className="text-gray-400">Show/hide Market Watch, Live Chart, and News Ticker panels.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Market Symbols</span>
+                <span className="text-gray-400">Customize which symbols appear in the top market overview bar.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Ticker Speed</span>
+                <span className="text-gray-400">How fast news headlines scroll (30-120 seconds per cycle).</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">CVD Mode</span>
+                <span className="text-gray-400">Color Vision Deficiency mode. Uses patterns instead of red/green.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Risk Management */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white text-lg font-semibold mb-3 flex items-center gap-2">
+              <span className="w-6 h-6 rounded bg-terminal-amber/20 flex items-center justify-center text-terminal-amber text-xs">4</span>
+              Risk Management
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Default Stop Loss</span>
+                <span className="text-gray-400">Percentage below entry price for automatic stop loss suggestions.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Max Position Size</span>
+                <span className="text-gray-400">Maximum percentage of portfolio for any single trade.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Kelly Criterion</span>
+                <span className="text-gray-400">Enable mathematical position sizing based on win rate and risk/reward.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Risk Per Trade</span>
+                <span className="text-gray-400">Maximum amount you're willing to lose on a single trade.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* AI Copilot */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white text-lg font-semibold mb-3 flex items-center gap-2">
+              <span className="w-6 h-6 rounded bg-terminal-amber/20 flex items-center justify-center text-terminal-amber text-xs">5</span>
+              AI Copilot
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Provider</span>
+                <span className="text-gray-400">Ollama (Local AI) - runs on your computer, free, private, uncensored.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Model</span>
+                <span className="text-gray-400">dolphin-llama3:8b - optimized for trading analysis with strong reasoning.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Status</span>
+                <span className="text-gray-400">Shows if Ollama is running and the model is installed.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Options Language</span>
+                <span className="text-gray-400">Enable to get options trading suggestions (Buy Call, Buy Put) in analysis.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Market Data */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white text-lg font-semibold mb-3 flex items-center gap-2">
+              <span className="w-6 h-6 rounded bg-terminal-amber/20 flex items-center justify-center text-terminal-amber text-xs">6</span>
+              Market Data (API Keys)
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Setup Wizard</span>
+                <span className="text-gray-400">Guided setup to get API keys from free providers.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Provider Keys</span>
+                <span className="text-gray-400">Enter API keys for Polygon, TwelveData, Alpha Vantage, Finnhub.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Tier Selection</span>
+                <span className="text-gray-400">Select Free or Paid tier for each provider. Affects rate limits.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Fallback Order</span>
+                <span className="text-gray-400">Drag to reorder providers. If one fails, next provider is tried.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* News Sources */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white text-lg font-semibold mb-3 flex items-center gap-2">
+              <span className="w-6 h-6 rounded bg-terminal-amber/20 flex items-center justify-center text-terminal-amber text-xs">7</span>
+              News Sources
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">RSS Feeds</span>
+                <span className="text-gray-400">Enable/disable individual news sources. Add custom RSS feeds.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">HuggingFace Token</span>
+                <span className="text-gray-400">Optional. Enables faster AI sentiment analysis on headlines.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Categories</span>
+                <span className="text-gray-400">Filter news by category: Stock Market, Economic, Crypto, etc.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Activity Log */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white text-lg font-semibold mb-3 flex items-center gap-2">
+              <span className="w-6 h-6 rounded bg-terminal-amber/20 flex items-center justify-center text-terminal-amber text-xs">8</span>
+              Activity Log
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Error Tracking</span>
+                <span className="text-gray-400">View all errors with timestamps and actionable hints to fix them.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Resolve/Dismiss</span>
+                <span className="text-gray-400">Mark errors as resolved or dismiss them to clear the list.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Notifications */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white text-lg font-semibold mb-3 flex items-center gap-2">
+              <span className="w-6 h-6 rounded bg-terminal-amber/20 flex items-center justify-center text-terminal-amber text-xs">9</span>
+              Notifications
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Sound Effects</span>
+                <span className="text-gray-400">Enable/disable notification sounds for alerts and events.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Volume</span>
+                <span className="text-gray-400">Adjust the volume of notification sounds.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Price Alerts */}
+          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white text-lg font-semibold mb-3 flex items-center gap-2">
+              <span className="w-6 h-6 rounded bg-terminal-amber/20 flex items-center justify-center text-terminal-amber text-xs">10</span>
+              Price Alerts
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Create Alert</span>
+                <span className="text-gray-400">Set alerts for when a stock goes above or below a target price.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Alert Types</span>
+                <span className="text-gray-400">"Crosses Above" and "Crosses Below" trigger when price passes target.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Notifications</span>
+                <span className="text-gray-400">Alerts show as toast notifications and optional sound.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Danger Zone */}
+          <div className="bg-terminal-bg border border-red-500/30 rounded-lg p-5">
+            <h3 className="text-white text-lg font-semibold mb-3 flex items-center gap-2">
+              <span className="w-6 h-6 rounded bg-red-500/20 flex items-center justify-center text-red-400 text-xs">11</span>
+              <span className="text-red-400">Danger Zone</span>
+            </h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex gap-3">
+                <span className="text-red-400 w-32 flex-shrink-0">Clear API Cache</span>
+                <span className="text-gray-400">Forces fresh data fetch. Use when data seems stale or stuck.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-red-400 w-32 flex-shrink-0">Reset All Data</span>
+                <span className="text-gray-400">Factory reset. Deletes all settings, watchlist, and history. Use as last resort.</span>
+              </div>
+            </div>
+            <p className="text-red-400/70 text-xs mt-3">These actions cannot be undone.</p>
+          </div>
+        </div>
+      )
+
     case 'ai-copilot':
       return (
         <div className="space-y-8">
@@ -1331,58 +1595,58 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           </div>
 
           <div>
-            <h3 className="text-white text-lg font-semibold mb-4">Supported Providers</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
-                <p className="text-white font-medium">OpenAI</p>
-                <p className="text-gray-400 text-sm">GPT-4o, GPT-4o Mini</p>
+            <h3 className="text-white text-lg font-semibold mb-4">Local AI with Ollama</h3>
+            <div className="bg-terminal-amber/10 border border-terminal-amber/30 rounded-lg p-4 mb-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-terminal-amber/20 flex items-center justify-center flex-shrink-0">
+                  <span className="text-terminal-amber text-xl">🦙</span>
+                </div>
+                <div>
+                  <p className="text-white font-medium">Ollama (dolphin-llama3:8b)</p>
+                  <p className="text-gray-400 text-sm mt-1">Free, private, uncensored local AI</p>
+                </div>
               </div>
-              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
-                <p className="text-white font-medium">Claude (Anthropic)</p>
-                <p className="text-gray-400 text-sm">Claude 3.5 Sonnet, Haiku</p>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2 text-gray-300">
+                <span className="text-terminal-up">✓</span>
+                <span><span className="text-white">No API costs</span> - runs entirely on your computer</span>
               </div>
-              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
-                <p className="text-white font-medium">Gemini (Google)</p>
-                <p className="text-gray-400 text-sm">2.0 Flash, 1.5 Pro</p>
+              <div className="flex items-center gap-2 text-gray-300">
+                <span className="text-terminal-up">✓</span>
+                <span><span className="text-white">Private</span> - your data never leaves your machine</span>
               </div>
-              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
-                <p className="text-white font-medium">Grok (xAI)</p>
-                <p className="text-gray-400 text-sm">Grok-2, Grok Beta</p>
+              <div className="flex items-center gap-2 text-gray-300">
+                <span className="text-terminal-up">✓</span>
+                <span><span className="text-white">Uncensored</span> - gives direct trading recommendations</span>
               </div>
-              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
-                <p className="text-white font-medium">DeepSeek</p>
-                <p className="text-gray-400 text-sm">DeepSeek Chat, Coder</p>
-              </div>
-              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
-                <p className="text-white font-medium">Llama (via Groq)</p>
-                <p className="text-gray-400 text-sm">3.3 70B, 3.2 90B Vision</p>
+              <div className="flex items-center gap-2 text-gray-300">
+                <span className="text-terminal-up">✓</span>
+                <span><span className="text-white">No rate limits</span> - unlimited analysis</span>
               </div>
             </div>
           </div>
 
           <div>
-            <h3 className="text-white text-lg font-semibold mb-4">Fallback System</h3>
-            <p className="text-gray-300 mb-3">Configure multiple providers for reliability:</p>
+            <h3 className="text-white text-lg font-semibold mb-4">Quick Setup</h3>
             <div className="space-y-1">
-              <Step><span className="text-white font-medium">Primary</span> - Your main AI provider</Step>
-              <Step><span className="text-white font-medium">Fallback</span> - Used if primary fails or rate-limits</Step>
-              <Step>Drag to reorder priority in Settings</Step>
-            </div>
-          </div>
-
-          {/* Rate Limits */}
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-5">
-            <h3 className="text-yellow-400 font-semibold mb-3">Rate Limits</h3>
-            <p className="text-gray-300 text-sm mb-3">
-              RichDad has no daily limit - your AI provider handles rate limiting. If you see a rate limit message:
-            </p>
-            <div className="space-y-1">
-              <Step>Wait a few minutes for your provider's limit to reset</Step>
-              <Step>Add a fallback provider in Settings → AI Copilot</Step>
-              <Step>Consider upgrading your AI provider's plan for higher limits</Step>
+              <Step><span className="text-white font-medium">1.</span> Install Ollama from <span className="text-terminal-amber">ollama.ai</span></Step>
+              <Step><span className="text-white font-medium">2.</span> Run: <code className="bg-terminal-bg px-2 py-0.5 rounded text-terminal-amber">ollama pull dolphin-llama3:8b</code></Step>
+              <Step><span className="text-white font-medium">3.</span> Keep Ollama running in the background</Step>
             </div>
             <p className="text-gray-500 text-xs mt-3">
-              Most providers: OpenAI (90 req/min), Claude (60 req/min), Groq (30 req/min free tier)
+              ~5GB download (one-time). Check status in Settings → AI Copilot
+            </p>
+          </div>
+
+          {/* Why Local AI */}
+          <div className="bg-terminal-up/10 border border-terminal-up/30 rounded-lg p-5">
+            <h3 className="text-terminal-up font-semibold mb-3">Why Local AI?</h3>
+            <p className="text-gray-300 text-sm mb-3">
+              Cloud AI providers (OpenAI, Claude, etc.) have guardrails that prevent them from giving direct stock recommendations. The dolphin-llama3 model is fine-tuned to be helpful without excessive disclaimers.
+            </p>
+            <p className="text-gray-400 text-xs">
+              Model: dolphin-llama3:8b - Strong reasoning + 8k context window
             </p>
           </div>
 
@@ -1547,6 +1811,132 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               <Step>View your AI's win rate in the Market Overview bar</Step>
               <Step>Full history available in Settings → AI Performance</Step>
             </div>
+          </div>
+
+          {/* AI Personas */}
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">AI Personas</h3>
+            <p className="text-gray-300 text-sm mb-5">
+              Choose your AI co-pilot's personality in Settings. Each persona analyzes the same data but communicates in their unique style.
+            </p>
+
+            {/* Sterling */}
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-5 mb-4">
+              <div className="flex items-center gap-2.5 mb-3">
+                <BarChart2 className="w-5 h-5 text-blue-400" />
+                <span className="text-blue-400 font-semibold">Sterling - The Analyst</span>
+              </div>
+              <p className="text-gray-300 text-sm mb-4 leading-relaxed">
+                Sterling is a former quantitative analyst from a top-tier hedge fund. He communicates with the precision of a Bloomberg terminal, always backing recommendations with specific data points and risk metrics. His responses are structured with clear bullet points and never include casual language.
+              </p>
+              <div className="bg-black/30 rounded-md p-3.5 mb-3">
+                <p className="text-gray-500 text-[10px] uppercase tracking-wide mb-2">Sample Recommendation</p>
+                <div className="text-gray-200 text-sm leading-relaxed">
+                  <span className="inline-block bg-terminal-amber/20 text-terminal-amber px-1.5 py-0.5 rounded text-xs font-semibold mr-1.5">NVDA</span>
+                  <span className="inline-block bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded text-[11px] font-semibold">BUY</span>
+                  <p className="mt-2.5">Technical confluence at the 50-day MA ($875) suggests favorable risk-adjusted entry.</p>
+                  <p className="mt-2 font-medium text-gray-400">Key metrics:</p>
+                  <p className="text-gray-400">• RSI: 58 (neutral-bullish)</p>
+                  <p className="text-gray-400">• MACD: Bullish crossover confirmed</p>
+                  <p className="text-gray-400">• Risk/Reward: 2.8:1</p>
+                  <p className="mt-2"><span className="font-medium">Target:</span> $950 | <span className="font-medium">Stop:</span> $845</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Formal</span>
+                <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Data-centric</span>
+                <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Structured</span>
+                <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Risk metrics</span>
+              </div>
+            </div>
+
+            {/* Jax */}
+            <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-5 mb-4">
+              <div className="flex items-center gap-2.5 mb-3">
+                <Target className="w-5 h-5 text-orange-400" />
+                <span className="text-orange-400 font-semibold">Jax - The Veteran Trader</span>
+              </div>
+              <p className="text-gray-300 text-sm mb-4 leading-relaxed">
+                Jax spent 30 years in the trading pits of Chicago. He's seen every market cycle and has the scars to prove it. Jax keeps sentences short and punchy, using trader slang. He won't sugarcoat bad news and cuts through complexity with simple analogies.
+              </p>
+              <div className="bg-black/30 rounded-md p-3.5 mb-3">
+                <p className="text-gray-500 text-[10px] uppercase tracking-wide mb-2">Sample Recommendation</p>
+                <div className="text-gray-200 text-sm leading-relaxed">
+                  <span className="inline-block bg-terminal-amber/20 text-terminal-amber px-1.5 py-0.5 rounded text-xs font-semibold mr-1.5">NVDA</span>
+                  <span className="inline-block bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded text-[11px] font-semibold">BUY</span>
+                  <p className="mt-2.5">Look, this chart's screaming. We're sitting right on the 50-day and catching a bid. I've seen this setup a thousand times.</p>
+                  <p className="mt-2">Get in around $875. If it breaks $845, get out - don't be a hero. Target's $950, maybe higher if momentum picks up.</p>
+                  <p className="mt-2">Volume's there. MACD just flipped. Don't overthink it.</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Direct</span>
+                <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Pragmatic</span>
+                <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Street-smart</span>
+                <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">No-nonsense</span>
+              </div>
+            </div>
+
+            {/* Cipher */}
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-5 mb-4">
+              <div className="flex items-center gap-2.5 mb-3">
+                <Microscope className="w-5 h-5 text-green-400" />
+                <span className="text-green-400 font-semibold">Cipher - The Tech Wiz</span>
+              </div>
+              <p className="text-gray-300 text-sm mb-4 leading-relaxed">
+                Cipher is an algorithmic trading developer and data scientist who gets genuinely excited about statistical edges. He thinks in terms of signal-to-noise ratios, probability distributions, and backtested patterns. Shows enthusiasm when multiple indicators align.
+              </p>
+              <div className="bg-black/30 rounded-md p-3.5 mb-3">
+                <p className="text-gray-500 text-[10px] uppercase tracking-wide mb-2">Sample Recommendation</p>
+                <div className="text-gray-200 text-sm leading-relaxed">
+                  <span className="inline-block bg-terminal-amber/20 text-terminal-amber px-1.5 py-0.5 rounded text-xs font-semibold mr-1.5">NVDA</span>
+                  <span className="inline-block bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded text-[11px] font-semibold">BUY</span>
+                  <p className="mt-2.5">Whoa, this is interesting! Three of my detection algos just triggered simultaneously on NVDA.</p>
+                  <p className="mt-2">The pattern recognition picked up a bullish engulfing right at the 50-MA support - that's a high-probability setup in my backtests (~68% win rate over 5 years).</p>
+                  <p className="mt-2">RSI at 58 means we're not overbought, and the MACD histogram just flipped positive. The signal-to-noise ratio on this one is solid.</p>
+                  <p className="mt-2"><span className="font-medium">Entry:</span> $875 | <span className="font-medium">Target:</span> $950 | <span className="font-medium">Stop:</span> $845</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Energetic</span>
+                <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Pattern-obsessed</span>
+                <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Probability-focused</span>
+                <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Nerdy</span>
+              </div>
+            </div>
+
+            {/* Kai */}
+            <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-5 mb-4">
+              <div className="flex items-center gap-2.5 mb-3">
+                <Leaf className="w-5 h-5 text-purple-400" />
+                <span className="text-purple-400 font-semibold">Kai - The Sage</span>
+              </div>
+              <p className="text-gray-300 text-sm mb-4 leading-relaxed">
+                Kai is a wise trading mentor with decades of experience and a deep focus on market psychology. He uses metaphors from nature and martial arts, emphasizing patience, discipline, and emotional control. Frames advice as timeless principles rather than urgent directives.
+              </p>
+              <div className="bg-black/30 rounded-md p-3.5 mb-3">
+                <p className="text-gray-500 text-[10px] uppercase tracking-wide mb-2">Sample Recommendation</p>
+                <div className="text-gray-200 text-sm leading-relaxed">
+                  <span className="inline-block bg-terminal-amber/20 text-terminal-amber px-1.5 py-0.5 rounded text-xs font-semibold mr-1.5">NVDA</span>
+                  <span className="inline-block bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded text-[11px] font-semibold">PATIENT BUY</span>
+                  <p className="mt-2.5">The market, like water, seeks its level. NVDA has found temporary equilibrium at its 50-day moving average - a moment of stillness before the next move.</p>
+                  <p className="mt-2">The indicators suggest accumulation, but patience here is strategic. A disciplined entry at $875 honors the risk, with $845 as your line in the sand.</p>
+                  <p className="mt-2">Remember: the trader who controls their emotions controls their destiny. Size your position so a loss doesn't disturb your inner calm.</p>
+                  <p className="mt-2 italic text-gray-400">When the breakout comes, you will be ready.</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Calm</span>
+                <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Philosophical</span>
+                <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Patient</span>
+                <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Psychology-focused</span>
+              </div>
+            </div>
+
+            <p className="text-gray-500 text-xs mt-5">
+              All personas provide the same quality analysis - only the communication style differs.
+              Change your persona anytime in Settings → AI Copilot.
+            </p>
           </div>
         </div>
       )
@@ -1730,36 +2120,37 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             </p>
           </div>
 
-          {/* AI Providers */}
+          {/* AI Provider */}
           <div className="bg-terminal-bg border border-terminal-border rounded-lg p-6">
             <div className="flex items-center gap-3 mb-4">
               <Zap size={20} className="text-terminal-amber" />
-              <h3 className="text-white text-lg font-semibold">AI Providers</h3>
+              <h3 className="text-white text-lg font-semibold">AI Provider (Local)</h3>
             </div>
             <div className="space-y-4">
-              <div className="border-b border-terminal-border pb-3">
-                <p className="text-white font-medium">OpenAI</p>
-                <p className="text-gray-400 text-sm">Pay-per-token model. ~$0.01 per recommendation. No hard rate limit.</p>
+              <div className="flex items-start gap-3 p-3 bg-terminal-amber/10 border border-terminal-amber/30 rounded-lg">
+                <span className="text-2xl">🦙</span>
+                <div>
+                  <p className="text-white font-medium">Ollama (dolphin-llama3:8b)</p>
+                  <p className="text-gray-400 text-sm">Runs locally on your computer. No API costs, no rate limits, completely private.</p>
+                </div>
               </div>
-              <div className="border-b border-terminal-border pb-3">
-                <p className="text-white font-medium">Claude (Anthropic)</p>
-                <p className="text-gray-400 text-sm">Pay-per-token. Free tier has usage caps. Check console.anthropic.com for limits.</p>
-              </div>
-              <div className="border-b border-terminal-border pb-3">
-                <p className="text-white font-medium">Gemini (Google)</p>
-                <p className="text-gray-400 text-sm">Free tier: 60 requests/minute. Very generous for trading use.</p>
-              </div>
-              <div className="border-b border-terminal-border pb-3">
-                <p className="text-white font-medium">Grok (xAI)</p>
-                <p className="text-gray-400 text-sm">Free tier available. Rate limits vary. Check x.ai for current limits.</p>
-              </div>
-              <div className="border-b border-terminal-border pb-3">
-                <p className="text-white font-medium">DeepSeek</p>
-                <p className="text-gray-400 text-sm">Very affordable. Some rate limiting. Good free tier.</p>
-              </div>
-              <div>
-                <p className="text-white font-medium">Llama (via Groq)</p>
-                <p className="text-gray-400 text-sm">Free tier: 30 requests/minute. Fast inference. Great for testing.</p>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between py-2 border-b border-terminal-border">
+                  <span className="text-gray-400">Rate Limit</span>
+                  <span className="text-terminal-up font-medium">Unlimited</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-terminal-border">
+                  <span className="text-gray-400">Cost</span>
+                  <span className="text-terminal-up font-medium">Free</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-terminal-border">
+                  <span className="text-gray-400">Privacy</span>
+                  <span className="text-terminal-up font-medium">100% Local</span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-gray-400">Model Size</span>
+                  <span className="text-white">~5GB download</span>
+                </div>
               </div>
             </div>
           </div>
@@ -1789,11 +2180,11 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           <div>
             <h3 className="text-white text-lg font-semibold mb-4">Optimization Tips</h3>
             <div className="space-y-1">
-              <Step>Use 15-minute AI interval (not 5 min) to conserve calls</Step>
+              <Step>Use 15-minute AI interval (not 5 min) to conserve market data API calls</Step>
               <Step>Let charts cache - avoid excessive timeframe switching</Step>
               <Step>Focus watchlist on key stocks to reduce quote fetches</Step>
-              <Step>Set up a fallback AI provider for reliability</Step>
-              <Step>Switch to Pro plan for unlimited API calls</Step>
+              <Step>Keep Ollama running in background for instant AI responses</Step>
+              <Step>Switch to Pro plan for unlimited market data API calls</Step>
             </div>
           </div>
         </div>
@@ -1888,8 +2279,8 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 <p className="text-gray-400">Check Settings → News Sources. Enable RSS or add Finnhub key.</p>
               </div>
               <div>
-                <p className="text-white font-medium mb-1">AI rate limited?</p>
-                <p className="text-gray-400">Wait a few minutes or switch providers in Settings → AI Copilot.</p>
+                <p className="text-white font-medium mb-1">AI not responding?</p>
+                <p className="text-gray-400">Check that Ollama is running. Start it with: ollama serve</p>
               </div>
               <div>
                 <p className="text-white font-medium mb-1">Sentiment shows "keywords"?</p>
@@ -1922,9 +2313,9 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
             <h3 className="text-white font-semibold mb-3">"AI not responding" or recommendations missing</h3>
             <div className="space-y-1 text-gray-300">
-              <Step>Verify your AI API key in Settings → AI Copilot</Step>
-              <Step>Check if you've hit your provider's rate limit (wait a few minutes)</Step>
-              <Step>Try adding a fallback provider for reliability</Step>
+              <Step>Verify Ollama is running: <code className="bg-terminal-bg px-1 rounded text-terminal-amber">ollama serve</code></Step>
+              <Step>Check the model is downloaded: <code className="bg-terminal-bg px-1 rounded text-terminal-amber">ollama pull dolphin-llama3:8b</code></Step>
+              <Step>Ensure Ollama is selected in Settings → AI Copilot</Step>
               <Step>Check the Activity Log for error details (Settings → Activity Log)</Step>
             </div>
           </div>
@@ -2019,12 +2410,12 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               Sentiment analysis uses a fallback chain:
             </p>
             <div className="space-y-1 text-gray-300">
-              <Step><span className="text-white font-medium">FinBERT</span> → Cloud AI model (primary)</Step>
-              <Step><span className="text-white font-medium">Your AI</span> → OpenAI/Claude/Groq (fallback)</Step>
+              <Step><span className="text-white font-medium">FinBERT</span> → HuggingFace API model (primary)</Step>
+              <Step><span className="text-white font-medium">Ollama</span> → Local AI analysis (fallback)</Step>
               <Step><span className="text-white font-medium">Keywords</span> → Pattern matching (backup)</Step>
             </div>
             <p className="text-gray-500 text-xs mt-3">
-              If you see "keywords" often, the cloud services may be rate-limited. Add an optional HuggingFace token in Settings → News Sources for faster analysis.
+              If you see "keywords" often, add an optional HuggingFace token in Settings → News Sources for FinBERT, or ensure Ollama is running.
             </p>
           </div>
 
@@ -2052,21 +2443,21 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           {[
             {
               q: 'Is RichDad free to use?',
-              a: 'Yes! RichDad itself is free. You need free API keys from TwelveData (market data) and an AI provider like Groq.'
+              a: 'Yes! RichDad itself is free. You need free API keys from TwelveData (market data) and Ollama for local AI (also free).'
             },
             {
               q: 'Why do I need to set up API keys myself?',
               a: `RichDad is 100% free and open-source for retail traders. We don't charge anything.
 
-However, we use third-party services for market data (TwelveData, Polygon), AI analysis (OpenAI, Claude, Groq), and sentiment analysis (HuggingFace) - and these providers require their own API keys.
+For market data, we use third-party services (TwelveData, Polygon) that require API keys. For AI analysis, we use Ollama which runs 100% locally on your computer - completely free with no API key needed.
 
-Think of it like this: RichDad is the car (free), but you need to get your own gas (API keys from providers).
+Think of it like this: RichDad is the car (free), Ollama is the free AI engine, and you just need gas for market data (API keys from providers).
 
 Want help getting set up? We're happy to help you complete this process for free. Reach out to our support team at support@lovelacex.com and we'll walk you through it.`
             },
             {
               q: 'Do AI recommendations cost money?',
-              a: 'Depends on your provider. Most charge per API call (~$0.01 per recommendation). Some like Gemini and Groq have generous free tiers.'
+              a: 'No! RichDad uses Ollama which runs 100% locally on your computer. There are no API costs, no rate limits, and no data leaves your machine. It\'s completely free.'
             },
             {
               q: 'How accurate are AI recommendations?',
@@ -2128,16 +2519,17 @@ You can skip any step by clicking the X button. To re-run the wizard, go to Sett
             },
             {
               q: 'What happens when I hit rate limits?',
-              a: `Rate limits are set by your API providers, not RichDad:
+              a: `Rate limits apply to market data providers, not AI:
 
 - TwelveData Free: 8 calls/minute, 800 calls/day
 - Polygon Free: 5 calls/minute (Pro tier has no limits)
 - Finnhub Free: 60 calls/minute
+- Ollama (AI): No limits - runs locally!
 
-When rate limited:
-- AI shows a yellow message in the AI Panel
-- Market data falls back to cached values
-- Try again in a few minutes, or switch providers in Settings`
+When market data is rate limited:
+- Data falls back to cached values
+- Charts show "cached" freshness badge
+- Try again in a few minutes`
             },
             {
               q: 'What is the AI Thinking Animation?',
@@ -2515,7 +2907,7 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
                   <tr className="border-b border-terminal-border/50">
                     <td className="px-3 py-2 text-gray-300">AI Analysis</td>
                     <td className="px-3 py-2 text-gray-500">None built-in</td>
-                    <td className="px-3 py-2 text-terminal-up font-medium">6 providers + batting avg</td>
+                    <td className="px-3 py-2 text-terminal-up font-medium">Local Ollama + batting avg</td>
                   </tr>
                   <tr className="border-b border-terminal-border/50">
                     <td className="px-3 py-2 text-gray-300">Privacy</td>
@@ -2609,7 +3001,7 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
                 { label: 'State', value: 'Zustand' },
                 { label: 'Database', value: 'IndexedDB (Dexie.js)' },
                 { label: 'Charts', value: 'Lightweight Charts' },
-                { label: 'AI', value: '6 providers supported' },
+                { label: 'AI', value: 'Ollama (Local)' },
               ].map(({ label, value }) => (
                 <div key={label} className="flex gap-2">
                   <span className="text-terminal-amber">{label}:</span>
@@ -2739,7 +3131,7 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
                 </div>
                 <div className="flex items-start gap-2">
                   <Check size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
-                  <span>Groq AI / Llama 3 (free)</span>
+                  <span>Ollama AI (local, unlimited)</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <Check size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
@@ -2773,7 +3165,7 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
                 </div>
                 <div className="flex items-start gap-2">
                   <Check size={16} className="text-terminal-amber mt-0.5 flex-shrink-0" />
-                  <span>OpenAI or Claude</span>
+                  <span>Ollama AI (local, unlimited)</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <Check size={16} className="text-terminal-amber mt-0.5 flex-shrink-0" />
@@ -2817,8 +3209,8 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
                   </tr>
                   <tr className="border-b border-terminal-border/50">
                     <td className="py-2 px-4">AI Provider</td>
-                    <td className="py-2 px-4 text-center">Groq (Llama 3)</td>
-                    <td className="py-2 px-4 text-center">OpenAI / Claude</td>
+                    <td className="py-2 px-4 text-center">Ollama (Local)</td>
+                    <td className="py-2 px-4 text-center">Ollama (Local)</td>
                   </tr>
                   <tr className="border-b border-terminal-border/50">
                     <td className="py-2 px-4">Intraday History</td>

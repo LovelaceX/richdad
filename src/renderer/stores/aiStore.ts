@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { AIRecommendation, AIMessage, AnalysisProgress, AnalysisPhase, MorningBriefing } from '../types'
 import { generateId } from '../lib/utils'
 import { sendChatMessage } from '../lib/ai'
+import { getSettings, getAISettings } from '../lib/db'
 import { playSound } from '../lib/sounds'
 import { canMakeAICall, recordAICall, getAIBudgetStatus } from '../../services/aiBudgetTracker'
 
@@ -36,7 +37,7 @@ interface AIState {
   briefingProgress: { current: number; total: number; ticker: string } | null
 
   // Actions
-  setRecommendation: (rec: AIRecommendation | null) => void
+  setRecommendation: (rec: AIRecommendation | null) => Promise<void>
   dismissRecommendation: () => void
   addMessage: (message: Omit<AIMessage, 'id' | 'timestamp'>) => void
   removeAlert: (alertId: string) => void
@@ -68,13 +69,25 @@ export const useAIStore = create<AIState>((set, get) => ({
   isBriefingRunning: false,
   briefingProgress: null,
 
-  setRecommendation: (rec) => {
-    set({ currentRecommendation: rec })
+  setRecommendation: async (rec) => {
     if (rec) {
+      // Check if HOLD recommendations should be shown
+      const aiSettings = await getAISettings()
+      const showHold = aiSettings.showHoldRecommendations ?? true
+
+      // Filter out HOLD recommendations if setting is disabled
+      if (rec.action === 'HOLD' && !showHold) {
+        console.log('[AI Store] Hiding HOLD recommendation per user settings')
+        return
+      }
+
       // Play notification sound based on action
       const actionSound = rec.action.toLowerCase() as 'buy' | 'sell' | 'hold'
       playSound(actionSound, rec.confidence).catch(console.error)
+    }
 
+    set({ currentRecommendation: rec })
+    if (rec) {
       set(state => {
         // Get alert-type messages (recommendation, analysis, alert)
         const alertMessages = state.messages.filter(m =>
@@ -209,9 +222,13 @@ export const useAIStore = create<AIState>((set, get) => ({
     const thisRequestId = ++currentRequestId
 
     try {
+      // Get user's selected persona from settings
+      const settings = await getSettings()
+      const persona = settings.persona || 'sterling'
+
       // Get chat history for context (last 10 messages)
       const recentMessages = messages.slice(0, 10).reverse()
-      const response = await sendChatMessage(content, recentMessages)
+      const response = await sendChatMessage(content, recentMessages, persona)
 
       // Only process response if this is still the current request
       // (prevents stale responses from appearing after newer requests)

@@ -8,6 +8,7 @@
 import { Plus, Edit3, Trash2, Briefcase } from 'lucide-react'
 import { usePortfolioHoldings } from '../hooks/usePortfolioHoldings'
 import { useToastStore } from '../../../stores/toastStore'
+import { HelpTooltip } from '../../../components/common'
 
 export function PortfolioSection() {
   const {
@@ -54,7 +55,10 @@ export function PortfolioSection() {
 
   return (
     <div>
-      <h2 className="text-white text-lg font-medium mb-1">Portfolio</h2>
+      <div className="flex items-center gap-2 mb-1">
+        <h2 className="text-white text-lg font-medium">Portfolio</h2>
+        <HelpTooltip content="Track your stock holdings and cost basis. Holdings auto-update when you execute trades from the chart." />
+      </div>
       <p className="text-gray-500 text-sm mb-6">Track your holdings and cost basis</p>
 
       {/* Portfolio Summary */}

@@ -53,6 +53,9 @@ export interface AIRecommendation {
   timestamp: number
   priceTarget?: number
   stopLoss?: number
+  // Position sizing (based on user risk settings)
+  suggestedShares?: number
+  suggestedDollarAmount?: number
 }
 
 export interface AIMessage {
@@ -81,8 +84,11 @@ export interface MarketIndex {
 // Page types
 export type PageId = 'dashboard' | 'news' | 'backtest' | 'settings'
 
-// Tone types
+// Tone types (deprecated - kept for migration)
 export type ToneType = 'conservative' | 'aggressive' | 'humorous' | 'professional'
+
+// Persona types for AI Copilot character
+export type PersonaType = 'sterling' | 'jax' | 'cipher' | 'kai'
 
 // Sound types
 export type SoundType = 'buy' | 'sell' | 'hold' | 'alert'

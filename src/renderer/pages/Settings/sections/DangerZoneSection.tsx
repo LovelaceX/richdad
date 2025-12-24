@@ -8,6 +8,7 @@ import React, { useState } from 'react'
 import { AlertCircle, Download, Upload, Loader2 } from 'lucide-react'
 import { useAlertStore } from '../../../stores/alertStore'
 import { useToastStore } from '../../../stores/toastStore'
+import { HelpTooltip } from '../../../components/common'
 import {
   clearAPICache,
   clearAIHistory,
@@ -213,7 +214,10 @@ export function DangerZoneSection() {
 
   return (
     <div>
-      <h2 className="text-red-400 text-lg font-medium mb-1">Danger Zone</h2>
+      <div className="flex items-center gap-2 mb-1">
+        <h2 className="text-red-400 text-lg font-medium">Danger Zone</h2>
+        <HelpTooltip content="Clear specific data or reset everything. Always create a backup before using these options." />
+      </div>
       <p className="text-gray-500 text-sm mb-6">Clear cached data or reset the application</p>
 
       <div className="space-y-3">
@@ -269,10 +273,11 @@ export function DangerZoneSection() {
 
         {/* Backup & Restore Section */}
         <div className="border-t border-terminal-border my-4 pt-4">
-          <h3 className="text-white font-medium mb-3 flex items-center gap-2">
+          <div className="flex items-center gap-2 mb-3">
             <Download size={16} className="text-terminal-amber" />
-            Backup & Restore
-          </h3>
+            <h3 className="text-white font-medium">Backup & Restore</h3>
+            <HelpTooltip content="Export all your settings, trades, and alerts to a JSON file. Restore anytime to recover your data." />
+          </div>
 
           <div className="space-y-3">
             {/* Create Backup */}

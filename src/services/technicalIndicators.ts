@@ -72,6 +72,17 @@ export interface ATRSeriesResult {
 }
 
 /**
+ * Relative Strength vs Market (SPY)
+ * Compares stock's RSI momentum to the broader market
+ */
+export interface RelativeStrength {
+  stockRSI: number
+  spyRSI: number
+  differential: number  // stockRSI - spyRSI
+  interpretation: 'outperforming' | 'underperforming' | 'neutral'
+}
+
+/**
  * Calculate RSI (Relative Strength Index)
  * Period: 14 candles (standard)
  */
@@ -798,4 +809,82 @@ export function calculateATRStopLoss(
   } else {
     return Math.round((currentPrice + stopDistance) * 100) / 100
   }
+}
+
+// ============================================
+// Relative Strength vs SPY
+// ============================================
+
+// Cache for SPY RSI to avoid redundant API calls
+let cachedSpyRSI: { value: number; timestamp: number } | null = null
+const SPY_RSI_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+/**
+ * Get cached SPY RSI or null if cache is stale
+ */
+export function getCachedSpyRSI(): number | null {
+  if (cachedSpyRSI && (Date.now() - cachedSpyRSI.timestamp) < SPY_RSI_CACHE_TTL) {
+    return cachedSpyRSI.value
+  }
+  return null
+}
+
+/**
+ * Set SPY RSI cache
+ */
+export function setSpyRSICache(rsi: number): void {
+  cachedSpyRSI = { value: rsi, timestamp: Date.now() }
+}
+
+/**
+ * Calculate Relative Strength vs SPY (market benchmark)
+ * Compares stock's RSI momentum to the broader market
+ *
+ * @param stockRSI - The stock's 14-period RSI
+ * @param spyRSI - SPY's 14-period RSI (from cache or fresh calculation)
+ * @returns RelativeStrength object with interpretation
+ */
+export function calculateRelativeStrength(
+  stockRSI: number,
+  spyRSI: number
+): RelativeStrength {
+  const differential = Math.round((stockRSI - spyRSI) * 100) / 100
+
+  // Determine interpretation based on differential
+  let interpretation: 'outperforming' | 'underperforming' | 'neutral'
+  if (differential > 10) {
+    interpretation = 'outperforming'
+  } else if (differential < -10) {
+    interpretation = 'underperforming'
+  } else {
+    interpretation = 'neutral'
+  }
+
+  return {
+    stockRSI: Math.round(stockRSI * 100) / 100,
+    spyRSI: Math.round(spyRSI * 100) / 100,
+    differential,
+    interpretation
+  }
+}
+
+/**
+ * Format relative strength for AI prompt
+ */
+export function formatRelativeStrengthForPrompt(
+  symbol: string,
+  relativeStrength: RelativeStrength
+): string {
+  const direction = relativeStrength.differential > 0 ? '+' : ''
+  const interpretationText = relativeStrength.interpretation === 'outperforming'
+    ? `${symbol} is OUTPERFORMING the market`
+    : relativeStrength.interpretation === 'underperforming'
+      ? `${symbol} is UNDERPERFORMING the market`
+      : `${symbol} is tracking WITH the market`
+
+  return `**RELATIVE STRENGTH VS MARKET (SPY):**
+- ${symbol} RSI: ${relativeStrength.stockRSI}
+- SPY RSI: ${relativeStrength.spyRSI}
+- Differential: ${direction}${relativeStrength.differential}
+- Interpretation: ${interpretationText}`
 }

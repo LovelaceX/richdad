@@ -163,7 +163,8 @@ Headline: "${text}"
 
 Sentiment:`
 
-    const response = await sendChatMessage(prompt, [])
+    // Use sterling persona for data-focused analysis (persona doesn't affect this simple query)
+    const response = await sendChatMessage(prompt, [], 'sterling')
     const sentiment = response.toLowerCase().trim()
 
     if (sentiment.includes('positive')) return 'positive'
