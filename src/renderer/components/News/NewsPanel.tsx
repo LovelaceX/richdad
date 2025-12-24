@@ -300,8 +300,8 @@ export function NewsPanel({ isOpen, onClose }: NewsPanelProps) {
       filtered = filtered.filter(h => h.sentiment === 'negative')
     } else if (filter === 'watchlist') {
       filtered = filtered.filter(h =>
-        h.ticker && watchlistSymbols.has(h.ticker) ||
-        h.tickers?.some(t => watchlistSymbols.has(t))
+        (h.ticker && watchlistSymbols.has(h.ticker)) ||
+        (h.tickers?.some(t => watchlistSymbols.has(t)))
       )
     }
 

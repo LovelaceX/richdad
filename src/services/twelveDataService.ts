@@ -13,14 +13,47 @@ import { canUseTwelveData, recordTwelveDataCall, getTwelveDataBudgetStatus } fro
 
 const BASE_URL = 'https://api.twelvedata.com'
 
-// Rate limiting: 800 calls/day, 8/min free tier
-// Burst of 8 per second allowed within the minute limit
-let lastCallTime = 0
-const MIN_CALL_INTERVAL = 125 // 8 calls/second max
+// Rate limiting: 800 calls/day, 8 calls/min free tier
+const CALLS_PER_MINUTE = 8
+const MINUTE_MS = 60 * 1000
+
+// Rolling window of call timestamps for per-minute limiting
+const callTimestamps: number[] = []
+
+/**
+ * Check if we can make a call within the per-minute limit
+ * Returns wait time in ms if limit reached, 0 if OK to call
+ */
+function getMinuteWaitTime(): number {
+  const now = Date.now()
+
+  // Remove timestamps older than 1 minute
+  while (callTimestamps.length > 0 && callTimestamps[0] < now - MINUTE_MS) {
+    callTimestamps.shift()
+  }
+
+  // If under limit, no wait needed
+  if (callTimestamps.length < CALLS_PER_MINUTE) {
+    return 0
+  }
+
+  // Calculate how long until oldest call expires
+  const oldestCall = callTimestamps[0]
+  const waitTime = (oldestCall + MINUTE_MS) - now + 100 // +100ms buffer
+
+  return Math.max(0, waitTime)
+}
+
+/**
+ * Record a call timestamp for per-minute tracking
+ */
+function recordCallTimestamp(): void {
+  callTimestamps.push(Date.now())
+}
 
 /**
  * Fetch with rate limiting AND budget tracking
- * Enforces both per-second rate limit and daily budget
+ * Enforces both per-minute rate limit and daily budget
  */
 async function rateLimitedFetch(url: string): Promise<Response> {
   // Check daily budget first
@@ -30,17 +63,17 @@ async function rateLimitedFetch(url: string): Promise<Response> {
     throw new Error(`TwelveData daily limit reached (${status.dailyUsed}/${status.dailyLimit}). Resets at midnight.`)
   }
 
-  // Apply per-second rate limiting
-  const now = Date.now()
-  const timeSinceLastCall = now - lastCallTime
-
-  if (timeSinceLastCall < MIN_CALL_INTERVAL) {
-    await new Promise(resolve => setTimeout(resolve, MIN_CALL_INTERVAL - timeSinceLastCall))
+  // Check per-minute limit (8 calls/min on free tier)
+  const waitTime = getMinuteWaitTime()
+  if (waitTime > 0) {
+    console.log(`[TwelveData] Minute limit (${CALLS_PER_MINUTE}/min) reached, waiting ${Math.ceil(waitTime / 1000)}s...`)
+    await new Promise(resolve => setTimeout(resolve, waitTime))
   }
 
-  lastCallTime = Date.now()
+  // Record this call timestamp for per-minute tracking
+  recordCallTimestamp()
 
-  // Record the call BEFORE making it (pessimistic tracking)
+  // Record the call in daily budget tracker (pessimistic tracking)
   recordTwelveDataCall()
 
   return fetch(url)

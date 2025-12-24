@@ -2,13 +2,13 @@
  * useAPIKeyManager Hook
  *
  * Manages API key state, validation testing, and auto-saving for any provider.
- * Supports: Finnhub, Polygon, TwelveData, FRED
+ * Supports: Finnhub, Polygon, TwelveData
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { UserSettings } from '../../../lib/db'
 
-export type APIProvider = 'finnhub' | 'polygon' | 'twelvedata' | 'fred'
+export type APIProvider = 'finnhub' | 'polygon' | 'twelvedata'
 
 export type ConnectionStatus = 'idle' | 'valid' | 'invalid'
 
@@ -71,16 +71,10 @@ async function validateTwelveData(apiKey: string): Promise<{ valid: boolean; mes
   return { valid: result.success, message: result.message }
 }
 
-async function validateFred(apiKey: string): Promise<{ valid: boolean; message: string }> {
-  const { testFredKey } = await import('../../../../services/fredValidator')
-  return testFredKey(apiKey)
-}
-
 const VALIDATORS: Record<APIProvider, (key: string) => Promise<{ valid: boolean; message: string }>> = {
   finnhub: validateFinnhub,
   polygon: validatePolygon,
   twelvedata: validateTwelveData,
-  fred: validateFred,
 }
 
 /**
@@ -90,7 +84,6 @@ export const PROVIDER_SETTINGS_KEY: Record<APIProvider, keyof UserSettings> = {
   finnhub: 'finnhubApiKey',
   polygon: 'polygonApiKey',
   twelvedata: 'twelvedataApiKey',
-  fred: 'fredApiKey',
 }
 
 /**

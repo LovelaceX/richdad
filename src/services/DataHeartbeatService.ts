@@ -1,4 +1,5 @@
 import { fetchLivePrices, getCacheStatus } from './marketData'
+import { getTwelveDataBudgetStatus } from './apiBudgetTracker'
 import { fetchNews } from './newsService'
 import { analyzeSentiment, initializeSentimentAnalysis } from './sentimentService'
 import { generateRecommendation, isMarketOpen } from './aiRecommendationEngine'
@@ -42,6 +43,47 @@ const MAX_TRACKED_PRICES = 200
 // Adds randomness to polling intervals so multiple clients don't hit API at same time
 const JITTER_PERCENT = 0.15 // ±15% jitter
 
+// Market session type for time-aware polling
+type MarketSession = 'premarket' | 'market' | 'afterhours' | 'overnight'
+
+// Polling intervals by session (milliseconds) - FREE PLAN
+// Budget: ~450 calls/day for polling, leaves ~350 for user interactions
+const FREE_POLLING_INTERVALS: Record<MarketSession, number> = {
+  market: 60000,      // 60 seconds during market hours (9:30 AM - 4:00 PM ET) - same as Pro!
+  premarket: 300000,  // 5 minutes pre-market (7:00 AM - 9:30 AM ET)
+  afterhours: 300000, // 5 minutes after-hours (4:00 PM - 8:00 PM ET)
+  overnight: 900000   // 15 minutes overnight (8:00 PM - 7:00 AM ET)
+}
+
+// Pro plan gets fast polling regardless of session
+const PRO_POLLING_INTERVAL = 60000 // 1 minute for Pro
+
+/**
+ * Get the current market session based on Eastern Time
+ * Uses Intl.DateTimeFormat for proper DST handling
+ */
+function getCurrentMarketSession(): MarketSession {
+  const now = new Date()
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false
+  })
+  const timeStr = formatter.format(now)
+  const [hours, minutes] = timeStr.split(':').map(Number)
+  const timeMinutes = hours * 60 + minutes
+
+  // Market hours: 9:30 AM - 4:00 PM ET (570 - 960 minutes)
+  if (timeMinutes >= 570 && timeMinutes < 960) return 'market'
+  // Pre-market: 7:00 AM - 9:30 AM ET (420 - 570 minutes)
+  if (timeMinutes >= 420 && timeMinutes < 570) return 'premarket'
+  // After-hours: 4:00 PM - 8:00 PM ET (960 - 1200 minutes)
+  if (timeMinutes >= 960 && timeMinutes < 1200) return 'afterhours'
+  // Overnight: 8:00 PM - 7:00 AM ET
+  return 'overnight'
+}
+
 /**
  * Add random jitter to an interval to prevent thundering herd
  * @param baseMs - Base interval in milliseconds
@@ -81,7 +123,8 @@ class DataHeartbeatService {
   private boundHandleWebSocketFallback = this.handleWebSocketFallback.bind(this)
 
   // Intervals (configurable)
-  private MARKET_UPDATE_INTERVAL = 60000 // 1 minute (but respects 1-hour cache)
+  // Note: MARKET_UPDATE_INTERVAL is now dynamic based on plan and market session
+  // See getMarketUpdateInterval() for the actual interval logic
   private NEWS_UPDATE_INTERVAL = 300000 // 5 minutes
   private SENTIMENT_UPDATE_INTERVAL = 600000 // 10 minutes
   private AI_ANALYSIS_INTERVAL = 900000 // Default 15 minutes (overridden in start() from AISettings)
@@ -645,14 +688,72 @@ class DataHeartbeatService {
 
   // Private methods
 
+  /**
+   * Get the market update interval based on user plan and current market session
+   * Free plan: Session-aware intervals (90s market, 5min pre/after, 15min overnight)
+   * Pro plan: Fast 60s polling regardless of session
+   */
+  private async getMarketUpdateInterval(): Promise<number> {
+    const settings = await getSettings()
+    const plan = settings.plan || 'free'
+
+    if (plan === 'pro') {
+      return PRO_POLLING_INTERVAL // 60s for Pro
+    }
+
+    // Free plan: use session-aware intervals
+    const session = getCurrentMarketSession()
+    const interval = FREE_POLLING_INTERVALS[session]
+    console.log(`[Heartbeat] Market session: ${session}, polling interval: ${interval / 1000}s`)
+    return interval
+  }
+
+  /**
+   * Schedule the next market update with dynamic interval
+   * Uses setTimeout instead of setInterval to allow interval changes between calls
+   * Includes budget-aware throttling for Free plan users
+   */
+  private async scheduleNextMarketUpdate(): Promise<void> {
+    if (!this.isRunning) return
+
+    const settings = await getSettings()
+    const plan = settings.plan || 'free'
+
+    // Budget-aware throttling for Free plan
+    if (plan === 'free') {
+      const status = getTwelveDataBudgetStatus()
+      const usagePercent = (status.dailyUsed / status.dailyLimit) * 100
+
+      // If at 90%+ daily usage, switch to minimum polling (10 min)
+      if (usagePercent >= 90) {
+        const throttledInterval = 600000 // 10 minutes
+        console.log(`[Heartbeat] Budget critically low (${Math.round(usagePercent)}% used), throttling to ${throttledInterval / 1000}s`)
+
+        this.marketInterval = setTimeout(async () => {
+          await this.updateMarketData([])
+          this.scheduleNextMarketUpdate()
+        }, addJitter(throttledInterval)) as unknown as NodeJS.Timeout
+        return
+      }
+    }
+
+    // Normal scheduling based on plan and session
+    const interval = await this.getMarketUpdateInterval()
+    const jitteredInterval = addJitter(interval)
+
+    this.marketInterval = setTimeout(async () => {
+      await this.updateMarketData([])
+      // Schedule next update (recursive with dynamic interval)
+      this.scheduleNextMarketUpdate()
+    }, jitteredInterval) as unknown as NodeJS.Timeout
+  }
+
   private startMarketUpdates(): void {
     // Skip initial update - loadSelectedMarket() already fetches quotes at t=0
     // This saves 1 API call on startup (was previously a duplicate fetch)
 
-    // Periodic updates with jitter (starts at 60s)
-    this.marketInterval = setInterval(() => {
-      this.updateMarketData([])
-    }, addJitter(this.MARKET_UPDATE_INTERVAL))
+    // Schedule first periodic update with dynamic interval
+    this.scheduleNextMarketUpdate()
   }
 
   private startNewsUpdates(): void {

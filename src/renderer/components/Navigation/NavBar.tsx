@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { LayoutDashboard, Newspaper, Calendar, FlaskConical, Settings } from 'lucide-react'
+import { LayoutDashboard, Newspaper, FlaskConical, Settings } from 'lucide-react'
 import { useNavigationStore } from '../../stores/navigationStore'
 import type { PageId } from '../../types'
 import { NotificationBell } from './NotificationBell'
@@ -72,22 +72,16 @@ export const NavBar = memo(function NavBar() {
         shortcut="⌘2"
       />
       <NavItem
-        id="economic-calendar"
-        icon={<Calendar size={18} />}
-        label="Calendar"
-        shortcut="⌘3"
-      />
-      <NavItem
         id="backtest"
         icon={<FlaskConical size={18} />}
         label="Backtest"
-        shortcut="⌘4"
+        shortcut="⌘3"
       />
       <NavItem
         id="settings"
         icon={<Settings size={18} />}
         label="Settings"
-        shortcut="⌘5"
+        shortcut="⌘4"
       />
 
       {/* Divider */}

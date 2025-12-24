@@ -10,6 +10,10 @@ let chartLoadSequence = 0
 // AbortController for cancelling in-flight chart data requests
 let chartLoadController: AbortController | null = null
 
+// Debounce timer for chart loads (prevents rapid-fire API calls)
+let chartLoadDebounceTimer: ReturnType<typeof setTimeout> | null = null
+const CHART_LOAD_DEBOUNCE_MS = 300 // 300ms debounce
+
 // Store market-changed listener reference for proper cleanup
 let marketChangedHandler: ((e: Event) => void) | null = null
 
@@ -175,63 +179,83 @@ export const useMarketStore = create<MarketState>((set, get) => ({
   },
 
   loadChartData: async (symbol?: string, interval?: Timeframe) => {
+    // Clear any pending debounced load
+    if (chartLoadDebounceTimer) {
+      clearTimeout(chartLoadDebounceTimer)
+      chartLoadDebounceTimer = null
+    }
+
     // Cancel any previous in-flight request
     if (chartLoadController) {
       chartLoadController.abort()
     }
-    chartLoadController = new AbortController()
-    const signal = chartLoadController.signal
 
-    // Increment sequence to track this request
-    const currentSequence = ++chartLoadSequence
+    // Debounce the actual API call to prevent rapid-fire requests
+    // This saves API calls when users quickly click through tickers
+    return new Promise<void>((resolve) => {
+      chartLoadDebounceTimer = setTimeout(async () => {
+        chartLoadController = new AbortController()
+        const signal = chartLoadController.signal
 
-    try {
-      const state = get()
-      const targetSymbol = symbol || state.selectedTicker
-      const targetInterval = interval || state.timeframe
+        // Increment sequence to track this request
+        const currentSequence = ++chartLoadSequence
 
-      // Import marketData service
-      const { fetchHistoricalData } = await import('../../services/marketData')
+        try {
+          const state = get()
+          const targetSymbol = symbol || state.selectedTicker
+          const targetInterval = interval || state.timeframe
 
-      const result = await fetchHistoricalData(targetSymbol, targetInterval, { signal })
+          // Import marketData service
+          const { fetchHistoricalData } = await import('../../services/marketData')
 
-      // Check if this request is still the latest (prevent stale data from race conditions)
-      if (currentSequence !== chartLoadSequence) {
-        return // Discard stale response
-      }
+          const result = await fetchHistoricalData(targetSymbol, targetInterval, { signal })
 
-      // Update chart data and data source info
-      set({
-        chartData: result.candles,
-        selectedTicker: targetSymbol,
-        dataSource: result.source,
-        cacheStatus: {
-          age: result.source.cacheAge,
-          isFresh: result.source.cacheAge < 300000 // Fresh if < 5 minutes
+          // Check if this request is still the latest (prevent stale data from race conditions)
+          if (currentSequence !== chartLoadSequence) {
+            resolve()
+            return // Discard stale response
+          }
+
+          // Update chart data and data source info
+          set({
+            chartData: result.candles,
+            selectedTicker: targetSymbol,
+            dataSource: result.source,
+            cacheStatus: {
+              age: result.source.cacheAge,
+              isFresh: result.source.cacheAge < 300000 // Fresh if < 5 minutes
+            }
+          })
+          resolve()
+        } catch (error) {
+          // Silently ignore abort errors - they're expected when user changes ticker rapidly
+          if (error instanceof Error && error.name === 'AbortError') {
+            resolve()
+            return
+          }
+
+          // Only update state if this is still the latest request
+          if (currentSequence !== chartLoadSequence) {
+            resolve()
+            return
+          }
+
+          console.error('[Market Store] Failed to load chart data:', error)
+
+          // Show empty state - no mock data
+          set({
+            chartData: [],
+            dataSource: {
+              provider: null,
+              lastUpdated: null,
+              isDelayed: false,
+              cacheAge: 0
+            }
+          })
+          resolve()
         }
-      })
-    } catch (error) {
-      // Silently ignore abort errors - they're expected when user changes ticker rapidly
-      if (error instanceof Error && error.name === 'AbortError') {
-        return
-      }
-
-      // Only update state if this is still the latest request
-      if (currentSequence !== chartLoadSequence) return
-
-      console.error('[Market Store] Failed to load chart data:', error)
-
-      // Show empty state - no mock data
-      set({
-        chartData: [],
-        dataSource: {
-          provider: null,
-          lastUpdated: null,
-          isDelayed: false,
-          cacheAge: 0
-        }
-      })
-    }
+      }, CHART_LOAD_DEBOUNCE_MS)
+    })
   },
 
   /**

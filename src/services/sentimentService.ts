@@ -298,3 +298,52 @@ export function resetHFCooldown(): void {
   hfCooldownUntil = 0
   console.log('[Sentiment] HF cooldown reset')
 }
+
+/**
+ * Test HuggingFace token validity
+ * Makes a test request to the FinBERT model
+ */
+export async function testHuggingFaceToken(token: string): Promise<{ valid: boolean; message: string }> {
+  if (!token || !token.startsWith('hf_')) {
+    return { valid: false, message: 'Token must start with "hf_"' }
+  }
+
+  try {
+    const response = await fetch(
+      'https://api-inference.huggingface.co/models/ProsusAI/finbert',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ inputs: 'Stock market gains on positive earnings' })
+      }
+    )
+
+    if (response.ok) {
+      const data = await response.json()
+      // Verify we got a valid response structure
+      if (Array.isArray(data) && Array.isArray(data[0]) && data[0].length > 0) {
+        return { valid: true, message: 'Token verified - FinBERT API working' }
+      }
+      return { valid: true, message: 'Token accepted' }
+    }
+
+    if (response.status === 401) {
+      return { valid: false, message: 'Invalid token - unauthorized' }
+    }
+
+    if (response.status === 403) {
+      return { valid: false, message: 'Token lacks Inference permission' }
+    }
+
+    if (response.status === 429) {
+      return { valid: true, message: 'Token valid (rate limited - try again later)' }
+    }
+
+    return { valid: false, message: `API error: ${response.status}` }
+  } catch (error) {
+    return { valid: false, message: 'Connection failed - check your network' }
+  }
+}

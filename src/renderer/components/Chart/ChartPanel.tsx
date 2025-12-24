@@ -63,10 +63,8 @@ export function ChartPanel() {
   useEffect(() => {
     const loadApiTier = async () => {
       const settings = await getSettings()
-      const polygonTier = settings.apiTiers?.polygon ?? 'free'
-      const twelveDataTier = settings.apiTiers?.twelveData ?? 'free'
-      // Premium = any tier above free for either provider
-      const isPremium = polygonTier !== 'free' || twelveDataTier !== 'free'
+      // Premium = Pro plan selected
+      const isPremium = settings.plan === 'pro'
       setHasPremiumApi(isPremium)
     }
     loadApiTier()

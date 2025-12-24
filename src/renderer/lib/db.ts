@@ -62,14 +62,11 @@ export interface UserSettings {
   polygonApiKey?: string
   finnhubApiKey?: string  // Optional: enables Economic Calendar + ticker-specific news
   twelvedataApiKey?: string  // TwelveData.com - 800 calls/day free, real-time (default)
-  fredApiKey?: string  // FRED (Federal Reserve Economic Data) - free, 120 calls/min
 
-  // API Tier Selection (determines rate limits per provider)
-  apiTiers?: {
-    polygon: 'free' | 'starter' | 'developer' | 'advanced'
-    twelveData: 'free' | 'basic' | 'pro'
-    finnhub: 'free' | 'premium'
-  }
+  // Simplified plan selection: Free or Pro
+  // Free: TwelveData (800/day), Groq AI, RSS news
+  // Pro: Polygon (unlimited), OpenAI/Claude, all news sources
+  plan?: 'free' | 'pro'
 
   // Onboarding
   hasCompletedOnboarding?: boolean
@@ -532,14 +529,9 @@ export const DEFAULT_SETTINGS: UserSettings = {
   polygonApiKey: undefined,
   finnhubApiKey: undefined,  // Optional: enables Economic Calendar + ticker-specific news
   twelvedataApiKey: undefined,
-  fredApiKey: undefined,
 
-  // API Tier Selection (defaults to free tier for all providers)
-  apiTiers: {
-    polygon: 'free',
-    twelveData: 'free',
-    finnhub: 'free'
-  },
+  // Plan Selection (defaults to free)
+  plan: 'free',
 
   // Onboarding
   hasCompletedOnboarding: undefined,
@@ -635,11 +627,17 @@ export const DEFAULT_NEWS_SOURCES: Omit<NewsSource, 'id'>[] = [
   // Benzinga
   { name: 'Benzinga', url: 'https://www.benzinga.com/feed', type: 'rss', enabled: true, category: 'Financial News' },
 
+  // NY Times Business
+  { name: 'NY Times Business', url: 'http://feeds.nytimes.com/nyt/rss/Business', type: 'rss', enabled: true, category: 'Business' },
+
+  // Reuters Business News (direct feed)
+  { name: 'Reuters Business', url: 'http://feeds.reuters.com/reuters/businessNews', type: 'rss', enabled: true, category: 'Business' },
+
   // Bloomberg (via OpenRSS proxy)
   { name: 'Bloomberg', url: 'https://openrss.org/www.bloomberg.com', type: 'rss', enabled: true, category: 'Financial News' },
 
-  // Reuters (via OpenRSS proxy)
-  { name: 'Reuters', url: 'https://openrss.org/www.reuters.com', type: 'rss', enabled: true, category: 'Financial News' },
+  // Reuters (via OpenRSS proxy) - broader coverage
+  { name: 'Reuters General', url: 'https://openrss.org/www.reuters.com', type: 'rss', enabled: false, category: 'Financial News' },
 ]
 
 // Initialize database with defaults
@@ -659,8 +657,7 @@ export async function initializeDatabase() {
 const API_KEY_FIELDS: (keyof UserSettings)[] = [
   'polygonApiKey',
   'finnhubApiKey',
-  'twelvedataApiKey',
-  'fredApiKey'
+  'twelvedataApiKey'
 ]
 
 /**
@@ -810,6 +807,32 @@ export async function getTradingThresholds(): Promise<TradingThresholds> {
   return {
     ...DEFAULT_TRADING_THRESHOLDS,
     ...settings.tradingThresholds
+  }
+}
+
+/**
+ * Provider tier limits derived from user's plan selection
+ * Free plan: Conservative limits (TwelveData 800/day, Polygon 5/min, Finnhub 60/min)
+ * Pro plan: Unlimited/high limits (Polygon unlimited, TwelveData unlimited, Finnhub 300/min)
+ */
+export type PlanTierLimits = {
+  polygon: 'free' | 'starter' | 'developer' | 'advanced'
+  twelveData: 'free' | 'basic' | 'pro'
+  finnhub: 'free' | 'premium'
+}
+
+export function getTierLimitsFromPlan(plan: 'free' | 'pro'): PlanTierLimits {
+  if (plan === 'pro') {
+    return {
+      polygon: 'advanced',      // Unlimited
+      twelveData: 'pro',        // Unlimited
+      finnhub: 'premium'        // 300/min
+    }
+  }
+  return {
+    polygon: 'free',            // 5/min (don't recommend for free users)
+    twelveData: 'free',         // 800/day, 8/min
+    finnhub: 'free'             // 60/min
   }
 }
 

@@ -84,6 +84,13 @@ export function updateTierSettings(tiers: {
 }
 
 /**
+ * Get current Polygon tier (for rate limit calculations)
+ */
+export function getCurrentPolygonTier(): PolygonTier {
+  return currentPolygonTier
+}
+
+/**
  * Get current minute window (Unix timestamp in minutes)
  */
 function getCurrentMinuteWindow(): number {

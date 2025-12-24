@@ -82,16 +82,16 @@ RichDad is an open-source trading research tool for individual investors who wan
 - **Notification Center**: Queue for pending recommendations
 
 ### Economic Calendar
-- **FRED Integration**: Free API from the Federal Reserve for US economic events
+- **Finnhub Integration**: Economic events data from Finnhub (free tier available)
 - **Upcoming Events**: CPI, Jobs Report, Fed Decisions, GDP releases
 - **Countdown Display**: Days/hours until major market-moving events
 - **Ticker View**: Scrolling ticker below news for quick glance
 
-#### Getting a FRED API Key
-1. Visit [fred.stlouisfed.org/docs/api/api_key.html](https://fred.stlouisfed.org/docs/api/api_key.html)
-2. Click "Request or view your API keys"
-3. Create account and request key (describe as "personal use")
-4. Copy key to Settings > API Keys > FRED
+#### Getting a Finnhub API Key
+1. Visit [finnhub.io](https://finnhub.io/register)
+2. Create a free account
+3. Copy your API key from the dashboard
+4. Paste in Settings > News Sources > Finnhub
 
 ### Accessibility
 - **CVD Mode**: Colorblind-friendly display
@@ -132,10 +132,10 @@ RichDad stores all data locally. There are no user accounts, no cloud servers, a
 ### Third-Party Services
 
 RichDad makes direct API calls to services you configure:
-- **Market Data**: Massive.com or Alpha Vantage (your key, your account)
-- **AI Analysis**: Your chosen provider
-- **News**: Public RSS feeds
-- **Economic Calendar**: FRED API (Federal Reserve Economic Data)
+- **Market Data**: TwelveData or Polygon (your key, your account)
+- **AI Analysis**: Your chosen provider (OpenAI, Claude, Groq)
+- **News**: Public RSS feeds + Finnhub (optional)
+- **Economic Calendar**: Finnhub API (optional)
 
 These calls go directly from your machine to the provider.
 

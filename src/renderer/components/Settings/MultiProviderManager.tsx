@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Plus, Trash2, ChevronUp, ChevronDown, Check, AlertCircle, Cpu } from 'lucide-react'
+import { Plus, Trash2, ChevronUp, ChevronDown, Check, AlertCircle, Cpu, Loader2, X } from 'lucide-react'
 import { AI_PROVIDERS, type AIProvider, type AIProviderConfig } from '../../lib/db'
 import { SetupPrompt } from '../common/SetupPrompt'
+import { testAIProviderKey, type AIValidationResult } from '../../../services/aiProviderValidator'
 
 interface MultiProviderManagerProps {
   providers: AIProviderConfig[]
@@ -11,6 +12,33 @@ interface MultiProviderManagerProps {
 export function MultiProviderManager({ providers, onChange }: MultiProviderManagerProps) {
   const [showAddProvider, setShowAddProvider] = useState(false)
   const [newProvider, setNewProvider] = useState<AIProvider>('openai')
+  const [testing, setTesting] = useState<Record<AIProvider, boolean>>({} as Record<AIProvider, boolean>)
+  const [testResults, setTestResults] = useState<Record<AIProvider, AIValidationResult>>({} as Record<AIProvider, AIValidationResult>)
+
+  const handleTestProvider = async (provider: AIProvider, apiKey: string) => {
+    if (!apiKey || testing[provider]) return
+
+    setTesting(prev => ({ ...prev, [provider]: true }))
+    setTestResults(prev => {
+      const next = { ...prev }
+      delete next[provider]
+      return next
+    })
+
+    try {
+      // Map provider to validator type
+      const validatorProvider = provider === 'llama' ? 'groq' : provider as 'openai' | 'claude' | 'groq'
+      const result = await testAIProviderKey(validatorProvider, apiKey)
+      setTestResults(prev => ({ ...prev, [provider]: result }))
+    } catch (error) {
+      setTestResults(prev => ({
+        ...prev,
+        [provider]: { valid: false, message: 'Test failed' }
+      }))
+    } finally {
+      setTesting(prev => ({ ...prev, [provider]: false }))
+    }
+  }
 
   // Get providers that haven't been added yet
   const availableProviders = (Object.keys(AI_PROVIDERS) as AIProvider[]).filter(
@@ -180,43 +208,64 @@ export function MultiProviderManager({ providers, onChange }: MultiProviderManag
               {/* Provider Config */}
               {config.enabled && (
                 <div className="space-y-3 mt-3 pt-3 border-t border-terminal-border">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-gray-500 text-xs mb-1 block">Model</label>
-                      <select
-                        value={config.model || AI_PROVIDERS[config.provider].models[0]}
-                        onChange={(e) => handleUpdateProvider(config.provider, { model: e.target.value })}
-                        className="w-full bg-terminal-bg border border-terminal-border rounded px-2 py-1.5 text-xs text-white"
-                      >
-                        {AI_PROVIDERS[config.provider].models.map(model => (
-                          <option key={model} value={model}>{model}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="text-gray-500 text-xs mb-1 block">API Key</label>
+                  <div>
+                    <label className="text-gray-500 text-xs mb-1 block">API Key</label>
+                    <div className="flex gap-2">
                       <input
                         type="password"
                         value={config.apiKey}
                         onChange={(e) => handleUpdateProvider(config.provider, { apiKey: e.target.value })}
                         placeholder={AI_PROVIDERS[config.provider].keyPlaceholder}
-                        className="w-full bg-terminal-bg border border-terminal-border rounded px-2 py-1.5 text-xs text-white placeholder:text-gray-600 font-mono"
+                        className="flex-1 bg-terminal-bg border border-terminal-border rounded px-2 py-1.5 text-xs text-white placeholder:text-gray-600 font-mono"
                       />
+                      <button
+                        onClick={() => handleTestProvider(config.provider, config.apiKey)}
+                        disabled={!config.apiKey || testing[config.provider]}
+                        className="px-3 py-1.5 bg-terminal-border text-white rounded text-xs hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                        title="Test API key"
+                      >
+                        {testing[config.provider] ? (
+                          <Loader2 size={12} className="animate-spin" />
+                        ) : (
+                          'Test'
+                        )}
+                      </button>
                     </div>
                   </div>
 
+                  {/* Test Result */}
+                  {testResults[config.provider] && (
+                    <div className={`flex items-center gap-2 text-xs p-2 rounded ${
+                      testResults[config.provider].valid
+                        ? 'bg-terminal-up/10 text-terminal-up'
+                        : 'bg-red-500/10 text-red-400'
+                    }`}>
+                      {testResults[config.provider].valid ? (
+                        <Check size={12} />
+                      ) : (
+                        <X size={12} />
+                      )}
+                      <span>{testResults[config.provider].message}</span>
+                      {testResults[config.provider].model && (
+                        <span className="text-gray-500">({testResults[config.provider].model})</span>
+                      )}
+                    </div>
+                  )}
+
                   {/* Status */}
-                  <div className="flex items-center gap-2 text-xs">
-                    {config.apiKey ? (
-                      <span className="text-terminal-up flex items-center gap-1">
-                        <Check size={12} /> API key configured
-                      </span>
-                    ) : (
-                      <span className="text-yellow-500 flex items-center gap-1">
-                        <AlertCircle size={12} /> API key required
-                      </span>
-                    )}
-                  </div>
+                  {!testResults[config.provider] && (
+                    <div className="flex items-center gap-2 text-xs">
+                      {config.apiKey ? (
+                        <span className="text-terminal-up flex items-center gap-1">
+                          <Check size={12} /> API key configured
+                        </span>
+                      ) : (
+                        <span className="text-yellow-500 flex items-center gap-1">
+                          <AlertCircle size={12} /> API key required
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   {/* Instructions */}
                   <p className="text-gray-600 text-xs">

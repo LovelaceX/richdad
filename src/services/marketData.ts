@@ -186,7 +186,7 @@ export function formatApiError(error: unknown, provider: string): string {
 }
 
 const CACHE_DURATION_MS = 3600000 // 1 hour (3600 seconds)
-const FRESH_THRESHOLD_MS = 60000 // Data older than 1 minute is not "fresh"
+const FRESH_THRESHOLD_MS = 120000 // Data older than 2 minutes is not "fresh" (matches market hours polling)
 
 let cachedQuotes: Quote[] = []
 let cacheTimestamp = 0

@@ -7,7 +7,6 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 // Lazy load pages for better code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })))
 const News = lazy(() => import('./pages/News').then(m => ({ default: m.News })))
-const EconomicCalendar = lazy(() => import('./pages/EconomicCalendar').then(m => ({ default: m.EconomicCalendar })))
 const Backtest = lazy(() => import('./pages/Backtest').then(m => ({ default: m.Backtest })))
 const Settings = lazy(() => import('./pages/Settings/Settings').then(m => ({ default: m.Settings })))
 import { useSettingsStore } from './stores/settingsStore'
@@ -126,8 +125,6 @@ export default function App() {
         return <Dashboard />
       case 'news':
         return <News />
-      case 'economic-calendar':
-        return <EconomicCalendar />
       case 'backtest':
         return <Backtest />
       case 'settings':

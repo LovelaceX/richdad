@@ -15,7 +15,9 @@ import {
   Filter,
   ExternalLink,
   Check,
-  Info
+  Info,
+  Loader2,
+  X
 } from 'lucide-react'
 import { useProTraderStore } from '../../../stores/proTraderStore'
 import { getSettings, updateSettings, type UserSettings } from '../../../lib/db'
@@ -47,6 +49,11 @@ export function NewsSourcesSection() {
   const [settings, setSettings] = useState<UserSettings | null>(null)
   const [saving, setSaving] = useState(false)
   const [showSaved, setShowSaved] = useState(false)
+
+  // HuggingFace token test state
+  const [hfTesting, setHfTesting] = useState(false)
+  const [hfTestStatus, setHfTestStatus] = useState<'idle' | 'valid' | 'invalid'>('idle')
+  const [hfTestMessage, setHfTestMessage] = useState('')
 
   // Check if Finnhub is configured (provides ticker-specific news)
   const providerHasNews = Boolean(settings?.finnhubApiKey)
@@ -92,6 +99,32 @@ export function NewsSourcesSection() {
     setSaving(false)
     setShowSaved(true)
     setTimeout(() => setShowSaved(false), 2000)
+  }
+
+  // Test HuggingFace token
+  const handleTestHfToken = async () => {
+    const token = settings?.huggingFaceToken
+    if (!token) {
+      setHfTestStatus('invalid')
+      setHfTestMessage('No token entered')
+      return
+    }
+
+    setHfTesting(true)
+    setHfTestStatus('idle')
+    setHfTestMessage('')
+
+    try {
+      const { testHuggingFaceToken } = await import('../../../../services/sentimentService')
+      const result = await testHuggingFaceToken(token)
+      setHfTestStatus(result.valid ? 'valid' : 'invalid')
+      setHfTestMessage(result.message)
+    } catch (error) {
+      setHfTestStatus('invalid')
+      setHfTestMessage('Test failed')
+    } finally {
+      setHfTesting(false)
+    }
   }
 
   if (!settings) {
@@ -192,12 +225,31 @@ export function NewsSourcesSection() {
               type="password"
               placeholder="hf_xxxxxxxxxx..."
               value={huggingFaceToken}
-              onChange={(e) => saveSettings({ huggingFaceToken: e.target.value })}
+              onChange={(e) => {
+                saveSettings({ huggingFaceToken: e.target.value })
+                setHfTestStatus('idle')
+                setHfTestMessage('')
+              }}
               className="flex-1 bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white placeholder:text-gray-600 font-mono"
             />
+            <button
+              onClick={handleTestHfToken}
+              disabled={hfTesting || !huggingFaceToken}
+              className="px-4 py-2 bg-terminal-bg border border-terminal-border rounded text-sm text-white hover:border-terminal-amber/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {hfTesting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                'Test'
+              )}
+            </button>
             {huggingFaceToken && (
               <button
-                onClick={() => saveSettings({ huggingFaceToken: '' })}
+                onClick={() => {
+                  saveSettings({ huggingFaceToken: '' })
+                  setHfTestStatus('idle')
+                  setHfTestMessage('')
+                }}
                 className="px-3 py-2 text-gray-400 hover:text-white transition-colors"
                 title="Clear token"
               >
@@ -205,6 +257,21 @@ export function NewsSourcesSection() {
               </button>
             )}
           </div>
+
+          {/* Test Result Message */}
+          {hfTestMessage && (
+            <div className={`flex items-center gap-2 text-xs ${
+              hfTestStatus === 'valid' ? 'text-green-400' : 'text-red-400'
+            }`}>
+              {hfTestStatus === 'valid' ? (
+                <Check className="w-3 h-3" />
+              ) : (
+                <X className="w-3 h-3" />
+              )}
+              {hfTestMessage}
+            </div>
+          )}
+
           <p className="text-gray-600 text-xs">
             100% optional. Sentiment works without it.
           </p>

@@ -2,7 +2,7 @@ import { create } from 'zustand'
 
 export type HelpSection =
   | 'get-started' | 'whats-new' | 'dashboard' | 'watchlist'
-  | 'news' | 'economic-calendar' | 'intel-panel' | 'price-alerts'
+  | 'news' | 'intel-panel' | 'price-alerts'
   | 'chart-guide' | 'ai-copilot' | 'api-limits' | 'shortcuts'
   | 'troubleshooting' | 'faq' | 'terms' | 'privacy'
   | 'security' | 'about' | 'report-issue'

@@ -79,22 +79,7 @@ export interface MarketIndex {
 }
 
 // Page types
-export type PageId = 'dashboard' | 'news' | 'economic-calendar' | 'backtest' | 'settings'
-
-// Economic Calendar Event
-export interface EconomicEvent {
-  id: string
-  date: Date
-  time: string
-  country: string
-  event: string
-  importance: 'low' | 'medium' | 'high'
-  actual?: string
-  forecast?: string
-  previous?: string
-  source: string
-  url?: string
-}
+export type PageId = 'dashboard' | 'news' | 'backtest' | 'settings'
 
 // Tone types
 export type ToneType = 'conservative' | 'aggressive' | 'humorous' | 'professional'

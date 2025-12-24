@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react'
 import { Monitor, LayoutGrid, Eye, TrendingUp, X, Plus, Snail, Rabbit, ChevronDown, BarChart3 } from 'lucide-react'
 import { useSettingsStore } from '../../../stores/settingsStore'
 import { getSettings, updateSettings } from '../../../lib/db'
+import { useStockAutocomplete } from '../hooks/useStockAutocomplete'
 
 // Default market symbols
 const DEFAULT_MARKET_SYMBOLS = ['SPY', 'QQQ', 'DIA', 'VXX']
@@ -39,7 +40,17 @@ export function DisplaySection() {
 
   // Market Overview Symbols state
   const [marketSymbols, setMarketSymbols] = useState<string[]>(DEFAULT_MARKET_SYMBOLS)
-  const [newSymbol, setNewSymbol] = useState('')
+
+  // Stock autocomplete for adding new symbols
+  const symbolAutocomplete = useStockAutocomplete({
+    onSelect: (symbol) => {
+      if (symbol && !marketSymbols.includes(symbol) && marketSymbols.length < MAX_SYMBOLS) {
+        const updated = [...marketSymbols, symbol]
+        saveMarketSymbols(updated)
+        symbolAutocomplete.reset()
+      }
+    }
+  })
 
   // Default Index state
   const [defaultIndex, setDefaultIndex] = useState('SPY')
@@ -70,19 +81,19 @@ export function DisplaySection() {
     window.dispatchEvent(new Event('settings-updated'))
   }
 
-  // Add a new symbol
+  // Add a new symbol (called from Add button)
   const handleAddSymbol = () => {
-    const symbol = newSymbol.toUpperCase().trim()
+    const symbol = symbolAutocomplete.inputValue.toUpperCase().trim()
     if (!symbol) return
     if (marketSymbols.includes(symbol)) {
-      setNewSymbol('')
+      symbolAutocomplete.reset()
       return
     }
     if (marketSymbols.length >= MAX_SYMBOLS) return
 
     const updated = [...marketSymbols, symbol]
     saveMarketSymbols(updated)
-    setNewSymbol('')
+    symbolAutocomplete.reset()
   }
 
   // Remove a symbol
@@ -270,26 +281,53 @@ export function DisplaySection() {
             ))}
           </div>
 
-          {/* Add Symbol Input */}
-          <div className="flex gap-2 mb-3">
-            <input
-              type="text"
-              value={newSymbol}
-              onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
-              onKeyDown={(e) => e.key === 'Enter' && handleAddSymbol()}
-              placeholder="Enter symbol (e.g., AAPL)"
-              maxLength={10}
-              className="flex-1 bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-terminal-amber/50"
-              disabled={marketSymbols.length >= MAX_SYMBOLS}
-            />
-            <button
-              onClick={handleAddSymbol}
-              disabled={!newSymbol.trim() || marketSymbols.length >= MAX_SYMBOLS}
-              className="px-4 py-2 bg-terminal-amber text-black rounded text-sm font-medium hover:bg-terminal-amber/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-            >
-              <Plus size={14} />
-              Add
-            </button>
+          {/* Add Symbol Input with Autocomplete */}
+          <div className="relative mb-3">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={symbolAutocomplete.inputValue}
+                onChange={(e) => symbolAutocomplete.handleInputChange(e.target.value.toUpperCase())}
+                onKeyDown={symbolAutocomplete.handleKeyDown}
+                placeholder="Search symbol (e.g., AAPL)"
+                maxLength={10}
+                className="flex-1 bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-terminal-amber/50"
+                disabled={marketSymbols.length >= MAX_SYMBOLS}
+              />
+              <button
+                onClick={handleAddSymbol}
+                disabled={!symbolAutocomplete.inputValue.trim() || marketSymbols.length >= MAX_SYMBOLS}
+                className="px-4 py-2 bg-terminal-amber text-black rounded text-sm font-medium hover:bg-terminal-amber/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+              >
+                <Plus size={14} />
+                Add
+              </button>
+            </div>
+
+            {/* Autocomplete Dropdown */}
+            {symbolAutocomplete.isOpen && (
+              <div className="absolute z-10 w-full mt-1 bg-terminal-bg border border-terminal-border rounded max-h-48 overflow-y-auto">
+                {symbolAutocomplete.searchResults.map((stock, index) => (
+                  <button
+                    key={stock.symbol}
+                    onClick={() => symbolAutocomplete.handleSelect(stock)}
+                    className={`w-full px-3 py-2 text-left hover:bg-terminal-border/50 transition-colors ${
+                      index === symbolAutocomplete.selectedIndex ? 'bg-terminal-amber/20' : ''
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-terminal-amber font-mono text-sm font-medium">
+                        {stock.symbol}
+                      </span>
+                      {stock.sector && (
+                        <span className="text-gray-600 text-xs">{stock.sector}</span>
+                      )}
+                    </div>
+                    <p className="text-gray-400 text-xs truncate">{stock.name}</p>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Reset & Limit Info */}
@@ -319,32 +357,19 @@ export function DisplaySection() {
             Control the scrolling speed of the News and Economic Calendar tickers.
           </p>
 
-          {/* Slider with aligned icons and inline tick marks */}
+          {/* Slider - same style as Daily Loss Limit */}
           <div className="flex items-center gap-3">
             <Snail size={20} className="text-gray-400 flex-shrink-0" />
 
-            <div className="flex-1 relative h-6 flex items-center">
-              {/* Tick marks behind slider */}
-              <div className="absolute inset-x-0 flex justify-between pointer-events-none">
-                {[30, 45, 60, 75, 90, 105, 120].map((val) => (
-                  <div
-                    key={val}
-                    className={`w-0.5 h-3 rounded-sm ${tickerSpeed === val ? 'bg-terminal-amber' : 'bg-gray-600'}`}
-                  />
-                ))}
-              </div>
-
-              {/* Slider on top */}
-              <input
-                type="range"
-                min="30"
-                max="120"
-                step="15"
-                value={tickerSpeed < 30 ? 30 : tickerSpeed}
-                onChange={(e) => setTickerSpeed(Number(e.target.value))}
-                className="relative z-10 w-full h-2 bg-terminal-border/50 rounded-lg appearance-none cursor-pointer accent-terminal-amber"
-              />
-            </div>
+            <input
+              type="range"
+              min="30"
+              max="120"
+              step="15"
+              value={tickerSpeed < 30 ? 30 : tickerSpeed}
+              onChange={(e) => setTickerSpeed(Number(e.target.value))}
+              className="flex-1 h-2 bg-terminal-border rounded-lg appearance-none cursor-pointer accent-terminal-amber"
+            />
 
             <Rabbit size={20} className="text-gray-400 flex-shrink-0" />
           </div>

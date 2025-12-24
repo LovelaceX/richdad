@@ -6,6 +6,12 @@ import { useNewsStore } from '../stores/newsStore'
 import { useMarketStore } from '../stores/marketStore'
 import type { NewsItem } from '../types'
 
+const SENTIMENT_BORDER = {
+  positive: 'border-l-terminal-up',
+  negative: 'border-l-terminal-down',
+  neutral: 'border-l-gray-600',
+} as const
+
 type FilterType = 'all' | 'watchlist' | 'positive' | 'negative' | 'neutral'
 
 export function News() {
@@ -95,8 +101,8 @@ export function News() {
         </div>
       </div>
 
-      {/* News Feed - Multi-Column Grid */}
-      <div className="flex-1 overflow-y-auto p-4">
+      {/* News Feed - Single Column List */}
+      <div className="flex-1 overflow-y-auto">
         {filteredNews.length === 0 ? (
           <div className="text-center py-12">
             <Newspaper className="w-12 h-12 text-gray-600 mx-auto mb-3" />
@@ -104,40 +110,39 @@ export function News() {
             <p className="text-gray-600 text-sm mt-1">Try changing your filter or check back later</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="divide-y divide-terminal-border">
             {filteredNews.map((item: NewsItem) => (
               <div
                 key={item.id}
                 onClick={() => item.url && handleNewsClick(item)}
                 className={`
-                  bg-terminal-panel border border-terminal-border rounded-lg p-4
-                  hover:border-terminal-amber/50 transition-colors
+                  flex items-start gap-3 px-6 py-3
+                  border-l-2 ${SENTIMENT_BORDER[item.sentiment || 'neutral']}
+                  hover:bg-terminal-panel/50 transition-colors
                   ${item.url ? 'cursor-pointer' : ''}
-                  flex flex-col h-[120px]
                 `}
               >
-                {/* Top row: Sentiment + Ticker */}
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex-shrink-0">
-                    {getSentimentIcon(item.sentiment)}
-                  </div>
-                  {item.ticker && (
-                    <span className="text-terminal-amber text-xs font-mono bg-terminal-amber/10 px-1.5 py-0.5 rounded">
-                      ${item.ticker}
-                    </span>
-                  )}
+                {/* Sentiment Icon */}
+                <div className="flex-shrink-0 mt-0.5">
+                  {getSentimentIcon(item.sentiment)}
                 </div>
 
-                {/* Headline - 2 lines max */}
-                <h3 className="text-white text-sm font-medium leading-snug line-clamp-2 flex-1">
-                  {item.headline}
-                </h3>
-
-                {/* Bottom: Source + Time */}
-                <div className="flex items-center gap-2 text-xs mt-2">
-                  <span className="text-gray-400 truncate">{item.source}</span>
-                  <span className="text-gray-600">•</span>
-                  <span className="text-gray-500 flex-shrink-0">{formatTime(item.timestamp)}</span>
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-white text-sm leading-snug line-clamp-2">
+                    {item.headline}
+                  </h3>
+                  <div className="flex items-center gap-2 text-xs mt-1">
+                    <span className="text-gray-400 truncate">{item.source}</span>
+                    <span className="text-gray-600">•</span>
+                    <span className="text-gray-500 flex-shrink-0">{formatTime(item.timestamp)}</span>
+                    {item.ticker && (
+                      <>
+                        <span className="text-gray-600">•</span>
+                        <span className="text-terminal-amber font-mono">${item.ticker}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}

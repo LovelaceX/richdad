@@ -29,7 +29,7 @@ interface SetupPromptProps {
  * // Compact (inline, for tickers/small spaces)
  * <SetupPrompt
  *   compact
- *   title="FRED API needed"
+ *   title="Finnhub API needed"
  *   helpSection="api-limits"
  * />
  */

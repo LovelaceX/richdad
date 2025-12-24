@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, Sparkles, Zap, Leaf, Star, Crown, Brain, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
+import { X, Sparkles, Zap, Leaf, Crown, Brain, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 import { WelcomeStep } from './WelcomeStep'
 import { TermsStep } from './TermsStep'
 import { WizardStep } from './WizardStep'
-import { updateSettings, updateAISettings } from '../../lib/db'
+import { updateSettings, updateAISettings, getTierLimitsFromPlan } from '../../lib/db'
 import { testAIKey, type AIProvider } from '../../../services/aiKeyValidator'
+import { updateTierSettings } from '../../../services/apiBudgetTracker'
 
 interface OnboardingWizardProps {
   isOpen: boolean
@@ -14,28 +15,29 @@ interface OnboardingWizardProps {
 
 type MarketDataProvider = 'polygon' | 'twelvedata'
 type AIProviderChoice = 'openai' | 'groq' | 'anthropic'
-type SetupPath = 'free' | 'standard' | 'premium'
+type SetupPath = 'free' | 'pro'
 type WizardStepType = 'welcome' | 'terms' | 'path-selection' | 'api-key' | 'ai-provider'
 
 export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
   const [currentStep, setCurrentStep] = useState<WizardStepType>('welcome')
   const [termsAccepted, setTermsAccepted] = useState(false)
-  const [setupPath, setSetupPath] = useState<SetupPath>('standard')
+  const [setupPath, setSetupPath] = useState<SetupPath>('free')
   const [polygonKey, setPolygonKey] = useState('')
   const [twelvedataKey, setTwelvedataKey] = useState('')
-  const [selectedAIProvider, setSelectedAIProvider] = useState<AIProviderChoice>('openai')
+  const [selectedAIProvider, setSelectedAIProvider] = useState<AIProviderChoice>('groq')
   const [aiApiKey, setAiApiKey] = useState('')
   const [aiKeyStatus, setAiKeyStatus] = useState<'idle' | 'testing' | 'valid' | 'invalid'>('idle')
   const [aiKeyMessage, setAiKeyMessage] = useState('')
 
   // Derived state based on selected path
-  // Only Premium uses Polygon (paid tier) - Free and Standard use TwelveData
-  const selectedProvider: MarketDataProvider = setupPath === 'premium' ? 'polygon' : 'twelvedata'
+  // Free uses TwelveData, Pro uses Polygon
+  const selectedProvider: MarketDataProvider = setupPath === 'pro' ? 'polygon' : 'twelvedata'
 
   // Update AI provider when path changes
   const handlePathChange = (path: SetupPath) => {
     setSetupPath(path)
-    setSelectedAIProvider(path === 'free' ? 'groq' : path === 'premium' ? 'anthropic' : 'openai')
+    // Free defaults to Groq (free AI), Pro defaults to OpenAI
+    setSelectedAIProvider(path === 'free' ? 'groq' : 'openai')
     // Reset AI key status when provider changes
     setAiKeyStatus('idle')
     setAiKeyMessage('')
@@ -72,8 +74,18 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
     } else if (currentStep === 'terms') {
       setCurrentStep('path-selection')
     } else if (currentStep === 'path-selection') {
-      // Save provider choice based on path
-      await updateSettings({ marketDataProvider: selectedProvider })
+      // Save provider choice and plan
+      const limits = getTierLimitsFromPlan(setupPath)
+      await updateSettings({
+        marketDataProvider: selectedProvider,
+        plan: setupPath
+      })
+      // Sync tier limits with budget tracker
+      updateTierSettings({
+        polygon: limits.polygon,
+        twelveData: limits.twelveData,
+        finnhub: limits.finnhub,
+      })
       setCurrentStep('api-key')
     } else if (currentStep === 'api-key') {
       // Save the appropriate API key based on selected provider
@@ -149,8 +161,8 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
           <div className="space-y-4">
             <div className="text-center">
               <p className="text-terminal-amber text-sm mb-1">Step {stepNumber} of {totalSteps}</p>
-              <h3 className="text-white text-lg font-medium">Choose Your Setup</h3>
-              <p className="text-gray-500 text-sm mt-2">Select a path based on your needs - you can change these later in Settings</p>
+              <h3 className="text-white text-lg font-medium">Choose Your Plan</h3>
+              <p className="text-gray-500 text-sm mt-2">Select based on your needs - you can change this later in Settings</p>
             </div>
 
             <div className="space-y-3">
@@ -167,72 +179,44 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
                   <Leaf className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <div className="text-white font-medium">Free Path</div>
+                      <div className="text-white font-medium">Free</div>
                       <span className="text-green-400 text-xs font-medium px-2 py-0.5 bg-green-400/20 rounded">
-                        $0/month
+                        $0
                       </span>
                     </div>
-                    <div className="text-gray-400 text-sm mt-1">Perfect for learning and exploring</div>
+                    <div className="text-gray-400 text-sm mt-1">Perfect for getting started</div>
                     <div className="text-gray-500 text-xs mt-2 space-y-1">
-                      <div>• TwelveData (800 calls/day free)</div>
-                      <div>• Groq AI (Llama 3 - completely free)</div>
+                      <div>• TwelveData (800 calls/day)</div>
+                      <div>• Groq AI (Llama 3 - free)</div>
                       <div>• RSS News feeds</div>
                     </div>
                   </div>
                 </div>
               </button>
 
-              {/* Standard Path */}
+              {/* Pro Path */}
               <button
-                onClick={() => handlePathChange('standard')}
+                onClick={() => handlePathChange('pro')}
                 className={`w-full p-4 rounded-lg border text-left transition-colors ${
-                  setupPath === 'standard'
+                  setupPath === 'pro'
                     ? 'border-terminal-amber bg-terminal-amber/10'
                     : 'border-terminal-border hover:border-gray-600'
                 }`}
               >
                 <div className="flex items-start gap-3">
-                  <Star className="w-5 h-5 text-terminal-amber flex-shrink-0 mt-0.5" />
+                  <Crown className="w-5 h-5 text-terminal-amber flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <div className="text-white font-medium">Standard Path</div>
+                      <div className="text-white font-medium">Pro</div>
                       <span className="text-terminal-amber text-xs font-medium px-2 py-0.5 bg-terminal-amber/20 rounded">
-                        Recommended
+                        API costs only
                       </span>
                     </div>
-                    <div className="text-gray-400 text-sm mt-1">Best experience for most traders</div>
+                    <div className="text-gray-400 text-sm mt-1">Unlimited data + premium AI</div>
                     <div className="text-gray-500 text-xs mt-2 space-y-1">
-                      <div>• TwelveData (800 calls/day free)</div>
-                      <div>• OpenAI GPT-4 (~$5-20/month usage)</div>
-                      <div>• Finnhub News + Economic Calendar</div>
-                    </div>
-                  </div>
-                </div>
-              </button>
-
-              {/* Premium Path */}
-              <button
-                onClick={() => handlePathChange('premium')}
-                className={`w-full p-4 rounded-lg border text-left transition-colors ${
-                  setupPath === 'premium'
-                    ? 'border-purple-500 bg-purple-500/10'
-                    : 'border-terminal-border hover:border-gray-600'
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <Crown className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <div className="text-white font-medium">Premium Path</div>
-                      <span className="text-purple-400 text-xs font-medium px-2 py-0.5 bg-purple-400/20 rounded">
-                        Power User
-                      </span>
-                    </div>
-                    <div className="text-gray-400 text-sm mt-1">Maximum speed & advanced analysis</div>
-                    <div className="text-gray-500 text-xs mt-2 space-y-1">
-                      <div>• Polygon.io paid tier (unlimited calls)</div>
-                      <div>• Anthropic Claude (superior reasoning)</div>
-                      <div>• All news sources + Alpha Vantage</div>
+                      <div>• Polygon (unlimited calls)</div>
+                      <div>• OpenAI or Claude</div>
+                      <div>• All news sources</div>
                     </div>
                   </div>
                 </div>
@@ -240,7 +224,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
             </div>
 
             <p className="text-center text-gray-500 text-xs">
-              All paths can be customized later in Settings → Data Sources
+              All plans can be customized later in Settings → Market Data
             </p>
           </div>
         )
@@ -264,6 +248,31 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
             </div>
 
             <div className="space-y-3">
+              {/* Groq Option - Show first for Free plan */}
+              <button
+                onClick={() => setSelectedAIProvider('groq')}
+                className={`w-full p-4 rounded-lg border text-left transition-colors ${
+                  selectedAIProvider === 'groq'
+                    ? 'border-green-500 bg-green-500/10'
+                    : 'border-terminal-border hover:border-gray-600'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Zap className="w-5 h-5 text-green-400 flex-shrink-0" />
+                    <div>
+                      <div className="text-white font-medium">Groq (Llama 3)</div>
+                      <div className="text-gray-400 text-sm mt-1">Fast inference, completely free</div>
+                    </div>
+                  </div>
+                  {setupPath === 'free' && (
+                    <span className="text-green-400 text-xs font-medium px-2 py-1 bg-green-400/20 rounded">
+                      Recommended
+                    </span>
+                  )}
+                </div>
+              </button>
+
               {/* OpenAI Option */}
               <button
                 onClick={() => setSelectedAIProvider('openai')}
@@ -281,7 +290,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
                       <div className="text-gray-400 text-sm mt-1">Most capable, ~$5-20/month</div>
                     </div>
                   </div>
-                  {setupPath === 'standard' && (
+                  {setupPath === 'pro' && (
                     <span className="text-terminal-amber text-xs font-medium px-2 py-1 bg-terminal-amber/20 rounded">
                       Recommended
                     </span>
@@ -306,36 +315,6 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
                       <div className="text-gray-400 text-sm mt-1">Superior reasoning, ~$10-30/month</div>
                     </div>
                   </div>
-                  {setupPath === 'premium' && (
-                    <span className="text-purple-400 text-xs font-medium px-2 py-1 bg-purple-400/20 rounded">
-                      Premium Pick
-                    </span>
-                  )}
-                </div>
-              </button>
-
-              {/* Groq Option */}
-              <button
-                onClick={() => setSelectedAIProvider('groq')}
-                className={`w-full p-4 rounded-lg border text-left transition-colors ${
-                  selectedAIProvider === 'groq'
-                    ? 'border-green-500 bg-green-500/10'
-                    : 'border-terminal-border hover:border-gray-600'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Zap className="w-5 h-5 text-green-400 flex-shrink-0" />
-                    <div>
-                      <div className="text-white font-medium">Groq (Llama 3)</div>
-                      <div className="text-gray-400 text-sm mt-1">Fast inference, completely free</div>
-                    </div>
-                  </div>
-                  {setupPath === 'free' && (
-                    <span className="text-green-400 text-xs font-medium px-2 py-1 bg-green-400/20 rounded">
-                      Free
-                    </span>
-                  )}
                 </div>
               </button>
             </div>
@@ -472,7 +451,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
                     }}
                     className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
                   >
-                    ← Back
+                    Back
                   </button>
                 ) : (
                   <div />

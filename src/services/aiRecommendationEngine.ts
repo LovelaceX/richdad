@@ -936,7 +936,7 @@ ${regimeSection}
 
 **TECHNICAL INDICATORS:**
 ${indicators.rsi14 ? `- RSI (14): ${indicators.rsi14} ${indicators.rsi14 > 70 ? '(Overbought)' : indicators.rsi14 < 30 ? '(Oversold)' : '(Neutral)'}` : '- RSI: N/A'}
-${indicators.macd ? `- MACD: ${indicators.macd.histogram > 0 ? 'Bullish' : 'Bearish'} (Value: ${indicators.macd.value?.toFixed(2)}, Signal: ${indicators.macd.signal?.toFixed(2)})` : '- MACD: N/A'}
+${indicators.macd ? `- MACD: ${indicators.macd.histogram > 0 ? 'Bullish' : 'Bearish'} (Value: ${indicators.macd.value?.toFixed(2) ?? 'N/A'}, Signal: ${indicators.macd.signal?.toFixed(2) ?? 'N/A'})` : '- MACD: N/A'}
 ${indicators.bollingerBands ? `- Bollinger Bands: Upper $${indicators.bollingerBands.upper}, Middle $${indicators.bollingerBands.middle}, Lower $${indicators.bollingerBands.lower} (%B: ${indicators.bollingerBands.percentB})` : ''}
 ${indicators.atr14 ? `- ATR (14): $${indicators.atr14}` : ''}
 ${indicators.ma20 ? `- MA(20): $${indicators.ma20.toFixed(2)}` : ''}

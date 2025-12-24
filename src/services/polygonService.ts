@@ -9,9 +9,26 @@
 
 import type { Quote, CandleData } from '../renderer/types'
 import { safeJsonParse } from './safeJson'
+import { getCurrentPolygonTier, type PolygonTier } from './apiBudgetTracker'
 
 const POLYGON_BASE_URL = 'https://api.polygon.io'
-const RATE_LIMIT_DELAY_MS = 12000 // 5 calls/min = 12s between calls
+
+// Rate limit delays by tier (milliseconds between calls)
+// Free: 5/min = 12s, Starter: 100/min = 600ms, Developer: 1000/min = 60ms, Advanced: no limit
+const RATE_LIMIT_DELAYS: Record<PolygonTier, number> = {
+  free: 12000,      // 5 calls/min
+  starter: 600,     // 100 calls/min
+  developer: 60,    // 1000 calls/min
+  advanced: 0       // Unlimited
+}
+
+/**
+ * Get the rate limit delay based on current tier
+ */
+function getRateLimitDelay(): number {
+  const tier = getCurrentPolygonTier()
+  return RATE_LIMIT_DELAYS[tier]
+}
 
 let lastCallTime = 0
 
@@ -25,14 +42,23 @@ const historicalCache: Map<string, { data: CandleData[], timestamp: number }> = 
 const HISTORICAL_CACHE_DURATION_MS = 300000 // 5 minutes
 
 /**
- * Rate limit helper - ensures we don't exceed 5 calls/minute
+ * Rate limit helper - ensures we don't exceed tier-specific limits
+ * Free: 5/min, Starter: 100/min, Developer: 1000/min, Advanced: unlimited
  */
 async function respectRateLimit(): Promise<void> {
+  const delayMs = getRateLimitDelay()
+
+  // No delay for advanced tier
+  if (delayMs === 0) {
+    lastCallTime = Date.now()
+    return
+  }
+
   const now = Date.now()
   const timeSinceLastCall = now - lastCallTime
-  if (timeSinceLastCall < RATE_LIMIT_DELAY_MS) {
+  if (timeSinceLastCall < delayMs) {
     await new Promise(resolve =>
-      setTimeout(resolve, RATE_LIMIT_DELAY_MS - timeSinceLastCall)
+      setTimeout(resolve, delayMs - timeSinceLastCall)
     )
   }
   lastCallTime = Date.now()

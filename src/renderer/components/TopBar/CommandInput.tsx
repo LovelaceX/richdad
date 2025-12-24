@@ -10,7 +10,6 @@ const COMMANDS = [
   { cmd: '/help', desc: 'Open Reference Guide', action: 'help' },
   { cmd: '/settings', desc: 'Open Settings', action: 'settings' },
   { cmd: '/news', desc: 'Go to News page', action: 'news' },
-  { cmd: '/calendar', desc: 'Economic Calendar', action: 'economic-calendar' },
   { cmd: '/backtest', desc: 'AI Backtesting', action: 'backtest' },
   { cmd: '/dashboard', desc: 'Go to Dashboard', action: 'dashboard' },
 ]
@@ -53,7 +52,7 @@ export function CommandInput() {
       if (cmd.action === 'help') {
         openHelp()
       } else {
-        setPage(cmd.action as 'dashboard' | 'news' | 'economic-calendar' | 'backtest' | 'settings')
+        setPage(cmd.action as 'dashboard' | 'news' | 'backtest' | 'settings')
       }
     } else {
       const stock = item as { type: 'stock' } & StockInfo

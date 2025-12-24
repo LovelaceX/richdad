@@ -16,7 +16,6 @@ export function AICopilotButton() {
     <button
       onClick={openModal}
       className="relative p-2 hover:bg-terminal-border rounded transition-colors group"
-      title="AI Copilot"
     >
       {/* Icon - animate when analyzing */}
       <div className="relative">
@@ -33,6 +32,11 @@ export function AICopilotButton() {
           {unreadCount > 9 ? '9+' : unreadCount}
         </span>
       )}
+
+      {/* Instant Tooltip */}
+      <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-terminal-bg border border-terminal-border rounded text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+        AI Copilot
+      </span>
     </button>
   )
 }

@@ -10,12 +10,9 @@ import { ActivityLog } from './ActivityLog'
 import { ChatInput } from './ChatInput'
 import { AIPerformanceSummary } from './AIPerformanceSummary'
 import { AnalysisProgress } from './AnalysisProgress'
-import { MorningBriefingButton } from './MorningBriefingButton'
-import { IntelPanel } from '../Intel'
 import { ErrorBoundary } from '../ErrorBoundary'
 import { useAIStore } from '../../stores/aiStore'
 import { useMarketStore } from '../../stores/marketStore'
-import { useIntelStore } from '../../stores/intelStore'
 
 interface AIModalProps {
   isOpen: boolean
@@ -28,7 +25,6 @@ export function AIModal({ isOpen, onClose }: AIModalProps) {
   const clearMessages = useAIStore(state => state.clearMessages)
   const analysisProgress = useAIStore(state => state.analysisProgress)
   const selectedTicker = useMarketStore(state => state.selectedTicker)
-  const intelPanelEnabled = useIntelStore(state => state.intelPanelEnabled)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const statusTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -180,21 +176,9 @@ export function AIModal({ isOpen, onClose }: AIModalProps) {
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Performance Summary - always visible */}
-                <div className="flex-shrink-0 border-t border-terminal-border">
+                {/* Performance Summary - shows one-liner when data exists */}
+                <div className="flex-shrink-0">
                   <AIPerformanceSummary />
-                </div>
-
-                {/* Intel Panel */}
-                {intelPanelEnabled && (
-                  <div className="flex-shrink-0 px-4 py-2 border-t border-terminal-border">
-                    <IntelPanel />
-                  </div>
-                )}
-
-                {/* Morning Briefing Button */}
-                <div className="flex-shrink-0 px-4 py-2 border-t border-terminal-border">
-                  <MorningBriefingButton />
                 </div>
 
                 {/* Chat Input */}
