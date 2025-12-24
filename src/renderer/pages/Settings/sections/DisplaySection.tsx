@@ -251,11 +251,16 @@ export function DisplaySection() {
             Adjust the scrolling speed of the news and economic calendar tickers.
           </p>
 
+          {/* Speed value display */}
+          <div className="text-center text-terminal-amber text-sm font-mono mb-2">
+            {tickerSpeed}s
+          </div>
+
           <div className="flex items-center gap-3">
             <span title="Slow">
               <Snail size={20} className="text-gray-400" />
             </span>
-            <div className="flex-1 flex flex-col gap-1">
+            <div className="flex-1 flex flex-col">
               <input
                 type="range"
                 min="10"
@@ -265,13 +270,17 @@ export function DisplaySection() {
                 onChange={(e) => setTickerSpeed(Number(e.target.value))}
                 className="w-full h-2 bg-terminal-border rounded-lg appearance-none cursor-pointer accent-terminal-amber"
               />
-              {/* Tick marks - simple vertical lines */}
-              <div className="flex justify-between px-1 mt-1">
+              {/* Tick marks - prominent vertical lines */}
+              <div className="flex justify-between px-0 mt-2">
                 {[10, 20, 30, 40, 50, 60].map((val) => (
-                  <div
-                    key={val}
-                    className={`w-0.5 h-3 ${tickerSpeed === val ? 'bg-terminal-amber' : 'bg-terminal-border'}`}
-                  />
+                  <div key={val} className="flex flex-col items-center">
+                    <div
+                      className={`w-1 h-4 rounded-sm ${tickerSpeed === val ? 'bg-terminal-amber' : 'bg-gray-600'}`}
+                    />
+                    <span className={`text-[9px] mt-0.5 ${tickerSpeed === val ? 'text-terminal-amber' : 'text-gray-500'}`}>
+                      {val}s
+                    </span>
+                  </div>
                 ))}
               </div>
             </div>

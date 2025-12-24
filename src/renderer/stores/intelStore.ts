@@ -6,6 +6,9 @@
 import { create } from 'zustand'
 import type { NewsIntelReport, NewsAlert, PatternScanReport, PatternSetup } from '../../services/agents/types'
 
+// Stable empty array references to prevent unnecessary re-renders
+const EMPTY_PATTERN_ARRAY: PatternSetup[] = []
+
 interface IntelState {
   // News Intel
   newsIntel: NewsIntelReport | null
@@ -146,13 +149,13 @@ export const selectUrgencyLevel = (state: IntelState): 'low' | 'medium' | 'high'
   return 'low'
 }
 
-// Pattern Scanner Selectors
+// Pattern Scanner Selectors - use stable references to prevent re-renders
 export const selectTopBullishSetups = (state: IntelState): PatternSetup[] => {
-  return state.patternScan?.topBullishSetups || []
+  return state.patternScan?.topBullishSetups ?? EMPTY_PATTERN_ARRAY
 }
 
 export const selectTopBearishSetups = (state: IntelState): PatternSetup[] => {
-  return state.patternScan?.topBearishSetups || []
+  return state.patternScan?.topBearishSetups ?? EMPTY_PATTERN_ARRAY
 }
 
 export const selectPatternSummary = (state: IntelState) => {
@@ -166,7 +169,8 @@ export const selectSetupsForSymbol = (symbol: string) => (state: IntelState): Pa
 }
 
 export const selectHighReliabilitySetups = (state: IntelState): PatternSetup[] => {
-  if (!state.patternScan) return []
+  if (!state.patternScan) return EMPTY_PATTERN_ARRAY
+  // Note: filter() creates a new array each time, but useShallow in component handles this
   return state.patternScan.setupsFound.filter(s => s.reliability === 'High')
 }
 

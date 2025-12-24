@@ -192,6 +192,19 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'richdad-settings',
+      version: 1,
+      migrate: (persistedState, version) => {
+        const state = persistedState as SettingsState
+        // Migration v0 -> v1: Fix tickerSpeed if out of new range (10-60)
+        // Old default was 90, new slider range is 10-60 with default 30
+        if (version === 0) {
+          if (state.tickerSpeed === undefined || state.tickerSpeed > 60 || state.tickerSpeed < 10) {
+            state.tickerSpeed = 30
+            console.log('[Settings] Migrated tickerSpeed to new default (30)')
+          }
+        }
+        return state
+      },
     }
   )
 )

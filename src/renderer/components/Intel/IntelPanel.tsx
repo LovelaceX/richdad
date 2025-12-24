@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   XCircle
 } from 'lucide-react'
+import { useShallow } from 'zustand/react/shallow'
 import {
   useIntelStore,
   selectSentimentRatio,
@@ -51,12 +52,12 @@ export function IntelPanel() {
   const activeIntelTab = useIntelStore(state => state.activeIntelTab)
   const setActiveIntelTab = useIntelStore(state => state.setActiveIntelTab)
 
-  // Selectors
-  const sentimentRatio = useIntelStore(selectSentimentRatio)
+  // Selectors - use useShallow for object/array selectors to prevent infinite re-renders
+  const sentimentRatio = useIntelStore(useShallow(selectSentimentRatio))
   const urgencyLevel = useIntelStore(selectUrgencyLevel)
-  const topBullishSetups = useIntelStore(selectTopBullishSetups)
-  const topBearishSetups = useIntelStore(selectTopBearishSetups)
-  const highReliabilitySetups = useIntelStore(selectHighReliabilitySetups)
+  const topBullishSetups = useIntelStore(useShallow(selectTopBullishSetups))
+  const topBearishSetups = useIntelStore(useShallow(selectTopBearishSetups))
+  const highReliabilitySetups = useIntelStore(useShallow(selectHighReliabilitySetups))
   const hasPatternAlerts = useIntelStore(selectHasPatternAlerts)
 
   const [newsSubTab, setNewsSubTab] = useState<'overview' | 'symbols' | 'alerts'>('overview')
