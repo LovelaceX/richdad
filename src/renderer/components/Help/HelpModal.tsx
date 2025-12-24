@@ -1456,6 +1456,18 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 <span className="text-terminal-amber w-32 flex-shrink-0">Options Language</span>
                 <span className="text-gray-400">Enable to get options trading suggestions (Buy Call, Buy Put) in analysis.</span>
               </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Output Format</span>
+                <span className="text-gray-400">Standard (with sources), Concise (brief), or Detailed (full breakdown).</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">Show HOLDs</span>
+                <span className="text-gray-400">Toggle to hide HOLD recommendations and only see BUY/SELL signals.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-32 flex-shrink-0">AI Persona</span>
+                <span className="text-gray-400">Choose your co-pilot's personality: Sterling, Jax, Cipher, or Kai.</span>
+              </div>
             </div>
           </div>
 
@@ -1730,6 +1742,13 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 <p className="text-gray-400 text-xs">VIX level, SPY trend, overall market direction</p>
               </div>
               <div className="bg-terminal-bg/50 rounded p-3">
+                <p className="text-white font-medium mb-1">Relative Strength vs SPY</p>
+                <p className="text-gray-400 text-xs">
+                  Compares the stock's RSI to SPY's RSI. Labels as "outperforming" (+10 differential),
+                  "underperforming" (-10), or "neutral" to identify stocks stronger than the market.
+                </p>
+              </div>
+              <div className="bg-terminal-bg/50 rounded p-3">
                 <p className="text-white font-medium mb-1">Candlestick Patterns (20%)</p>
                 <p className="text-gray-400 text-xs">Engulfing, Doji, Hammer, Star patterns detected</p>
               </div>
@@ -1740,6 +1759,50 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             </div>
             <p className="text-gray-500 text-xs mt-4">
               Higher confidence = more indicators align in the same direction. Default threshold is 80%.
+            </p>
+          </div>
+
+          {/* Smart Position Sizing */}
+          <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-5">
+            <h3 className="text-green-400 font-semibold mb-3">Smart Position Sizing</h3>
+            <p className="text-gray-300 text-sm mb-4">
+              AI recommendations include personalized position sizing based on your risk settings:
+            </p>
+            <div className="space-y-2 text-sm">
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-40 flex-shrink-0">Suggested Shares</span>
+                <span className="text-gray-400">Number of shares based on your position size limit</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-terminal-amber w-40 flex-shrink-0">Dollar Amount</span>
+                <span className="text-gray-400">Total investment amount respecting your daily budget</span>
+              </div>
+            </div>
+            <div className="mt-4 p-3 bg-terminal-bg/50 rounded">
+              <p className="text-gray-400 text-xs">
+                <strong className="text-white">Example:</strong> With $1,000 daily budget and 5% max position size,
+                AI will suggest ~$50 positions. In high volatility regimes, this is reduced by 50%.
+              </p>
+            </div>
+            <p className="text-gray-500 text-xs mt-3">
+              Configure in Settings → Portfolio → Risk Management
+            </p>
+          </div>
+
+          {/* Historical Memory */}
+          <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-5">
+            <h3 className="text-purple-400 font-semibold mb-3">Historical Memory</h3>
+            <p className="text-gray-300 text-sm mb-4">
+              AI learns from past recommendations in similar market conditions:
+            </p>
+            <ul className="text-gray-400 text-sm space-y-2">
+              <li>• Finds past trades with similar RSI, MACD, patterns, and regime</li>
+              <li>• Shows historical win rate in similar conditions</li>
+              <li>• <strong className="text-white">Regime matching:</strong> Past trades from different market regimes
+                are weighted 50% less (bull market history is less relevant in bear markets)</li>
+            </ul>
+            <p className="text-gray-500 text-xs mt-4">
+              The more you trade, the smarter the AI becomes at recognizing profitable setups.
             </p>
           </div>
 
