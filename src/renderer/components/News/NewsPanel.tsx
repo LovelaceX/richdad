@@ -213,6 +213,13 @@ function NewsRow({
             {item.headline}
           </p>
 
+          {/* Subtitle preview (always visible when collapsed) */}
+          {item.summary && !expanded && (
+            <p className="text-gray-500 text-xs mt-1 line-clamp-2 leading-relaxed">
+              {item.summary}
+            </p>
+          )}
+
           {/* Expanded content */}
           <AnimatePresence>
             {expanded && (

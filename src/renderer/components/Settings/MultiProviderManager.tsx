@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Check, AlertCircle, Cpu, Loader2, Download, Copy, RefreshCw } from 'lucide-react'
+import { openUrl } from '@tauri-apps/plugin-opener'
 import { AI_PROVIDERS, type AIProviderConfig } from '../../lib/db'
 import { useOllamaStore } from '../../stores/ollamaStore'
 import { getRequiredModel } from '../../lib/ollamaService'
@@ -163,7 +164,7 @@ export function MultiProviderManager({ providers, onChange }: MultiProviderManag
             Free AI that runs on your computer - no account needed
           </p>
           <button
-            onClick={() => window.open(DOWNLOAD_URLS[platform], '_blank')}
+            onClick={() => openUrl(DOWNLOAD_URLS[platform])}
             className="ml-8 px-4 py-2 bg-terminal-amber text-black rounded font-medium hover:bg-amber-500 transition-colors flex items-center gap-2 text-sm"
           >
             Download for {platformName}

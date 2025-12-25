@@ -13,7 +13,7 @@ export function WelcomeStep() {
           Welcome to RichDad
         </h2>
         <p className="text-gray-400 text-sm">
-          Your AI-powered trading co-pilot for smarter market decisions
+          AI-Powered Trading Co-Pilot for Retail Investors
         </p>
       </div>
 
@@ -22,9 +22,9 @@ export function WelcomeStep() {
         <div className="flex items-start gap-3 p-4 bg-terminal-bg border border-terminal-border rounded-lg">
           <Brain className="w-6 h-6 text-terminal-amber flex-shrink-0 mt-0.5" />
           <div>
-            <h4 className="text-white text-sm font-medium">AI Co-Pilot</h4>
+            <h4 className="text-white text-sm font-medium">Local AI Co-Pilot</h4>
             <p className="text-gray-400 text-xs mt-1">
-              6 AI providers with 15+ models. Get buy/sell/hold recommendations with confidence scoring.
+              Ollama runs 100% locally. Free, private, uncensored trading recommendations.
             </p>
           </div>
         </div>
@@ -34,7 +34,7 @@ export function WelcomeStep() {
           <div>
             <h4 className="text-white text-sm font-medium">Real-Time Intelligence</h4>
             <p className="text-gray-400 text-xs mt-1">
-              24/7 news from Bloomberg, Reuters, and 20+ sources with FinBERT sentiment analysis.
+              RSS news from 20+ sources with local AI sentiment analysis. Headlines never leave your machine.
             </p>
           </div>
         </div>

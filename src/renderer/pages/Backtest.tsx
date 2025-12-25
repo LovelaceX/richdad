@@ -1,16 +1,21 @@
 /**
  * Backtest Page
  * Main page for running and viewing AI Copilot backtests
+ * Requires Pro plan (Polygon API key) to access
  */
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   Play,
   Square,
   Download,
   Target,
-  AlertTriangle
+  AlertTriangle,
+  Lock,
+  Settings,
+  HelpCircle
 } from 'lucide-react'
+import { getSettings } from '../lib/db'
 import {
   useBacktestStore,
   useBacktestIsRunning,
@@ -39,6 +44,16 @@ export function Backtest() {
   } = useBacktestStore()
 
   const [config, setConfig] = useState(defaultConfig)
+  const [currentPlan, setCurrentPlan] = useState<'free' | 'pro'>('free')
+  const [planLoading, setPlanLoading] = useState(true)
+
+  // Check user's plan on mount
+  useEffect(() => {
+    getSettings().then(settings => {
+      setCurrentPlan(settings.plan || 'free')
+      setPlanLoading(false)
+    })
+  }, [])
 
   const estimatedCalls = useMemo(() => {
     return getEstimatedCalls(config)
@@ -76,6 +91,77 @@ export function Backtest() {
       a.click()
       URL.revokeObjectURL(url)
     }
+  }
+
+  // Show loading state while checking plan
+  if (planLoading) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-terminal-bg">
+        <div className="animate-spin w-6 h-6 border-2 border-terminal-amber border-t-transparent rounded-full" />
+      </div>
+    )
+  }
+
+  // Show lock screen for free plan users
+  if (currentPlan !== 'pro') {
+    return (
+      <div className="flex-1 overflow-auto bg-terminal-bg p-4">
+        <div className="max-w-2xl mx-auto text-center py-20">
+          {/* Lock Icon */}
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-terminal-border/50 flex items-center justify-center">
+            <Lock className="w-10 h-10 text-gray-500" />
+          </div>
+
+          {/* Title */}
+          <h2 className="text-2xl font-bold text-white mb-3">
+            Backtesting Requires Pro Plan
+          </h2>
+
+          {/* Description */}
+          <p className="text-gray-400 text-sm mb-6 max-w-md mx-auto leading-relaxed">
+            Backtesting uses <span className="text-terminal-amber">Polygon.io</span> historical market data API
+            to simulate AI trading recommendations against past price movements.
+          </p>
+
+          {/* Requirements Box */}
+          <div className="bg-terminal-panel border border-terminal-border rounded-lg p-5 mb-6 max-w-md mx-auto text-left">
+            <h3 className="text-white text-sm font-medium mb-3 flex items-center gap-2">
+              <HelpCircle className="w-4 h-4 text-terminal-amber" />
+              How to Enable Backtesting
+            </h3>
+            <ol className="text-gray-400 text-sm space-y-2">
+              <li className="flex items-start gap-2">
+                <span className="text-terminal-amber font-mono">1.</span>
+                <span>Get a Polygon.io API key (paid subscription required for historical data)</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-terminal-amber font-mono">2.</span>
+                <span>Go to Settings → Market Data and enter your Polygon API key</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-terminal-amber font-mono">3.</span>
+                <span>Switch your plan from Free to Pro</span>
+              </li>
+            </ol>
+          </div>
+
+          {/* CTA Button */}
+          <a
+            href="#/settings"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-terminal-amber text-black font-medium rounded-lg hover:bg-terminal-amber/90 transition-colors"
+          >
+            <Settings className="w-5 h-5" />
+            Go to Settings
+          </a>
+
+          {/* Footer Note */}
+          <p className="text-gray-500 text-xs mt-8 max-w-sm mx-auto">
+            Polygon.io offers market data subscriptions starting at $29/month.
+            Free tier has limited historical data access.
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (

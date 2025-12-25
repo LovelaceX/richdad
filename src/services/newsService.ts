@@ -7,7 +7,7 @@
 
 import { parseRSSFeed } from './rssParser'
 import { canUseFinnhub, recordFinnhubCall } from './apiBudgetTracker'
-import { getSettings, db, DEFAULT_NEWS_SOURCES } from '../renderer/lib/db'
+import { getSettings, db } from '../renderer/lib/db'
 import type { NewsItem } from '../renderer/types'
 
 const FINNHUB_BASE_URL = 'https://finnhub.io/api/v1'
@@ -68,20 +68,19 @@ export interface NewsResponse {
  */
 export async function fetchNewsFromRSS(): Promise<NewsItem[]> {
   try {
-    // Query database for enabled RSS feeds
-    let enabledSources = await db.newsSources
-      .where('enabled')
-      .equals(1)
+    // Query proTraders table for enabled RSS feeds
+    // (UI writes to proTraders, not newsSources)
+    const enabledFeeds = await db.proTraders
+      .where('source')
+      .equals('rss')
+      .and(item => item.enabled === true)
       .toArray()
 
-    // Fallback to DEFAULT_NEWS_SOURCES if database is empty
-    if (enabledSources.length === 0) {
-      console.log('[News Service] No sources in DB, using defaults')
-      enabledSources = DEFAULT_NEWS_SOURCES.filter(s => s.enabled).map((s, i) => ({ ...s, id: i }))
-    }
+    // Filter to only those with a valid feedUrl
+    const enabledSources = enabledFeeds.filter(feed => feed.feedUrl && feed.feedUrl.trim() !== '')
 
     if (enabledSources.length === 0) {
-      console.warn('[News Service] No enabled RSS sources')
+      console.warn('[News Service] No enabled RSS sources configured')
       return []
     }
 
@@ -97,7 +96,7 @@ export async function fetchNewsFromRSS(): Promise<NewsItem[]> {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), RSS_FETCH_TIMEOUT_MS)
 
-        const response = await fetch(source.url, {
+        const response = await fetch(source.feedUrl!, {
           headers: {
             Accept: 'application/rss+xml, application/xml, text/xml, application/atom+xml'
           },

@@ -356,28 +356,28 @@ export function DisplaySection() {
           <div className="flex items-center gap-2 mb-3">
             <Monitor className="w-4 h-4 text-terminal-amber" />
             <span className="text-white text-sm font-medium">Ticker Speed</span>
-            <HelpTooltip content="How long each news headline displays before scrolling. Slower = more time to read. Faster = see more headlines." />
+            <HelpTooltip content="How long the ticker takes to complete one full scroll. Higher = slower, more time to read. Lower = faster scrolling." />
           </div>
 
           <p className="text-gray-400 text-xs mb-4">
-            Control the scrolling speed of the News ticker.
+            Control the scrolling speed of the News ticker ({Math.round(tickerSpeed / 60)} min).
           </p>
 
-          {/* Slider - same style as Daily Loss Limit */}
+          {/* Slider - 60-600 seconds (1-10 minutes) */}
           <div className="flex items-center gap-3">
-            <Snail size={20} className="text-gray-400 flex-shrink-0" />
+            <Rabbit size={20} className="text-gray-400 flex-shrink-0" />
 
             <input
               type="range"
-              min="30"
-              max="120"
-              step="15"
-              value={tickerSpeed < 30 ? 30 : tickerSpeed}
+              min="60"
+              max="600"
+              step="60"
+              value={tickerSpeed < 60 ? 60 : tickerSpeed}
               onChange={(e) => setTickerSpeed(Number(e.target.value))}
               className="flex-1 h-2 bg-terminal-border rounded-lg appearance-none cursor-pointer accent-terminal-amber"
             />
 
-            <Rabbit size={20} className="text-gray-400 flex-shrink-0" />
+            <Snail size={20} className="text-gray-400 flex-shrink-0" />
           </div>
         </div>
 

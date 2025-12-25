@@ -13,7 +13,7 @@ import type { NewsItem } from '../renderer/types'
 // Ollama API endpoint
 const OLLAMA_API = 'http://localhost:11434'
 const OLLAMA_MODEL = 'dolphin-llama3:8b'
-const OLLAMA_TIMEOUT = 5000 // 5 second timeout per headline
+const OLLAMA_TIMEOUT = 20000 // 20 second timeout per headline (LLMs need time)
 
 // Track which method was last used (for UI display)
 export type SentimentMethod = 'ollama' | 'keywords'
@@ -25,7 +25,11 @@ const POSITIVE_PATTERNS = [
   /\b(beat[s]?|exceed[sed]?|outperform|strong|bullish|upgrade[d]?|record[- ]high)\b/i,
   /\b(profit|profitable|earnings beat|revenue growth|positive|optimistic)\b/i,
   /\b(breakthrough|success|win[s]?|approve[d]?|launch|expand)\b/i,
-  /\b(buy rating|overweight|accumulate|target raised)\b/i
+  /\b(buy rating|overweight|accumulate|target raised)\b/i,
+  /\b(up\s+\d+%|rise[sd]?|rising|climb[sed]?|grow|growth|higher)\b/i,
+  /\b(upbeat|confident|momentum|recover|recovery|rebound)\b/i,
+  /\b(all[- ]time[- ]high|new high|52[- ]week high)\b/i,
+  /\b(acquisition|partnership|deal|contract|awarded)\b/i
 ]
 
 const NEGATIVE_PATTERNS = [
@@ -34,7 +38,11 @@ const NEGATIVE_PATTERNS = [
   /\b(loss|losses|layoff[s]?|bankrupt|fraud|scandal|crisis|warn)\b/i,
   /\b(decline[sd]?|drop[s]?|fall[s]?|fell|slump|recession|default)\b/i,
   /\b(sell rating|underweight|reduce|target cut|underperform)\b/i,
-  /\b(concern|risk|threat|fear|uncertain|volatile)\b/i
+  /\b(concern|risk|threat|fear|uncertain|volatile)\b/i,
+  /\b(down\s+\d+%|lower|slide[sd]?|sliding|retreats?)\b/i,
+  /\b(investigation|lawsuit|sue[sd]?|fine[sd]?|penalty)\b/i,
+  /\b(52[- ]week low|new low|all[- ]time[- ]low)\b/i,
+  /\b(halt[sed]?|suspend|suspend[ed]?|recall|shutdown)\b/i
 ]
 
 /**

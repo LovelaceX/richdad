@@ -112,27 +112,6 @@ export function RiskManagementSection({ settings, onSave }: RiskManagementSectio
           </div>
           <p className="text-gray-600 text-xs mt-2">Maximum portfolio allocation per position</p>
         </div>
-
-        {/* Pattern Lookback Period */}
-        <div>
-          <div className="flex items-center gap-2 mb-3">
-            <label className="text-white text-sm">Pattern Lookback Period</label>
-            <HelpTooltip content="Number of days of historical data the AI analyzes. Longer periods find more patterns but may include outdated market conditions." />
-          </div>
-          <div className="flex items-center gap-4">
-            <input
-              type="range"
-              min="90"
-              max="365"
-              step="1"
-              value={settings.lookbackDays}
-              onChange={(e) => onSave({ lookbackDays: Number(e.target.value) })}
-              className="flex-1 h-2 bg-terminal-border rounded-lg appearance-none cursor-pointer accent-terminal-amber"
-            />
-            <span className="text-terminal-amber font-mono w-20 text-right">{settings.lookbackDays} days</span>
-          </div>
-          <p className="text-gray-600 text-xs mt-2">How far back AI analyzes historical patterns</p>
-        </div>
       </div>
     </div>
   )

@@ -1058,11 +1058,14 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             <p className="text-gray-300 mb-3">Use the filter buttons next to the funnel icon:</p>
             <div className="space-y-1">
               <Step><span className="text-white font-medium">All</span> - Show all headlines</Step>
-              <Step><span className="text-white font-medium">Watchlist</span> - Only stocks in your watchlist</Step>
+              <Step><span className="text-white font-medium">Watchlist</span> - Headlines mentioning tickers in your watchlist</Step>
               <Step><span className="text-terminal-up font-medium">Positive</span> - Bullish sentiment</Step>
               <Step><span className="text-terminal-down font-medium">Negative</span> - Bearish sentiment</Step>
               <Step><span className="text-gray-400 font-medium">Neutral</span> - Neutral sentiment</Step>
             </div>
+            <p className="text-gray-500 text-xs mt-3">
+              Watchlist matching: RichDad extracts ticker symbols from headlines (e.g., $AAPL, TSLA) and matches them against your watchlist.
+            </p>
           </div>
 
           <div>

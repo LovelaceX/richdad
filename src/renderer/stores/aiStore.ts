@@ -262,12 +262,15 @@ export const useAIStore = create<AIState>((set, get) => ({
       }
 
       console.error('Failed to send message:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      const isTimeout = errorMessage.toLowerCase().includes('timeout')
+      const helpText = isTimeout
+        ? 'Ollama may still be loading the model. Try again in a moment, or check that Ollama is running.'
+        : 'Check that Ollama is running and has the dolphin-llama3:8b model installed.'
       addMessage({
         type: 'info',
         role: 'assistant',
-        content: error instanceof Error
-          ? `Error: ${error.message}. Please check your API key in Settings.`
-          : 'Failed to get response. Please check your API key in Settings.',
+        content: `Error: ${errorMessage}. ${helpText}`,
       })
     } finally {
       // Only update analyzing state if this is the current request

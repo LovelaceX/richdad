@@ -27,7 +27,7 @@ export default {
         mono: ['JetBrains Mono', 'monospace'],
       },
       animation: {
-        'ticker-scroll': 'ticker 60s linear infinite',
+        'ticker-scroll': 'ticker 300s linear infinite',
       },
       keyframes: {
         ticker: {

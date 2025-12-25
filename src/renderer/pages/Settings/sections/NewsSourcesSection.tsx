@@ -15,7 +15,8 @@ import {
   Filter,
   Check,
   Info,
-  Globe
+  Globe,
+  AlertTriangle
 } from 'lucide-react'
 import { useProTraderStore } from '../../../stores/proTraderStore'
 import { getSettings, updateSettings, type UserSettings } from '../../../lib/db'
@@ -48,6 +49,8 @@ export function NewsSourcesSection() {
   const [settings, setSettings] = useState<UserSettings | null>(null)
   const [saving, setSaving] = useState(false)
   const [showSaved, setShowSaved] = useState(false)
+  const [urlError, setUrlError] = useState<string | null>(null)
+  const [validatingUrl, setValidatingUrl] = useState(false)
 
   // Check if Finnhub is configured (provides ticker-specific news)
   const providerHasNews = Boolean(settings?.finnhubApiKey)
@@ -69,19 +72,84 @@ export function NewsSourcesSection() {
     setShowFeedDropdown(false)
   }
 
-  const handleAddManualFeed = () => {
-    if (newTraderName && newTraderUrl) {
-      addTrader({
-        name: newTraderName,
-        handle: newTraderUrl,
-        source: 'rss',
-        feedUrl: newTraderUrl,
-        enabled: true,
-        addedAt: Date.now(),
-      })
-      setNewTraderName('')
-      setNewTraderUrl('')
+  const handleAddManualFeed = async () => {
+    // Reset previous errors
+    setUrlError(null)
+
+    // Validate name
+    if (!newTraderName.trim()) {
+      setUrlError('Please enter a feed name')
+      return
     }
+
+    // Validate URL format
+    if (!newTraderUrl.match(/^https?:\/\/.+/i)) {
+      setUrlError('URL must start with http:// or https://')
+      return
+    }
+
+    // Try to parse URL
+    try {
+      new URL(newTraderUrl)
+    } catch {
+      setUrlError('Invalid URL format')
+      return
+    }
+
+    // Test-fetch the URL to verify it's reachable
+    setValidatingUrl(true)
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10s timeout
+
+      const response = await fetch(newTraderUrl, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/rss+xml, application/xml, text/xml, application/atom+xml'
+        },
+        signal: controller.signal
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      // Check if it looks like XML/RSS
+      const contentType = response.headers.get('content-type') || ''
+      const text = await response.text()
+
+      if (!contentType.includes('xml') && !text.includes('<?xml') && !text.includes('<rss') && !text.includes('<feed')) {
+        setUrlError('This URL does not appear to be an RSS/Atom feed')
+        setValidatingUrl(false)
+        return
+      }
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      if (errorMessage.includes('abort')) {
+        setUrlError('Connection timed out. Check the URL and try again.')
+      } else {
+        setUrlError(`Could not fetch feed: ${errorMessage}`)
+      }
+      setValidatingUrl(false)
+      return
+    }
+
+    setValidatingUrl(false)
+
+    // Add the feed if validation passed
+    addTrader({
+      name: newTraderName.trim(),
+      handle: newTraderUrl,
+      source: 'rss',
+      feedUrl: newTraderUrl,
+      enabled: true,
+      addedAt: Date.now(),
+    })
+    setNewTraderName('')
+    setNewTraderUrl('')
   }
 
   const saveSettings = async (updates: Partial<UserSettings>) => {
@@ -275,7 +343,10 @@ export function NewsSourcesSection() {
             type="text"
             placeholder="Feed name"
             value={newTraderName}
-            onChange={(e) => setNewTraderName(e.target.value)}
+            onChange={(e) => {
+              setNewTraderName(e.target.value)
+              setUrlError(null) // Clear error on input change
+            }}
             className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white placeholder:text-gray-600"
           />
 
@@ -283,17 +354,39 @@ export function NewsSourcesSection() {
             type="text"
             placeholder="https://example.com/feed/rss"
             value={newTraderUrl}
-            onChange={(e) => setNewTraderUrl(e.target.value)}
-            className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white placeholder:text-gray-600"
+            onChange={(e) => {
+              setNewTraderUrl(e.target.value)
+              setUrlError(null) // Clear error on input change
+            }}
+            className={`w-full bg-terminal-bg border rounded px-3 py-2 text-sm text-white placeholder:text-gray-600 ${
+              urlError ? 'border-red-500' : 'border-terminal-border'
+            }`}
           />
+
+          {/* Error Message */}
+          {urlError && (
+            <div className="flex items-start gap-2 text-red-400 text-xs bg-red-500/10 border border-red-500/30 rounded p-2">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{urlError}</span>
+            </div>
+          )}
 
           <button
             onClick={handleAddManualFeed}
-            disabled={!newTraderName || !newTraderUrl}
+            disabled={!newTraderName || !newTraderUrl || validatingUrl}
             className="w-full py-2 bg-terminal-amber text-black font-medium rounded text-sm hover:bg-terminal-amber/80 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            <Plus className="w-4 h-4" />
-            Add Feed
+            {validatingUrl ? (
+              <>
+                <div className="animate-spin w-4 h-4 border-2 border-black border-t-transparent rounded-full" />
+                Validating...
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4" />
+                Add Feed
+              </>
+            )}
           </button>
         </div>
       </div>

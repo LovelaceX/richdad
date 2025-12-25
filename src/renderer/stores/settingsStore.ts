@@ -8,7 +8,7 @@ interface SettingsState {
   showVolume: boolean
   refreshInterval: number
   zoomLevel: number
-  tickerSpeed: number  // Duration in seconds per headline (30-120)
+  tickerSpeed: number  // Duration in seconds for full scroll (60-600)
   theme: ThemeId
   isLiveDataEnabled: boolean  // Controls whether live data fetching is active
   panelSizes: {
@@ -50,7 +50,7 @@ export const useSettingsStore = create<SettingsState>()(
       showVolume: true,
       refreshInterval: POLLING_INTERVALS.free,  // Default to free tier (60s)
       zoomLevel: 100,
-      tickerSpeed: 60,  // Default middle speed (60 seconds - readable pace)
+      tickerSpeed: 300,  // Default slow speed (5 minutes - comfortable reading pace)
       theme: getSavedTheme(),
       isLiveDataEnabled: true,  // Auto-enabled - data flows on app launch
       panelSizes: {
@@ -193,7 +193,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'richdad-settings',
-      version: 3,
+      version: 4,
       migrate: (persistedState, version) => {
         const state = persistedState as SettingsState
         // Migration v0 -> v1: Fix tickerSpeed if out of old range (10-60)
@@ -220,6 +220,24 @@ export const useSettingsStore = create<SettingsState>()(
           if (state.refreshInterval === undefined || state.refreshInterval < 30000) {
             state.refreshInterval = POLLING_INTERVALS.free  // 60s
             console.log('[Settings] Migrated refreshInterval to 60s (free tier)')
+          }
+        }
+        // Migration v3 -> v4: Expand tickerSpeed range to 60-600 for much slower scrolling
+        // Old values (30-120) were way too fast - now using 60-600 seconds (1-10 minutes)
+        if (version <= 3) {
+          if (state.tickerSpeed === undefined || state.tickerSpeed < 60) {
+            state.tickerSpeed = 300  // Default to 5 minutes (comfortable pace)
+            console.log('[Settings] Migrated tickerSpeed to new slow default (300s)')
+          } else if (state.tickerSpeed <= 120) {
+            // Old values in 60-120 range - scale up to new range
+            // Map 60-120 to 60-300 (keep minimum, expand medium values)
+            state.tickerSpeed = Math.round(state.tickerSpeed * 2.5)
+            console.log(`[Settings] Scaled tickerSpeed to ${state.tickerSpeed}s`)
+          }
+          // Values above 120 (shouldn't exist) get capped at 600
+          if (state.tickerSpeed > 600) {
+            state.tickerSpeed = 600
+            console.log('[Settings] Capped tickerSpeed to max (600s)')
           }
         }
         return state
