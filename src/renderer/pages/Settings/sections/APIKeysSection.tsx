@@ -6,10 +6,10 @@
  */
 
 import { useState } from 'react'
-import { BarChart3, TrendingUp, Crown, Leaf } from 'lucide-react'
+import { BarChart3, TrendingUp, Crown, Leaf, AlertTriangle } from 'lucide-react'
 import type { UserSettings } from '../../../lib/db'
 import { HelpTooltip } from '../../../components/common'
-import { getTierLimitsFromPlan } from '../../../lib/db'
+import { getTierLimitsFromPlan, setPlan } from '../../../lib/db'
 import { APIKeyProvider } from '../components/APIKeyProvider'
 import { APIBudgetMeter } from '../../../components/Settings/APIBudgetMeter'
 import { OnboardingWizard } from '../../../components/Onboarding/OnboardingWizard'
@@ -28,6 +28,7 @@ const KEY_TO_PROVIDER: Record<string, 'polygon' | 'twelvedata'> = {
 
 export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
   const [showOnboardingWizard, setShowOnboardingWizard] = useState(false)
+  const [showProConfirmModal, setShowProConfirmModal] = useState(false)
   const currentPlan = settings.plan || 'free'
 
   // Get list of configured API keys
@@ -41,9 +42,26 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
     return configured
   }
 
-  // Handler to update plan and sync with budget tracker
-  const handlePlanChange = async (plan: 'free' | 'pro') => {
-    // Update database
+  // Handler when user clicks a plan button
+  const handlePlanClick = (plan: 'free' | 'pro') => {
+    if (plan === 'pro' && currentPlan === 'free') {
+      // Show confirmation modal when upgrading to Pro
+      setShowProConfirmModal(true)
+    } else {
+      // Direct switch (Pro -> Free or same plan)
+      confirmPlanChange(plan)
+    }
+  }
+
+  // Actually change the plan (after confirmation if needed)
+  const confirmPlanChange = async (plan: 'free' | 'pro') => {
+    setShowProConfirmModal(false)
+
+    // Use setPlan to update DB and emit 'plan-changed' event
+    // This will trigger marketStore and settingsStore to update their limits
+    await setPlan(plan)
+
+    // Also update local settings state for UI
     await onSave({ plan })
 
     // Get derived tier limits and sync with budget tracker
@@ -100,7 +118,7 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
 
         <div className="flex bg-terminal-bg rounded-lg p-1">
           <button
-            onClick={() => handlePlanChange('free')}
+            onClick={() => handlePlanClick('free')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
               currentPlan === 'free'
                 ? 'bg-terminal-amber text-black'
@@ -111,7 +129,7 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
             Free
           </button>
           <button
-            onClick={() => handlePlanChange('pro')}
+            onClick={() => handlePlanClick('pro')}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
               currentPlan === 'pro'
                 ? 'bg-terminal-amber text-black'
@@ -229,6 +247,64 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
         isOpen={showOnboardingWizard}
         onClose={() => setShowOnboardingWizard(false)}
       />
+
+      {/* Pro Plan Confirmation Modal */}
+      {showProConfirmModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-terminal-panel border border-terminal-border rounded-lg p-6 w-96 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-terminal-amber/20 rounded-lg">
+                <AlertTriangle className="w-6 h-6 text-terminal-amber" />
+              </div>
+              <h3 className="text-white text-lg font-medium">Switch to Pro Path?</h3>
+            </div>
+
+            <p className="text-gray-300 text-sm mb-4">
+              Pro Path removes all app limitations:
+            </p>
+
+            <ul className="text-gray-400 text-sm space-y-2 mb-4">
+              <li className="flex items-center gap-2">
+                <span className="text-terminal-amber">•</span>
+                <span>Watchlist: 5 → <span className="text-white">20 symbols</span></span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-terminal-amber">•</span>
+                <span>Polling: 60s → <span className="text-white">30s interval</span></span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="text-terminal-amber">•</span>
+                <span>Backtests: 5/day → <span className="text-white">Unlimited</span></span>
+              </li>
+            </ul>
+
+            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-6">
+              <p className="text-red-400 text-xs font-medium mb-1">
+                Important: Paid API keys required
+              </p>
+              <p className="text-gray-400 text-xs">
+                Make sure you have paid API subscriptions (TwelveData Pro, Polygon, etc.).
+                Free-tier API keys will hit rate limits and cause errors.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowProConfirmModal(false)}
+                className="flex-1 px-4 py-2 text-gray-400 text-sm hover:text-white transition-colors border border-terminal-border rounded-lg hover:bg-terminal-border/30"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => confirmPlanChange('pro')}
+                className="flex-1 px-4 py-2 bg-terminal-amber text-black text-sm font-medium rounded-lg hover:bg-yellow-500 transition-colors"
+              >
+                I have paid API keys
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { type ThemeId, applyTheme, getSavedTheme } from '../lib/themes'
+import { POLLING_INTERVALS } from '../lib/constants'
 
 interface SettingsState {
   cvdMode: boolean
@@ -47,7 +48,7 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       cvdMode: false,
       showVolume: true,
-      refreshInterval: 5000,
+      refreshInterval: POLLING_INTERVALS.free,  // Default to free tier (60s)
       zoomLevel: 100,
       tickerSpeed: 60,  // Default middle speed (60 seconds - readable pace)
       theme: getSavedTheme(),
@@ -192,7 +193,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'richdad-settings',
-      version: 2,
+      version: 3,
       migrate: (persistedState, version) => {
         const state = persistedState as SettingsState
         // Migration v0 -> v1: Fix tickerSpeed if out of old range (10-60)
@@ -213,8 +214,25 @@ export const useSettingsStore = create<SettingsState>()(
             console.log('[Settings] Capped tickerSpeed to max (120)')
           }
         }
+        // Migration v2 -> v3: Update refreshInterval from 5s to 60s (free tier default)
+        // Old 5s interval was too aggressive and caused rate limit issues
+        if (version <= 2) {
+          if (state.refreshInterval === undefined || state.refreshInterval < 30000) {
+            state.refreshInterval = POLLING_INTERVALS.free  // 60s
+            console.log('[Settings] Migrated refreshInterval to 60s (free tier)')
+          }
+        }
         return state
       },
     }
   )
 )
+
+// Listen for plan changes and update polling interval
+if (typeof window !== 'undefined') {
+  window.addEventListener('plan-changed', (event) => {
+    const { pollingInterval } = (event as CustomEvent).detail
+    useSettingsStore.getState().setRefreshInterval(pollingInterval)
+    console.log(`[Settings] Polling interval updated to: ${pollingInterval}ms`)
+  })
+}

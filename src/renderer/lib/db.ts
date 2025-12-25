@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie'
 import { encryptApiKey, decryptApiKey, migrateToEncrypted } from './crypto'
+import { BACKTEST_LIMITS, WATCHLIST_LIMITS, POLLING_INTERVALS } from './constants'
 
 // Database interfaces
 export interface TradeDecision {
@@ -119,6 +120,10 @@ export interface UserSettings {
     patternHighScore: number // Pattern score >= this = High reliability (default: 70)
     patternMediumScore: number // Pattern score >= this = Medium reliability (default: 50)
   }
+
+  // Backtesting Usage Tracking (for free tier limits)
+  backtestUsageToday?: number    // Number of backtests run today
+  backtestUsageDate?: string     // Date string (YYYY-MM-DD) for resetting daily count
 }
 
 export interface NewsSource {
@@ -571,7 +576,11 @@ export const DEFAULT_SETTINGS: UserSettings = {
     sidewaysPercent: 0.5, // SPY within this % of MA50 = sideways
     patternHighScore: 70, // Pattern score >= this = High reliability
     patternMediumScore: 50 // Pattern score >= this = Medium reliability
-  }
+  },
+
+  // Backtesting Usage (for free tier limits)
+  backtestUsageToday: 0,
+  backtestUsageDate: undefined
 }
 
 // Default news sources
@@ -815,6 +824,127 @@ export async function getTradingThresholds(): Promise<TradingThresholds> {
     ...DEFAULT_TRADING_THRESHOLDS,
     ...settings.tradingThresholds
   }
+}
+
+// ==========================================
+// BACKTESTING USAGE TRACKING
+// ==========================================
+
+/**
+ * Get current backtest usage status
+ * Resets daily at midnight
+ */
+export async function getBacktestUsage(): Promise<{
+  used: number
+  limit: number
+  remaining: number
+  canRun: boolean
+  plan: 'free' | 'pro'
+}> {
+  const settings = await getSettings()
+  const plan = settings.plan || 'free'
+  const limit = BACKTEST_LIMITS[plan]
+  const today = new Date().toISOString().split('T')[0]
+
+  // Reset if new day
+  let used = settings.backtestUsageToday || 0
+  if (settings.backtestUsageDate !== today) {
+    used = 0
+  }
+
+  const remaining = limit === Infinity ? Infinity : Math.max(0, limit - used)
+  const canRun = limit === Infinity || used < limit
+
+  return {
+    used,
+    limit: limit === Infinity ? 999999 : limit,
+    remaining: remaining === Infinity ? 999999 : remaining,
+    canRun,
+    plan
+  }
+}
+
+/**
+ * Record a backtest run
+ * Returns updated usage status
+ */
+export async function recordBacktestRun(): Promise<{
+  success: boolean
+  error?: string
+  usage: Awaited<ReturnType<typeof getBacktestUsage>>
+}> {
+  const settings = await getSettings()
+  const plan = settings.plan || 'free'
+  const limit = BACKTEST_LIMITS[plan]
+  const today = new Date().toISOString().split('T')[0]
+
+  // Reset if new day
+  let currentUsage = settings.backtestUsageToday || 0
+  if (settings.backtestUsageDate !== today) {
+    currentUsage = 0
+  }
+
+  // Check limit (pro has Infinity)
+  if (limit !== Infinity && currentUsage >= limit) {
+    const usage = await getBacktestUsage()
+    return {
+      success: false,
+      error: `Daily backtest limit reached (${limit}/day). Upgrade to Pro for unlimited backtesting.`,
+      usage
+    }
+  }
+
+  // Increment usage
+  await updateSettings({
+    backtestUsageToday: currentUsage + 1,
+    backtestUsageDate: today
+  })
+
+  const usage = await getBacktestUsage()
+  console.log(`[Backtest] Recorded usage: ${usage.used}/${usage.limit}`)
+
+  return { success: true, usage }
+}
+
+/**
+ * Check if user can run a backtest (without recording)
+ */
+export async function canRunBacktest(): Promise<boolean> {
+  const usage = await getBacktestUsage()
+  return usage.canRun
+}
+
+// ==========================================
+// PLAN MANAGEMENT
+// ==========================================
+
+/**
+ * Set the user's plan (free or pro)
+ * Emits a 'plan-changed' event for stores to react
+ */
+export async function setPlan(plan: 'free' | 'pro'): Promise<void> {
+  await updateSettings({ plan })
+
+  // Emit event for stores to update their limits
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('plan-changed', {
+      detail: {
+        plan,
+        watchlistLimit: WATCHLIST_LIMITS[plan],
+        pollingInterval: POLLING_INTERVALS[plan]
+      }
+    }))
+  }
+
+  console.log(`[DB] Plan changed to: ${plan}`)
+}
+
+/**
+ * Get current plan
+ */
+export async function getPlan(): Promise<'free' | 'pro'> {
+  const settings = await getSettings()
+  return settings.plan || 'free'
 }
 
 /**

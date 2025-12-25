@@ -2,8 +2,7 @@ import { useMarketStore } from '../../stores/marketStore'
 import { WatchlistItem } from './WatchlistItem'
 
 export function WatchlistGrid() {
-  const top10 = useMarketStore(state => state.top10)
-  const userWatchlist = useMarketStore(state => state.userWatchlist)
+  const watchlist = useMarketStore(state => state.watchlist)
   const selectedTicker = useMarketStore(state => state.selectedTicker)
   const setSelectedTicker = useMarketStore(state => state.setSelectedTicker)
 
@@ -21,38 +20,10 @@ export function WatchlistGrid() {
         <span className="w-5 flex-shrink-0" />
       </div>
 
-      {/* Top 10 Section */}
-      {top10.length > 0 ? (
+      {/* Watchlist Items */}
+      {watchlist.length > 0 ? (
         <div>
-          {top10.map(item => (
-            <WatchlistItem
-              key={item.symbol}
-              item={item}
-              isSelected={item.symbol === selectedTicker}
-              onClick={() => setSelectedTicker(item.symbol)}
-              isTop10={true}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="px-3 py-4 text-center text-gray-500 text-[10px]">
-          <p>No market data</p>
-          <p className="mt-1">Settings → Data Sources</p>
-        </div>
-      )}
-
-      {/* Divider - only show if user has custom watchlist items */}
-      {userWatchlist.length > 0 && (
-        <div className="flex items-center gap-2 px-3 py-1.5 border-y border-terminal-border/50 bg-terminal-bg/50">
-          <span className="text-gray-500 text-[10px] uppercase tracking-wider">My Watchlist</span>
-          <div className="flex-1 h-px bg-terminal-border/30" />
-        </div>
-      )}
-
-      {/* User Watchlist Section */}
-      {userWatchlist.length > 0 && (
-        <div>
-          {userWatchlist.map(item => (
+          {watchlist.map(item => (
             <WatchlistItem
               key={item.symbol}
               item={item}
@@ -61,6 +32,11 @@ export function WatchlistGrid() {
               isTop10={false}
             />
           ))}
+        </div>
+      ) : (
+        <div className="px-3 py-4 text-center text-gray-500 text-[10px]">
+          <p>No symbols in watchlist</p>
+          <p className="mt-1">Click + to add symbols</p>
         </div>
       )}
     </div>

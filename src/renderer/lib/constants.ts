@@ -6,6 +6,36 @@
 import type { Ticker } from '../types'
 
 /**
+ * Watchlist limits by plan
+ * Free: 5 symbols max
+ * Pro: 20 symbols max
+ */
+export const WATCHLIST_LIMITS = {
+  free: 5,
+  pro: 20
+} as const
+
+/**
+ * Polling intervals by plan (in milliseconds)
+ * Free: 60 seconds (slower to save API calls)
+ * Pro: 30 seconds (faster updates)
+ */
+export const POLLING_INTERVALS = {
+  free: 60000,  // 60 seconds
+  pro: 30000    // 30 seconds
+} as const
+
+/**
+ * Backtesting limits by plan
+ * Free: 5 symbols per day
+ * Pro: Unlimited
+ */
+export const BACKTEST_LIMITS = {
+  free: 5,
+  pro: Infinity
+} as const
+
+/**
  * Default Top 10 - Used as fallback
  */
 export const TOP_10_TICKERS: Ticker[] = [

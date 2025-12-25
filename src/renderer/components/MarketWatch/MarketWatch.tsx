@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { Eye, Plus, X, Search } from 'lucide-react'
+import { Eye, Plus, X, Search, Crown } from 'lucide-react'
 import { WatchlistGrid } from './WatchlistGrid'
 import { useMarketStore } from '../../stores/marketStore'
 import { useSettingsStore } from '../../stores/settingsStore'
@@ -8,13 +8,18 @@ import { searchStocks, type StockInfo } from '../../lib/stockSymbols'
 export function MarketWatch() {
   const refreshAllQuotes = useMarketStore(state => state.refreshAllQuotes)
   const addToWatchlist = useMarketStore(state => state.addToWatchlist)
+  const getWatchlistStatus = useMarketStore(state => state.getWatchlistStatus)
   const refreshInterval = useSettingsStore(state => state.refreshInterval)
   const [showAddModal, setShowAddModal] = useState(false)
   const [newSymbol, setNewSymbol] = useState('')
   const [searchResults, setSearchResults] = useState<StockInfo[]>([])
   const [selectedIndex, setSelectedIndex] = useState(-1)
   const [selectedStock, setSelectedStock] = useState<StockInfo | null>(null)
+  const [addError, setAddError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Get watchlist status for UI
+  const watchlistStatus = getWatchlistStatus()
 
   // Auto-refresh quotes
   useEffect(() => {
@@ -39,14 +44,19 @@ export function MarketWatch() {
     }
   }, [newSymbol])
 
-  const handleAddSymbol = () => {
+  const handleAddSymbol = async () => {
     const symbolToAdd = selectedStock?.symbol || newSymbol.trim().toUpperCase()
     if (symbolToAdd) {
-      addToWatchlist(symbolToAdd)
-      setNewSymbol('')
-      setSearchResults([])
-      setSelectedStock(null)
-      setShowAddModal(false)
+      setAddError(null)
+      const result = await addToWatchlist(symbolToAdd)
+      if (result.success) {
+        setNewSymbol('')
+        setSearchResults([])
+        setSelectedStock(null)
+        setShowAddModal(false)
+      } else {
+        setAddError(result.error || 'Failed to add symbol')
+      }
     }
   }
 
@@ -87,21 +97,35 @@ export function MarketWatch() {
     setSearchResults([])
     setSelectedIndex(-1)
     setSelectedStock(null)
+    setAddError(null)
   }
 
   return (
     <div className="panel h-full flex flex-col">
       <div className="panel-header flex items-center gap-2">
         <Eye size={14} />
-        <span>Market Watch</span>
+        <span>Watchlist</span>
+        <span className="text-gray-500 text-xs">
+          {watchlistStatus.current}/{watchlistStatus.limit}
+        </span>
         <div className="flex-1" />
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="p-1 hover:bg-terminal-border rounded transition-colors"
-          title="Add symbol to watchlist"
-        >
-          <Plus size={14} className="text-gray-400 hover:text-terminal-amber" />
-        </button>
+        {watchlistStatus.canAdd ? (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="p-1 hover:bg-terminal-border rounded transition-colors"
+            title="Add symbol to watchlist"
+          >
+            <Plus size={14} className="text-gray-400 hover:text-terminal-amber" />
+          </button>
+        ) : (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="p-1 hover:bg-terminal-border rounded transition-colors flex items-center gap-1"
+            title="Upgrade to add more symbols"
+          >
+            <Crown size={12} className="text-terminal-amber" />
+          </button>
+        )}
       </div>
 
       {/* Add Symbol Modal with Autocomplete */}
@@ -172,10 +196,32 @@ export function MarketWatch() {
             )}
 
             {/* Helper text */}
-            {newSymbol.length === 0 && (
+            {newSymbol.length === 0 && !addError && (
               <p className="mt-2 text-gray-500 text-xs">
                 Type to search stocks or enter any symbol
               </p>
+            )}
+
+            {/* Error message */}
+            {addError && (
+              <div className="mt-2 p-2 bg-red-500/10 border border-red-500/30 rounded">
+                <p className="text-red-400 text-xs">{addError}</p>
+                {addError.includes('Upgrade') && (
+                  <p className="text-gray-400 text-xs mt-1">
+                    Pro users can add up to 20 symbols.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Limit indicator */}
+            {!watchlistStatus.canAdd && !addError && (
+              <div className="mt-2 p-2 bg-terminal-amber/10 border border-terminal-amber/30 rounded flex items-center gap-2">
+                <Crown size={14} className="text-terminal-amber" />
+                <p className="text-terminal-amber text-xs">
+                  Watchlist full ({watchlistStatus.limit}/{watchlistStatus.limit}). Upgrade to Pro for more.
+                </p>
+              </div>
             )}
 
             {/* Action buttons */}
@@ -188,7 +234,7 @@ export function MarketWatch() {
               </button>
               <button
                 onClick={() => handleAddSymbol()}
-                disabled={!newSymbol.trim()}
+                disabled={!newSymbol.trim() || !watchlistStatus.canAdd}
                 className="flex-1 px-3 py-2 bg-terminal-amber text-terminal-bg text-sm font-medium rounded hover:bg-yellow-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Add

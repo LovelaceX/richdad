@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { Quote, CandleData, WatchlistItem } from '../types'
-import { TOP_10_TICKERS, isTop10Symbol, getIndexConstituents } from '../lib/constants'
+import { WATCHLIST_LIMITS } from '../lib/constants'
 import { getUserWatchlist, addToUserWatchlist, removeFromUserWatchlist, getSettings } from '../lib/db'
 import { fetchLivePrices } from '../../services/marketData'
 import { dataHeartbeat } from '../../services/DataHeartbeatService'
@@ -18,43 +18,6 @@ const CHART_LOAD_DEBOUNCE_MS = 300 // 300ms debounce
 // Store market-changed listener reference for proper cleanup
 let marketChangedHandler: ((e: Event) => void) | null = null
 
-/**
- * Staggered fetch for TwelveData to avoid rate limit (8 calls/min)
- * Fetches symbols in small batches with delays between them
- */
-async function staggeredFetchForTwelveData(
-  symbols: string[],
-  provider: string
-): Promise<Quote[]> {
-  // Only stagger for TwelveData (8 calls/min limit)
-  if (provider !== 'twelvedata') {
-    return fetchLivePrices(symbols)
-  }
-
-  const BATCH_SIZE = 3  // Fetch 3 symbols at a time
-  const BATCH_DELAY_MS = 8000  // 8 second delay between batches (safe for 8/min)
-
-  const results: Quote[] = []
-
-  for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
-    const batch = symbols.slice(i, i + BATCH_SIZE)
-    try {
-      const quotes = await fetchLivePrices(batch)
-      results.push(...quotes)
-    } catch (error) {
-      console.warn(`[Market Store] Batch fetch failed for ${batch.join(', ')}:`, error)
-    }
-
-    // Delay before next batch (except for last batch)
-    if (i + BATCH_SIZE < symbols.length) {
-      console.log(`[Market Store] Rate limit protection: waiting ${BATCH_DELAY_MS/1000}s before next batch...`)
-      await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS))
-    }
-  }
-
-  return results
-}
-
 // Extended timeframe options: 1M, 5M, 15M, 30M, 45M, 1H, 2H, 4H, 5H, 1D, 1W
 type Timeframe = '1min' | '5min' | '15min' | '30min' | '45min' | '60min' | '120min' | '240min' | '300min' | 'daily' | 'weekly'
 
@@ -69,10 +32,9 @@ export interface DataSource {
 }
 
 interface MarketState {
-  // Split watchlist into two parts
-  top10: WatchlistItem[]         // Static Top 10 (cannot be removed)
-  userWatchlist: WatchlistItem[] // User-added symbols (persisted)
-  watchlist: WatchlistItem[]     // Combined for display (top10 + userWatchlist, deduplicated)
+  // User's custom watchlist (persisted to IndexedDB)
+  watchlist: WatchlistItem[]
+  watchlistLimit: number  // Current limit based on plan
 
   selectedTicker: string
   chartData: CandleData[]
@@ -95,29 +57,21 @@ interface MarketState {
   loadChartData: (symbol?: string, interval?: Timeframe) => Promise<void>
   loadUserWatchlist: () => Promise<void>  // Load from IndexedDB
   loadSelectedMarket: () => Promise<void>  // Load selected market from settings
-  addToWatchlist: (symbol: string, name?: string, sector?: string) => Promise<void>
+  addToWatchlist: (symbol: string, name?: string, sector?: string) => Promise<{ success: boolean; error?: string }>
   removeFromWatchlist: (symbol: string) => Promise<void>
   toggleChartExpanded: () => void
+  getWatchlistStatus: () => { current: number; limit: number; canAdd: boolean }
+  setWatchlistLimit: (limit: number) => void
 }
 
-// Initialize Top 10 without quotes (quotes will be fetched from API)
-const initialTop10: WatchlistItem[] = TOP_10_TICKERS.map(ticker => ({
-  ...ticker,
-  // quote is undefined until API data is fetched
-}))
-
-// Helper: Combine top10 and userWatchlist, removing duplicates
-function combineWatchlists(top10: WatchlistItem[], userWatchlist: WatchlistItem[]): WatchlistItem[] {
-  const top10Symbols = new Set(top10.map(item => item.symbol))
-  // Filter out any user items that are already in Top 10
-  const uniqueUserItems = userWatchlist.filter(item => !top10Symbols.has(item.symbol))
-  return [...top10, ...uniqueUserItems]
-}
+// Default watchlist - start with SPY
+const defaultWatchlist: WatchlistItem[] = [
+  { symbol: 'SPY', name: 'SPDR S&P 500 ETF', sector: 'Index' }
+]
 
 export const useMarketStore = create<MarketState>((set, get) => ({
-  top10: initialTop10,
-  userWatchlist: [],
-  watchlist: initialTop10,  // Start with just Top 10, user watchlist loads async
+  watchlist: defaultWatchlist,
+  watchlistLimit: WATCHLIST_LIMITS.free,  // Default to free tier limit
 
   selectedTicker: 'SPY',
 
@@ -157,37 +111,20 @@ export const useMarketStore = create<MarketState>((set, get) => ({
   },
 
   updateQuote: (symbol: string, quote: Quote) => {
-    set(state => {
-      const top10 = state.top10.map(item =>
+    set(state => ({
+      watchlist: state.watchlist.map(item =>
         item.symbol === symbol ? { ...item, quote } : item
       )
-      const userWatchlist = state.userWatchlist.map(item =>
-        item.symbol === symbol ? { ...item, quote } : item
-      )
-      return {
-        top10,
-        userWatchlist,
-        watchlist: combineWatchlists(top10, userWatchlist)
-      }
-    })
+    }))
   },
 
   setQuotes: (quotes: Quote[]) => {
-    set(state => {
-      const top10 = state.top10.map(item => {
+    set(state => ({
+      watchlist: state.watchlist.map(item => {
         const quote = quotes.find(q => q.symbol === item.symbol)
         return quote ? { ...item, quote } : item
       })
-      const userWatchlist = state.userWatchlist.map(item => {
-        const quote = quotes.find(q => q.symbol === item.symbol)
-        return quote ? { ...item, quote } : item
-      })
-      return {
-        top10,
-        userWatchlist,
-        watchlist: combineWatchlists(top10, userWatchlist)
-      }
-    })
+    }))
   },
 
   setCacheStatus: (status: { age: number; isFresh: boolean }) => {
@@ -328,21 +265,39 @@ export const useMarketStore = create<MarketState>((set, get) => ({
    */
   loadUserWatchlist: async () => {
     try {
+      // Get settings to determine plan and watchlist limit
+      const settings = await getSettings()
+      const plan = settings.plan || 'free'
+      const limit = WATCHLIST_LIMITS[plan]
+
       const entries = await getUserWatchlist()
-      const userWatchlist: WatchlistItem[] = entries.map(entry => ({
+
+      // If user has no saved watchlist, use default (SPY)
+      if (entries.length === 0) {
+        set({
+          watchlist: defaultWatchlist,
+          watchlistLimit: limit,
+          isWatchlistLoaded: true
+        })
+        console.log('[Market Store] No saved watchlist, using default (SPY)')
+        return
+      }
+
+      // Convert entries to watchlist items (respect limit)
+      const watchlist: WatchlistItem[] = entries.slice(0, limit).map(entry => ({
         symbol: entry.symbol,
         name: entry.name || entry.symbol,
         sector: entry.sector || 'Custom',
         // quote is undefined until API data is fetched
       }))
 
-      set(state => ({
-        userWatchlist,
-        watchlist: combineWatchlists(state.top10, userWatchlist),
+      set({
+        watchlist,
+        watchlistLimit: limit,
         isWatchlistLoaded: true
-      }))
+      })
 
-      console.log(`[Market Store] Loaded ${userWatchlist.length} user watchlist items from DB`)
+      console.log(`[Market Store] Loaded ${watchlist.length} watchlist items (limit: ${limit})`)
     } catch (error) {
       console.error('[Market Store] Failed to load user watchlist:', error)
       set({ isWatchlistLoaded: true })  // Mark as loaded even on error
@@ -351,37 +306,35 @@ export const useMarketStore = create<MarketState>((set, get) => ({
 
   /**
    * Load selected market from settings on app startup
-   * Also sets up listener for market-changed events
+   * Sets up the selected ticker and loads initial chart
    */
   loadSelectedMarket: async () => {
     try {
       const settings = await getSettings()
       const etf = settings.selectedMarket?.etf || 'SPY'
-      console.log(`[Market Store] Loading selected market: ${etf}`)
+      const plan = settings.plan || 'free'
+      const limit = WATCHLIST_LIMITS[plan]
 
-      // Get Top 10 constituents for the selected index
-      const constituents = getIndexConstituents(etf)
-      const newTop10: WatchlistItem[] = constituents.map(ticker => ({ ...ticker }))
+      console.log(`[Market Store] Loading selected market: ${etf}, plan: ${plan}`)
 
-      // Update selected ticker and Top 10
-      set(state => ({
+      // Update selected ticker and limit
+      set({
         selectedTicker: etf,
-        top10: newTop10,
-        watchlist: combineWatchlists(newTop10, state.userWatchlist)
-      }))
+        watchlistLimit: limit
+      })
 
       // Load chart data for the selected market
       get().loadChartData(etf, '5min').catch(err => {
         console.error('[Market Store] Chart load error:', err)
       })
 
-      // Fetch initial quotes for watchlist (so Market Watch shows data on startup)
-      // This is a one-time fetch that doesn't require Live Data toggle
-      // Uses staggered fetching for TwelveData to avoid rate limit (8/min)
+      // Fetch initial quotes for watchlist
       try {
-        const symbols = [etf, ...constituents.map(c => c.symbol)]
-        const provider = settings.marketDataProvider || 'polygon'
-        const quotes = await staggeredFetchForTwelveData(symbols, provider)
+        const { watchlist } = get()
+        const symbols = [etf, ...watchlist.map(w => w.symbol)]
+        const uniqueSymbols = [...new Set(symbols)]
+
+        const quotes = await fetchLivePrices(uniqueSymbols)
         if (quotes.length > 0) {
           console.log(`[Market Store] Initial quotes fetched: ${quotes.length} symbols`)
           set(state => ({
@@ -400,21 +353,13 @@ export const useMarketStore = create<MarketState>((set, get) => ({
         window.removeEventListener('market-changed', marketChangedHandler)
       }
 
-      // Create new handler
+      // Create new handler for market changes
       const handleMarketChange = (event: Event) => {
         const customEvent = event as CustomEvent<{ market: { etf: string } }>
         const { etf: newEtf } = customEvent.detail.market
 
-        // Get Top 10 constituents for the new index
-        const newConstituents = getIndexConstituents(newEtf)
-        const updatedTop10: WatchlistItem[] = newConstituents.map(ticker => ({ ...ticker }))
-
-        // Update selected ticker and Top 10
-        set(state => ({
-          selectedTicker: newEtf,
-          top10: updatedTop10,
-          watchlist: combineWatchlists(updatedTop10, state.userWatchlist)
-        }))
+        // Update selected ticker
+        set({ selectedTicker: newEtf })
 
         // Load chart data for the new market
         get().loadChartData(newEtf, '5min').catch(err => {
@@ -432,22 +377,25 @@ export const useMarketStore = create<MarketState>((set, get) => ({
 
   /**
    * Add symbol to watchlist (persisted to IndexedDB)
-   * If symbol is already in Top 10, silently ignore
+   * Returns success/error for UI feedback
    */
   addToWatchlist: async (symbol: string, name?: string, sector?: string) => {
     const upperSymbol = symbol.toUpperCase()
+    const { watchlist, watchlistLimit } = get()
 
-    // Check if already in Top 10
-    if (isTop10Symbol(upperSymbol)) {
-      console.log(`[Market Store] ${upperSymbol} is already in Top 10`)
-      return
+    // Check if already in watchlist
+    if (watchlist.some(item => item.symbol === upperSymbol)) {
+      console.log(`[Market Store] ${upperSymbol} already in watchlist`)
+      return { success: false, error: 'Symbol already in watchlist' }
     }
 
-    // Check if already in user watchlist
-    const { userWatchlist } = get()
-    if (userWatchlist.some(item => item.symbol === upperSymbol)) {
-      console.log(`[Market Store] ${upperSymbol} already in user watchlist`)
-      return
+    // Check limit
+    if (watchlist.length >= watchlistLimit) {
+      console.log(`[Market Store] Watchlist limit reached (${watchlistLimit})`)
+      return {
+        success: false,
+        error: `Watchlist limit reached (${watchlistLimit}). Upgrade to Pro for more symbols.`
+      }
     }
 
     // Persist to IndexedDB
@@ -461,44 +409,58 @@ export const useMarketStore = create<MarketState>((set, get) => ({
       // quote is undefined until API data is fetched
     }
 
-    set(state => {
-      const userWatchlist = [...state.userWatchlist, newItem]
-      return {
-        userWatchlist,
-        watchlist: combineWatchlists(state.top10, userWatchlist)
-      }
-    })
+    set(state => ({
+      watchlist: [...state.watchlist, newItem]
+    }))
 
-    console.log(`[Market Store] Added ${upperSymbol} to user watchlist`)
+    console.log(`[Market Store] Added ${upperSymbol} to watchlist (${watchlist.length + 1}/${watchlistLimit})`)
+    return { success: true }
   },
 
   /**
    * Remove symbol from watchlist
-   * Cannot remove Top 10 symbols
    */
   removeFromWatchlist: async (symbol: string) => {
-    // Cannot remove Top 10 symbols
-    if (isTop10Symbol(symbol)) {
-      console.log(`[Market Store] Cannot remove ${symbol} (Top 10)`)
-      return
-    }
-
     // Remove from IndexedDB
     await removeFromUserWatchlist(symbol)
 
     // Update store
-    set(state => {
-      const userWatchlist = state.userWatchlist.filter(item => item.symbol !== symbol)
-      return {
-        userWatchlist,
-        watchlist: combineWatchlists(state.top10, userWatchlist)
-      }
-    })
+    set(state => ({
+      watchlist: state.watchlist.filter(item => item.symbol !== symbol)
+    }))
 
-    console.log(`[Market Store] Removed ${symbol} from user watchlist`)
+    console.log(`[Market Store] Removed ${symbol} from watchlist`)
   },
 
   toggleChartExpanded: () => {
     set(state => ({ isChartExpanded: !state.isChartExpanded }))
   },
+
+  /**
+   * Get current watchlist status for UI display
+   */
+  getWatchlistStatus: () => {
+    const { watchlist, watchlistLimit } = get()
+    return {
+      current: watchlist.length,
+      limit: watchlistLimit,
+      canAdd: watchlist.length < watchlistLimit
+    }
+  },
+
+  /**
+   * Update watchlist limit (called when plan changes)
+   */
+  setWatchlistLimit: (limit: number) => {
+    set({ watchlistLimit: limit })
+    console.log(`[Market Store] Watchlist limit updated to: ${limit}`)
+  }
 }))
+
+// Listen for plan changes and update watchlist limit
+if (typeof window !== 'undefined') {
+  window.addEventListener('plan-changed', (event) => {
+    const { watchlistLimit } = (event as CustomEvent).detail
+    useMarketStore.getState().setWatchlistLimit(watchlistLimit)
+  })
+}

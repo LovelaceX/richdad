@@ -289,7 +289,7 @@ export function canUseFinnhub(): boolean {
   const canUse = budget.finnhubCallsThisMinute < limit
 
   if (!canUse) {
-    console.warn(`[API Budget] Finnhub minute budget exhausted (${budget.finnhubCallsThisMinute}/${limit} used this minute)`)
+    // Console warning is throttled inside emitLimitReached
     emitLimitReached('finnhub', `Rate limit reached (${limit}/min on ${currentFinnhubTier} tier)`)
   }
 
@@ -344,7 +344,7 @@ export function canUsePolygon(): boolean {
   const canUse = budget.polygonCallsThisMinute < limit
 
   if (!canUse) {
-    console.warn(`[API Budget] Polygon minute budget exhausted (${budget.polygonCallsThisMinute}/${limit} used this minute)`)
+    // Console warning is throttled inside emitLimitReached
     emitLimitReached('polygon', `Rate limit reached (${limit}/min on ${currentPolygonTier} tier). Using cached data.`)
   }
 
@@ -407,13 +407,12 @@ export function canUseTwelveData(): boolean {
     budget.twelveDataCallsToday < tierLimits.callsPerDay
 
   if (!minuteLimitOk) {
-    console.warn(`[API Budget] TwelveData minute limit reached (${budget.twelveDataCallsThisMinute}/${tierLimits.callsPerMinute})`)
+    // Console warning is throttled inside emitLimitReached
     emitLimitReached('twelveData', `Minute limit reached (${tierLimits.callsPerMinute}/min). Wait 60 seconds.`)
     return false
   }
 
   if (!dailyLimitOk) {
-    console.warn(`[API Budget] TwelveData daily limit reached (${budget.twelveDataCallsToday}/${tierLimits.callsPerDay})`)
     emitLimitReached('twelveData', `Daily limit reached (${tierLimits.callsPerDay}/day on ${currentTwelveDataTier} tier). Resets at midnight.`)
     return false
   }
@@ -531,13 +530,28 @@ export function getAllProvidersBudgetStatus(): ProviderBudgetStatus[] {
 // EVENT EMISSION FOR UI NOTIFICATIONS
 // ==========================================
 
+// Throttle console warnings to prevent spam (30 second cooldown per provider)
+const lastWarnTimestamps: Record<string, number> = {}
+const WARN_COOLDOWN_MS = 30000 // 30 seconds
+
 /**
  * Emit event when API limit is reached (for toast notifications)
+ * Console warnings are throttled to prevent spam
  */
 function emitLimitReached(provider: string, message: string): void {
+  const now = Date.now()
+  const lastWarn = lastWarnTimestamps[provider] || 0
+
+  // Only log to console if enough time has passed (prevents spam)
+  if (now - lastWarn > WARN_COOLDOWN_MS) {
+    console.warn(`[API Budget] ${provider}: ${message}`)
+    lastWarnTimestamps[provider] = now
+  }
+
+  // Always emit event for UI (UI handles its own display logic)
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('api-limit-reached', {
-      detail: { provider, message, timestamp: Date.now() }
+      detail: { provider, message, timestamp: now }
     }))
   }
 }
