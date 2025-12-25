@@ -51,7 +51,7 @@ const sectionContent: Record<Section, { title: string; searchableText: string }>
   },
   'whats-new': {
     title: "What's New",
-    searchableText: 'new features update release latest backtest macd stochastic indicators calendar briefing v6.1.0 v6.0.0 v5.5.2 v5.5.1 v5.5.0 v5.2.0 v5.1.0 v5.0.0 simplified architecture economic calendar removed fred api removed stability fixes ai copilot crash react error 185 ticker speed websocket status polygon service health rate limit overhaul error log api key encryption watchlist news lru cache websocket reconnect jitter data freshness badges hover tooltips request cancellation loading state error state empty state race condition vti smh vxx market indices type safe event system crash isolation ai copilot backtesting historical data win rate profit factor sharpe ratio csv export technical indicator panels momentum trend direction rsi oscillator volume profile'
+    searchableText: 'new features update release latest backtest macd stochastic indicators v7.0.0 v6.1.0 v6.0.0 v5.5.2 v5.5.1 v5.5.0 v5.2.0 v5.1.0 v5.0.0 local-first ai ollama sentiment keywords privacy huggingface removed cloud ai removed simplified architecture stability fixes ai copilot crash react error 185 ticker speed websocket status polygon service health rate limit overhaul error log api key encryption watchlist news lru cache websocket reconnect jitter data freshness badges hover tooltips request cancellation loading state error state empty state race condition vti smh vxx market indices type safe event system crash isolation ai copilot backtesting historical data win rate profit factor sharpe ratio csv export technical indicator panels momentum trend direction rsi oscillator volume profile'
   },
   'tiers': {
     title: 'Pricing Tiers',
@@ -67,7 +67,7 @@ const sectionContent: Record<Section, { title: string; searchableText: string }>
   },
   'news': {
     title: 'Market News',
-    searchableText: 'headlines feed sentiment filter rss sources finnhub breaking news articles positive negative neutral bullish bearish market sentiment analysis ticker relevance hugging face finbert ai keywords fallback headline limit news sources'
+    searchableText: 'headlines feed sentiment filter rss sources finnhub breaking news articles positive negative neutral bullish bearish market sentiment analysis ticker relevance ollama ai keywords fallback headline limit news sources'
   },
   'intel-panel': {
     title: 'Intelligence Panel',
@@ -83,11 +83,11 @@ const sectionContent: Record<Section, { title: string; searchableText: string }>
   },
   'settings-guide': {
     title: 'Settings Guide',
-    searchableText: 'settings configuration preferences my profile portfolio display risk management ai copilot market data news sources activity log notifications price alerts danger zone trading style experience level cash balance position size stop loss kelly criterion zoom ticker speed cvd mode color vision api key provider tier rss feed huggingface sentiment sound volume reset clear cache factory reset export backup'
+    searchableText: 'settings configuration preferences my profile portfolio display risk management ai copilot market data news sources activity log notifications price alerts danger zone trading style experience level cash balance position size stop loss kelly criterion zoom ticker speed cvd mode color vision api key provider tier rss feed ollama sentiment sound volume reset clear cache factory reset export backup'
   },
   'ai-copilot': {
     title: 'AI Copilot',
-    searchableText: 'openai claude gemini grok deepseek groq llama recommendation chat provider thinking animation phases finnhub news buy call buy put options options-aware call put leverage buy sell hold confidence technical analysis sentiment market regime risk management position size stop loss take profit price target rationale explanation ai analysis automatic manual trigger chat interface conversation history performance tracking win rate accuracy options trading suggestions rate limit unlimited fallback persona personality sterling analyst jax veteran trader cipher tech wiz kai sage quant formal professional direct pragmatic energetic nerdy calm philosophical patient communication style voice character traits'
+    searchableText: 'ollama local ai recommendation chat provider thinking animation phases finnhub news buy sell hold confidence technical analysis sentiment market regime risk management position size stop loss take profit price target rationale explanation ai analysis automatic manual trigger chat interface conversation history performance tracking win rate accuracy batting average outcome win loss neutral executed skipped 30 days monitoring persona personality sterling analyst jax veteran trader cipher tech wiz formal professional direct pragmatic energetic nerdy calm philosophical patient communication style voice character traits'
   },
   'ollama-setup': {
     title: 'Ollama Setup Guide',
@@ -103,11 +103,11 @@ const sectionContent: Record<Section, { title: string; searchableText: string }>
   },
   'troubleshooting': {
     title: 'Troubleshooting',
-    searchableText: 'error fix problem not working issue help debug crash freeze slow loading blank screen no data connection failed timeout api error rate limit exceeded invalid key authentication failed network error clear cache reset refresh restart reinstall activity log service health data freshness stale cached fresh live news sentiment keywords finbert hugging face verify api key'
+    searchableText: 'error fix problem not working issue help debug crash freeze slow loading blank screen no data connection failed timeout api error rate limit exceeded invalid key authentication failed network error clear cache reset refresh restart reinstall activity log service health data freshness stale cached fresh live news sentiment keywords ollama verify api key'
   },
   'faq': {
     title: 'FAQ',
-    searchableText: 'question answer common frequently asked questions how do i what is why does can i should i when will how to onboarding wizard first launch rate limit'
+    searchableText: 'question answer common frequently asked questions how do i what is why does can i should i when will how to onboarding wizard first launch rate limit win rate batting average outcome win loss neutral skipped executed performance tracking 30 days monitoring'
   },
   'terms': {
     title: 'Terms of Service',
@@ -250,7 +250,7 @@ export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
             <div className="flex items-center gap-3">
               <BookOpen size={22} className="text-terminal-amber" />
               <h2 className="text-white text-lg font-semibold">Reference Guide</h2>
-              <span className="text-gray-500 text-sm">v6.1.0</span>
+              <span className="text-gray-500 text-sm">v7.0.0</span>
             </div>
             <button
               onClick={onClose}
@@ -675,10 +675,29 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
 
           {/* Feature List */}
           <div className="space-y-6">
-            {/* v6.1.0 */}
+            {/* v7.0.0 */}
             <div className="bg-terminal-bg border border-green-500/30 rounded-lg p-5">
               <div className="flex items-center gap-2 mb-3">
-                <span className="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded">v6.1.0</span>
+                <span className="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded">v7.0.0</span>
+                <h3 className="text-white font-semibold">Local-First AI</h3>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">
+                100% local, 100% free, 100% private. No external APIs needed for AI features.
+              </p>
+              <ul className="text-gray-400 text-sm space-y-1">
+                <li>• <span className="text-terminal-up">New</span> Simplified Sentiment - Ollama AI + keyword fallback</li>
+                <li>• <span className="text-red-400">Removed</span> HuggingFace API dependency</li>
+                <li>• <span className="text-red-400">Removed</span> Cloud AI APIs (OpenAI, Claude, Groq)</li>
+                <li>• <span className="text-terminal-up">Enhanced</span> Privacy - Headlines never leave your machine</li>
+                <li>• <span className="text-terminal-up">Faster</span> Sentiment analysis with no rate limits</li>
+                <li>• <span className="text-blue-400">Added</span> Performance tracking documentation</li>
+              </ul>
+            </div>
+
+            {/* v6.1.0 */}
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="bg-blue-500/20 text-blue-400 text-xs px-2 py-0.5 rounded">v6.1.0</span>
                 <h3 className="text-white font-semibold">Simplified Architecture + Stability</h3>
               </div>
               <p className="text-gray-300 text-sm mb-3">
@@ -799,22 +818,6 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 <li>• Synchronized crosshair with main chart</li>
                 <li>• Toggle visibility via chart header</li>
               </ul>
-            </div>
-
-            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="bg-purple-500/20 text-purple-400 text-xs px-2 py-0.5 rounded">NEW</span>
-                <h3 className="text-white font-semibold">Economic Calendar</h3>
-              </div>
-              <p className="text-gray-300 text-sm mb-3">
-                Track major US economic events using Finnhub API data.
-              </p>
-              <ul className="text-gray-400 text-sm space-y-1">
-                <li>• CPI, Jobs Report, Fed Decisions, GDP releases</li>
-                <li>• Countdown timers to upcoming events</li>
-                <li>• Color-coded by market impact</li>
-              </ul>
-              <p className="text-gray-500 text-xs mt-3">Requires Finnhub API key (free tier available)</p>
             </div>
 
             <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
@@ -1085,27 +1088,22 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-5">
             <h3 className="text-blue-400 font-semibold mb-3">How Sentiment Works</h3>
             <p className="text-gray-300 text-sm mb-3">
-              RichDad uses a three-tier fallback system for reliable sentiment analysis:
+              RichDad uses a two-tier local system for sentiment analysis:
             </p>
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-3">
                 <span className="text-white font-medium w-20">Primary</span>
                 <span className="text-gray-400">→</span>
-                <span className="text-gray-300">FinBERT (cloud) - Financial-specialized AI model</span>
+                <span className="text-gray-300">Ollama (local AI) - Dolphin model, 100% free</span>
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-white font-medium w-20">Fallback</span>
-                <span className="text-gray-400">→</span>
-                <span className="text-gray-300">Ollama (local AI)</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-white font-medium w-20">Backup</span>
                 <span className="text-gray-400">→</span>
                 <span className="text-gray-300">Keyword matching (always works)</span>
               </div>
             </div>
             <p className="text-gray-500 text-xs mt-3">
-              Works automatically. For faster analysis, add an optional HuggingFace token in Settings → News Sources.
+              Works automatically. No API keys or external services needed - everything runs locally on your machine.
             </p>
           </div>
 
@@ -1119,7 +1117,6 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               <Step><span className="text-white font-medium">Headline Limit</span> - Max headlines per hour (5-50)</Step>
               <Step><span className="text-white font-medium">AI Filtering</span> - Only show news for your watchlist</Step>
               <Step><span className="text-white font-medium">RSS Feeds</span> - Select sources (Bloomberg, CNBC, etc.)</Step>
-              <Step><span className="text-white font-medium">HuggingFace Token</span> - Optional boost for sentiment analysis</Step>
             </div>
             <p className="text-gray-500 text-xs mt-3">
               Note: Pro plan users get Finnhub ticker-specific news in addition to RSS feeds.
@@ -1533,10 +1530,6 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 <span className="text-gray-400">Enable/disable individual news sources. Add custom RSS feeds.</span>
               </div>
               <div className="flex gap-3">
-                <span className="text-terminal-amber w-32 flex-shrink-0">HuggingFace Token</span>
-                <span className="text-gray-400">Optional. Enables faster AI sentiment analysis on headlines.</span>
-              </div>
-              <div className="flex gap-3">
                 <span className="text-terminal-amber w-32 flex-shrink-0">Categories</span>
                 <span className="text-gray-400">Filter news by category: Stock Market, Economic, Crypto, etc.</span>
               </div>
@@ -1666,7 +1659,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           <div>
             <h3 className="text-white text-lg font-semibold mb-4">Quick Setup</h3>
             <div className="space-y-1">
-              <Step><span className="text-white font-medium">1.</span> Install Ollama from <span className="text-terminal-amber">ollama.ai</span></Step>
+              <Step><span className="text-white font-medium">1.</span> Install Ollama from <span className="text-terminal-amber">ollama.com</span></Step>
               <Step><span className="text-white font-medium">2.</span> Run: <code className="bg-terminal-bg px-2 py-0.5 rounded text-terminal-amber">ollama pull dolphin-llama3:8b</code></Step>
               <Step><span className="text-white font-medium">3.</span> Keep Ollama running in the background</Step>
             </div>
@@ -1915,13 +1908,76 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             </div>
           </div>
 
-          <div>
-            <h3 className="text-white text-lg font-semibold mb-4">Performance Tracking</h3>
-            <div className="space-y-1">
-              <Step>Executed trades are tracked automatically</Step>
-              <Step>System monitors price targets and stop losses</Step>
-              <Step>View your AI's win rate in the Market Overview bar</Step>
-              <Step>Full history available in Settings → AI Performance</Step>
+          {/* Performance Tracking / Batting Average */}
+          <div className="bg-terminal-amber/10 border border-terminal-amber/30 rounded-lg p-5">
+            <h3 className="text-terminal-amber font-semibold mb-4">Performance Tracking (Batting Average)</h3>
+
+            <div className="mb-5">
+              <p className="text-white font-medium mb-2">What Counts Toward Your Win Rate?</p>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-2 text-gray-300">
+                  <span className="text-terminal-up">✓</span>
+                  <span><span className="text-white">Executed trades</span> - Count toward batting average</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-300">
+                  <span className="text-red-400">✗</span>
+                  <span><span className="text-white">Skipped trades</span> - Logged but DON'T affect win rate</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-300">
+                  <span className="text-gray-500">○</span>
+                  <span><span className="text-white">HOLD recommendations</span> - Become "neutral" (don't count)</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-5">
+              <p className="text-white font-medium mb-2">How Outcomes Are Determined</p>
+              <div className="bg-terminal-bg/50 rounded p-3 text-sm">
+                <div className="grid grid-cols-3 gap-2 mb-2 text-xs font-medium">
+                  <span className="text-gray-400">Trade</span>
+                  <span className="text-terminal-up">WIN</span>
+                  <span className="text-terminal-down">LOSS</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs text-gray-300 border-t border-terminal-border pt-2">
+                  <span>BUY</span>
+                  <span className="text-gray-400">Price hits target ↑</span>
+                  <span className="text-gray-400">Price hits stop ↓</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs text-gray-300 mt-1">
+                  <span>SELL</span>
+                  <span className="text-gray-400">Price hits target ↓</span>
+                  <span className="text-gray-400">Price hits stop ↑</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-xs text-gray-300 mt-1">
+                  <span>HOLD</span>
+                  <span className="text-gray-400 col-span-2">Always neutral (doesn't count)</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-5">
+              <p className="text-white font-medium mb-2">Monitoring Window</p>
+              <div className="space-y-1 text-sm text-gray-300">
+                <Step>Trades are monitored for up to <span className="text-white">30 days</span></Step>
+                <Step>After 30 days with no target hit → marked "neutral"</Step>
+                <Step>Neutral trades don't affect your batting average</Step>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-white font-medium mb-2">Win Rate Formula</p>
+              <div className="bg-terminal-bg/50 rounded p-3">
+                <code className="text-terminal-amber text-sm">Win Rate = Wins ÷ (Wins + Losses) × 100%</code>
+                <p className="text-gray-500 text-xs mt-2">Pending and neutral trades are excluded from calculation</p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-white font-medium mb-2">Where to View</p>
+              <div className="space-y-1 text-sm text-gray-300">
+                <Step><span className="text-white">AI Panel footer</span> - Quick summary (e.g., "AI accuracy: 71% (5W-2L)")</Step>
+                <Step><span className="text-white">Settings → Performance</span> - Detailed Human vs AI comparison</Step>
+              </div>
             </div>
           </div>
 
@@ -2099,7 +2155,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 <div>
                   <p className="text-gray-400 text-sm mb-2">Option 1: Download from website</p>
                   <div className="bg-terminal-panel rounded p-3">
-                    <p className="text-gray-300 text-sm">Visit <span className="text-terminal-amber">ollama.ai</span> → Download for Mac</p>
+                    <p className="text-gray-300 text-sm">Visit <span className="text-terminal-amber">ollama.com</span> → Download for Mac</p>
                   </div>
                 </div>
                 <div>
@@ -2118,7 +2174,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 <span className="text-white font-medium">Windows</span>
               </div>
               <div className="bg-terminal-panel rounded p-3">
-                <p className="text-gray-300 text-sm">Visit <span className="text-terminal-amber">ollama.ai</span> → Download for Windows</p>
+                <p className="text-gray-300 text-sm">Visit <span className="text-terminal-amber">ollama.com</span> → Download for Windows</p>
               </div>
             </div>
 
@@ -2129,7 +2185,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 <span className="text-white font-medium">Linux</span>
               </div>
               <div className="bg-terminal-panel rounded p-3">
-                <code className="text-terminal-amber text-sm">curl -fsSL https://ollama.ai/install.sh | sh</code>
+                <code className="text-terminal-amber text-sm">curl -fsSL https://ollama.com/install.sh | sh</code>
               </div>
             </div>
           </div>
@@ -2303,8 +2359,8 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                   <span className="text-xs text-gray-500">Pro plan</span>
                 </div>
                 <div className="text-gray-400 text-sm space-y-1">
-                  <p>60 API calls/minute • Economic Calendar • Ticker News</p>
-                  <p className="text-gray-500">Best for: Calendar events and ticker-specific news</p>
+                  <p>60 API calls/minute • Ticker-Specific News</p>
+                  <p className="text-gray-500">Best for: Ticker-specific news in AI analysis</p>
                 </div>
               </div>
             </div>
@@ -2600,7 +2656,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               </div>
               <div>
                 <p className="text-white font-medium mb-1">Sentiment shows "keywords"?</p>
-                <p className="text-gray-400">FinBERT unavailable. This is normal fallback behavior.</p>
+                <p className="text-gray-400">Ollama not running. Start it with: ollama serve</p>
               </div>
               <div>
                 <p className="text-white font-medium mb-1">Chart not loading?</p>
@@ -2723,15 +2779,14 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
             <h3 className="text-white font-semibold mb-3">Sentiment showing as "keywords"</h3>
             <p className="text-gray-300 text-sm mb-3">
-              Sentiment analysis uses a fallback chain:
+              Sentiment analysis uses a two-tier local system:
             </p>
             <div className="space-y-1 text-gray-300">
-              <Step><span className="text-white font-medium">FinBERT</span> → HuggingFace API model (primary)</Step>
-              <Step><span className="text-white font-medium">Ollama</span> → Local AI analysis (fallback)</Step>
-              <Step><span className="text-white font-medium">Keywords</span> → Pattern matching (backup)</Step>
+              <Step><span className="text-white font-medium">Ollama</span> → Local AI analysis (primary)</Step>
+              <Step><span className="text-white font-medium">Keywords</span> → Pattern matching (fallback)</Step>
             </div>
             <p className="text-gray-500 text-xs mt-3">
-              If you see "keywords" often, add an optional HuggingFace token in Settings → News Sources for FinBERT, or ensure Ollama is running.
+              If you see "keywords" often, make sure Ollama is running. Start it with: ollama serve
             </p>
           </div>
 
@@ -2778,6 +2833,47 @@ Want help getting set up? We're happy to help you complete this process for free
             {
               q: 'How accurate are AI recommendations?',
               a: 'AI provides data-driven insights but cannot predict the future. Check your AI\'s win rate in the Performance panel. Never invest money you can\'t afford to lose.'
+            },
+            {
+              q: 'How is my AI win rate calculated?',
+              a: `Your AI win rate (batting average) is calculated from EXECUTED trades only:
+
+Win Rate = Wins ÷ (Wins + Losses) × 100%
+
+- Executed BUY/SELL trades: Count toward win rate
+- Skipped recommendations: Logged but DON'T affect win rate
+- HOLD recommendations: Marked "neutral" (don't count)
+- Pending trades: Not counted until outcome determined
+- Expired trades (30+ days): Marked "neutral" (don't count)
+
+View your stats in the AI Panel footer or Settings → Performance.`
+            },
+            {
+              q: 'How are trade outcomes determined (win/loss)?',
+              a: `Outcomes are determined by price targets and stop losses:
+
+BUY trades:
+- WIN: Price hits your target (price went UP)
+- LOSS: Price hits stop loss (price went DOWN)
+
+SELL trades:
+- WIN: Price hits your target (price went DOWN)
+- LOSS: Price hits stop loss (price went UP)
+
+HOLD recommendations are always marked "neutral" and don't affect your batting average.
+
+Trades are monitored for up to 30 days. If neither target is hit, the trade becomes "neutral".`
+            },
+            {
+              q: 'Do skipped recommendations affect my stats?',
+              a: `No! Skipped recommendations are logged for your reference, but they DON'T count toward your win rate.
+
+This lets you:
+- Track recommendations you disagreed with
+- Compare "what if I had executed" scenarios
+- Learn from trades you passed on
+
+Only EXECUTED trades affect your batting average.`
             },
             {
               q: 'How does the AI decide BUY/SELL/HOLD?',
@@ -2919,9 +3015,9 @@ You own your data. You can export or delete it anytime from Settings.`
               q: 'How do I install Ollama?',
               a: `Ollama is free and easy to install:
 
-macOS: Download from ollama.ai or run "brew install ollama"
-Windows: Download from ollama.ai
-Linux: Run "curl -fsSL https://ollama.ai/install.sh | sh"
+macOS: Download from ollama.com or run "brew install ollama"
+Windows: Download from ollama.com
+Linux: Run "curl -fsSL https://ollama.com/install.sh | sh"
 
 After installation, run: ollama pull dolphin-llama3:8b
 
@@ -3258,8 +3354,8 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
           </div>
 
           <div className="bg-terminal-bg border border-terminal-amber/30 rounded-lg p-6 text-center">
-            <h3 className="text-terminal-amber text-3xl font-bold">RichDad v6.1.0</h3>
-            <p className="text-gray-500 text-sm mt-2">Simplified Architecture • Stability Fixes • Enhanced Service Health</p>
+            <h3 className="text-terminal-amber text-3xl font-bold">RichDad v7.0.0</h3>
+            <p className="text-gray-500 text-sm mt-2">Local-First AI • 100% Private • No Cloud Dependencies</p>
           </div>
 
           {/* Why RichDad - Bloomberg Comparison */}
@@ -3549,7 +3645,7 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
                 </div>
                 <div className="flex items-start gap-2">
                   <Check size={16} className="text-terminal-amber mt-0.5 flex-shrink-0" />
-                  <span>Finnhub Economic Calendar</span>
+                  <span>Finnhub Ticker News</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <Check size={16} className="text-terminal-amber mt-0.5 flex-shrink-0" />

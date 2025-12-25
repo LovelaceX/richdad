@@ -13,11 +13,8 @@ import {
   ChevronDown,
   Brain,
   Filter,
-  ExternalLink,
   Check,
   Info,
-  Loader2,
-  X,
   Globe
 } from 'lucide-react'
 import { useProTraderStore } from '../../../stores/proTraderStore'
@@ -51,12 +48,6 @@ export function NewsSourcesSection() {
   const [settings, setSettings] = useState<UserSettings | null>(null)
   const [saving, setSaving] = useState(false)
   const [showSaved, setShowSaved] = useState(false)
-
-  // HuggingFace token test state
-  const [hfTesting, setHfTesting] = useState(false)
-  const [hfTestStatus, setHfTestStatus] = useState<'idle' | 'valid' | 'invalid'>('idle')
-  const [hfTestMessage, setHfTestMessage] = useState('')
-
 
   // Check if Finnhub is configured (provides ticker-specific news)
   const providerHasNews = Boolean(settings?.finnhubApiKey)
@@ -104,40 +95,12 @@ export function NewsSourcesSection() {
     setTimeout(() => setShowSaved(false), 2000)
   }
 
-  // Test HuggingFace token
-  const handleTestHfToken = async () => {
-    const token = settings?.huggingFaceToken
-    if (!token) {
-      setHfTestStatus('invalid')
-      setHfTestMessage('No token entered')
-      return
-    }
-
-    setHfTesting(true)
-    setHfTestStatus('idle')
-    setHfTestMessage('')
-
-    try {
-      const { testHuggingFaceToken } = await import('../../../../services/sentimentService')
-      const result = await testHuggingFaceToken(token)
-      setHfTestStatus(result.valid ? 'valid' : 'invalid')
-      setHfTestMessage(result.message)
-    } catch (error) {
-      setHfTestStatus('invalid')
-      setHfTestMessage('Test failed')
-    } finally {
-      setHfTesting(false)
-    }
-  }
-
-
   if (!settings) {
     return <div className="text-gray-500">Loading...</div>
   }
 
   const headlineLimit = settings.headlineLimit ?? 20
   const aiNewsFiltering = settings.aiNewsFiltering ?? false
-  const huggingFaceToken = settings.huggingFaceToken ?? ''
 
   return (
     <div className="space-y-8">
@@ -197,90 +160,29 @@ export function NewsSourcesSection() {
         </p>
       </div>
 
-      {/* Sentiment Analysis (HF Token) */}
+      {/* Sentiment Analysis (Ollama-powered) */}
       <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
         <div className="flex items-center gap-2 mb-3">
           <Brain className="w-4 h-4 text-terminal-amber" />
           <h3 className="text-white text-sm font-medium">Sentiment Analysis</h3>
-          <HelpTooltip content="Uses FinBERT AI model to analyze news sentiment. Optional HuggingFace token improves speed and reliability." />
+          <HelpTooltip content="Uses local Ollama AI to analyze news sentiment. Falls back to keyword matching if Ollama is not running." />
           <span className="text-green-400 text-xs flex items-center gap-1">
             <Check className="w-3 h-3" /> Working
           </span>
         </div>
         <p className="text-gray-500 text-xs mb-4">
-          Headlines are automatically analyzed for sentiment using FinBERT.
-          Add a Hugging Face token for faster, more reliable analysis (optional).
+          Headlines are automatically analyzed for sentiment using your local Ollama AI (Dolphin model).
+          100% free, 100% private - no external API calls.
         </p>
 
-        <div className="space-y-3">
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <Info className="w-3 h-3" />
-            <span>Takes 30 seconds to get a free token</span>
+        <div className="p-3 bg-terminal-up/10 border border-terminal-up/30 rounded text-xs text-terminal-up">
+          <div className="flex items-center gap-2 mb-1">
+            <Check className="w-3 h-3" />
+            <span className="font-medium">Fully Automatic</span>
           </div>
-          <a
-            href="https://huggingface.co/settings/tokens/new?tokenType=fineGrained"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-terminal-amber text-sm hover:underline"
-          >
-            Get Free Token
-            <ExternalLink className="w-3 h-3" />
-          </a>
-
-          <div className="flex gap-2">
-            <input
-              type="password"
-              placeholder="hf_xxxxxxxxxx..."
-              value={huggingFaceToken}
-              onChange={(e) => {
-                saveSettings({ huggingFaceToken: e.target.value })
-                setHfTestStatus('idle')
-                setHfTestMessage('')
-              }}
-              className="flex-1 bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white placeholder:text-gray-600 font-mono"
-            />
-            <button
-              onClick={handleTestHfToken}
-              disabled={hfTesting || !huggingFaceToken}
-              className="px-4 py-2 bg-terminal-bg border border-terminal-border rounded text-sm text-white hover:border-terminal-amber/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {hfTesting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                'Test'
-              )}
-            </button>
-            {huggingFaceToken && (
-              <button
-                onClick={() => {
-                  saveSettings({ huggingFaceToken: '' })
-                  setHfTestStatus('idle')
-                  setHfTestMessage('')
-                }}
-                className="px-3 py-2 text-gray-400 hover:text-white transition-colors"
-                title="Clear token"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Test Result Message */}
-          {hfTestMessage && (
-            <div className={`flex items-center gap-2 text-xs ${
-              hfTestStatus === 'valid' ? 'text-green-400' : 'text-red-400'
-            }`}>
-              {hfTestStatus === 'valid' ? (
-                <Check className="w-3 h-3" />
-              ) : (
-                <X className="w-3 h-3" />
-              )}
-              {hfTestMessage}
-            </div>
-          )}
-
-          <p className="text-gray-600 text-xs">
-            100% optional. Sentiment works without it.
+          <p className="text-terminal-up/80">
+            Sentiment analysis runs locally on your machine using Ollama.
+            If Ollama is not running, keywords are used as a fallback.
           </p>
         </div>
       </div>

@@ -5,7 +5,7 @@
  * Supported Providers:
  * - TwelveData: Free (8/min, 800/day) | Basic (30/min, 5K/day) | Pro (80/min, unlimited)
  * - Polygon: Free (5/min) | Starter (100/min) | Developer (1K/min) | Advanced (unlimited)
- * - Finnhub: Free (60/min) | Premium (300/min) - Used for Economic Calendar + News only
+ * - Finnhub: Free (60/min) | Premium (300/min) - Used for ticker-specific news
  *
  * Fallback Strategy:
  * When primary provider is exhausted, falls back to:
@@ -19,7 +19,7 @@ const STORAGE_KEY = 'richdad_api_budget'
 export interface BudgetTracker {
   lastResetDate: string // ISO date (YYYY-MM-DD) for daily resets
 
-  // Finnhub (minute-based) - for Economic Calendar + News
+  // Finnhub (minute-based) - for ticker-specific news
   finnhubCallsThisMinute: number
   finnhubMinuteWindow: number  // Unix timestamp in minutes
 
@@ -510,7 +510,7 @@ export function getAllProvidersBudgetStatus(): ProviderBudgetStatus[] {
     percentUsed: polygonStatus.isUnlimited ? 0 : Math.round((polygonStatus.used / polygonStatus.limit) * 100)
   })
 
-  // Finnhub (for Economic Calendar + News)
+  // Finnhub (for ticker-specific news)
   const finnhubStatus = getFinnhubBudgetStatus()
   statuses.push({
     provider: 'Finnhub',

@@ -1,24 +1,23 @@
 /**
  * Sentiment Service
  *
- * Analyzes news headlines for sentiment using a three-tier fallback system:
- * 1. HF Inference API (FinBERT cloud) - primary, works without setup
- * 2. User's AI API (OpenAI/Claude/Groq) - secondary if HF fails
- * 3. Keyword matching - final fallback, always works
+ * Analyzes news headlines for sentiment using a two-tier local system:
+ * 1. Ollama (local AI) - primary, uses Dolphin model
+ * 2. Keyword matching - fallback, always works
  *
- * Each user has their own HF rate limit (per IP) unless they add a token.
+ * 100% local - no external API calls, no rate limits, completely free.
  */
 
 import type { NewsItem } from '../renderer/types'
-import { getSettings, getAISettings } from '../renderer/lib/db'
+
+// Ollama API endpoint
+const OLLAMA_API = 'http://localhost:11434'
+const OLLAMA_MODEL = 'dolphin-llama3:8b'
+const OLLAMA_TIMEOUT = 5000 // 5 second timeout per headline
 
 // Track which method was last used (for UI display)
-export type SentimentMethod = 'finbert' | 'ai' | 'keywords'
+export type SentimentMethod = 'ollama' | 'keywords'
 let lastMethodUsed: SentimentMethod = 'keywords'
-let hfApiFailures = 0  // Track consecutive HF failures
-const HF_MAX_FAILURES = 3  // After this many failures, skip HF for a while
-const HF_COOLDOWN_MS = 5 * 60 * 1000  // 5 minute cooldown after max failures
-let hfCooldownUntil = 0
 
 // Keyword-based sentiment analysis fallback
 const POSITIVE_PATTERNS = [
@@ -46,7 +45,7 @@ export function getLastSentimentMethod(): SentimentMethod {
 }
 
 /**
- * Keyword-based sentiment - simple but reliable
+ * Keyword-based sentiment - simple but reliable fallback
  */
 function analyzeWithKeywords(text: string): 'positive' | 'negative' | 'neutral' {
   const lowerText = text.toLowerCase()
@@ -72,135 +71,63 @@ function analyzeWithKeywords(text: string): 'positive' | 'negative' | 'neutral' 
 }
 
 /**
- * HF Inference API - FinBERT in the cloud
- * Uses unauthenticated requests by default (per-IP rate limit)
- * If user has HF token, uses authenticated requests for higher limits
+ * Analyze sentiment using local Ollama (Dolphin model)
+ * Returns null if Ollama is not available or times out
  */
-async function analyzeWithHuggingFace(
-  text: string,
-  hfToken?: string
-): Promise<'positive' | 'negative' | 'neutral' | null> {
-  // Check if we're in cooldown
-  if (Date.now() < hfCooldownUntil) {
-    return null
-  }
-
+async function analyzeWithOllama(text: string): Promise<'positive' | 'negative' | 'neutral' | null> {
   try {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json'
-    }
-
-    // Add authorization if user has a token
-    if (hfToken) {
-      headers['Authorization'] = `Bearer ${hfToken}`
-    }
-
-    const response = await fetch(
-      'https://api-inference.huggingface.co/models/ProsusAI/finbert',
-      {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ inputs: text })
-      }
-    )
-
-    if (!response.ok) {
-      // Track failures
-      hfApiFailures++
-      if (hfApiFailures >= HF_MAX_FAILURES) {
-        hfCooldownUntil = Date.now() + HF_COOLDOWN_MS
-        console.warn('[Sentiment] HF API max failures reached, cooling down for 5 min')
-      }
-
-      if (response.status === 429) {
-        console.warn('[Sentiment] HF rate limited, switching to fallback')
-      }
-      return null
-    }
-
-    // Success - reset failure count
-    hfApiFailures = 0
-    hfCooldownUntil = 0
-
-    const data = await response.json()
-
-    // HF returns array of arrays: [[{label, score}, ...]]
-    // Find the highest scoring label
-    if (Array.isArray(data) && Array.isArray(data[0])) {
-      const results = data[0] as Array<{ label: string; score: number }>
-      const best = results.reduce((a, b) => (a.score > b.score ? a : b))
-
-      // FinBERT labels: positive, negative, neutral
-      if (best.label === 'positive' || best.label === 'negative' || best.label === 'neutral') {
-        return best.label
-      }
-    }
-
-    return null
-  } catch (error) {
-    hfApiFailures++
-    console.warn('[Sentiment] HF API error:', error)
-    return null
-  }
-}
-
-/**
- * User's AI API (OpenAI/Claude/Groq) as fallback
- */
-async function analyzeWithUserAI(text: string): Promise<'positive' | 'negative' | 'neutral' | null> {
-  try {
-    const aiSettings = await getAISettings()
-    if (!aiSettings.apiKey) {
-      return null
-    }
-
-    // Import AI library dynamically to avoid circular deps
-    const { sendChatMessage } = await import('../renderer/lib/ai')
-
-    const prompt = `Analyze the sentiment of this financial news headline. Respond with ONLY one word: positive, negative, or neutral.
+    const response = await fetch(`${OLLAMA_API}/api/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: OLLAMA_MODEL,
+        messages: [
+          {
+            role: 'user',
+            content: `Analyze the sentiment of this financial news headline. Reply with ONLY one word: positive, negative, or neutral.
 
 Headline: "${text}"
 
 Sentiment:`
+          }
+        ],
+        stream: false,
+        options: { temperature: 0 }
+      }),
+      signal: AbortSignal.timeout(OLLAMA_TIMEOUT)
+    })
 
-    // Use sterling persona for data-focused analysis (persona doesn't affect this simple query)
-    const response = await sendChatMessage(prompt, [], 'sterling')
-    const sentiment = response.toLowerCase().trim()
+    if (!response.ok) return null
 
-    if (sentiment.includes('positive')) return 'positive'
-    if (sentiment.includes('negative')) return 'negative'
-    if (sentiment.includes('neutral')) return 'neutral'
+    const data = await response.json()
+    const sentiment = data.message?.content?.toLowerCase().trim()
+
+    if (sentiment?.includes('positive')) return 'positive'
+    if (sentiment?.includes('negative')) return 'negative'
+    if (sentiment?.includes('neutral')) return 'neutral'
 
     return null
-  } catch (error) {
-    console.warn('[Sentiment] AI API error:', error)
+  } catch {
+    // Ollama not available or timed out - fall back to keywords
     return null
   }
 }
 
 /**
  * Analyze a single headline with the fallback chain
+ * 1. Try Ollama (local AI)
+ * 2. Fall back to keywords
  */
 async function analyzeSingleHeadline(
-  text: string,
-  hfToken?: string,
-  useAI: boolean = true
+  text: string
 ): Promise<{ sentiment: 'positive' | 'negative' | 'neutral'; method: SentimentMethod }> {
-  // 1. Try HF Inference API first
-  const hfResult = await analyzeWithHuggingFace(text, hfToken)
-  if (hfResult) {
-    return { sentiment: hfResult, method: 'finbert' }
+  // 1. Try Ollama first (local, free)
+  const ollamaResult = await analyzeWithOllama(text)
+  if (ollamaResult) {
+    return { sentiment: ollamaResult, method: 'ollama' }
   }
 
-  // 2. Try user's AI API if available
-  if (useAI) {
-    const aiResult = await analyzeWithUserAI(text)
-    if (aiResult) {
-      return { sentiment: aiResult, method: 'ai' }
-    }
-  }
-
-  // 3. Fall back to keywords (always works)
+  // 2. Fall back to keywords (always works)
   return { sentiment: analyzeWithKeywords(text), method: 'keywords' }
 }
 
@@ -215,14 +142,10 @@ export async function analyzeSentiment(
     return new Map()
   }
 
-  // Get user settings for HF token
-  const settings = await getSettings()
-  const hfToken = settings.huggingFaceToken
-
   const results = new Map<string, 'positive' | 'negative' | 'neutral'>()
-  const methodCounts = { finbert: 0, ai: 0, keywords: 0 }
+  const methodCounts = { ollama: 0, keywords: 0 }
 
-  // Process headlines - batch to avoid overwhelming APIs
+  // Process headlines in parallel batches for speed
   const BATCH_SIZE = 5
   for (let i = 0; i < headlines.length; i += BATCH_SIZE) {
     const batch = headlines.slice(i, i + BATCH_SIZE)
@@ -230,7 +153,7 @@ export async function analyzeSentiment(
     // Process batch in parallel
     const batchResults = await Promise.all(
       batch.map(async (headline) => {
-        const result = await analyzeSingleHeadline(headline.headline, hfToken)
+        const result = await analyzeSingleHeadline(headline.headline)
         return { id: headline.id, ...result }
       })
     )
@@ -242,16 +165,14 @@ export async function analyzeSentiment(
   }
 
   // Track last method used (most common in this batch)
-  if (methodCounts.finbert >= methodCounts.ai && methodCounts.finbert >= methodCounts.keywords) {
-    lastMethodUsed = 'finbert'
-  } else if (methodCounts.ai >= methodCounts.keywords) {
-    lastMethodUsed = 'ai'
+  if (methodCounts.ollama >= methodCounts.keywords) {
+    lastMethodUsed = 'ollama'
   } else {
     lastMethodUsed = 'keywords'
   }
 
   console.log(
-    `[Sentiment] Analysis complete: ${methodCounts.finbert} FinBERT, ${methodCounts.ai} AI, ${methodCounts.keywords} keywords`
+    `[Sentiment] Analysis complete: ${methodCounts.ollama} Ollama, ${methodCounts.keywords} keywords`
   )
 
   return results
@@ -263,24 +184,32 @@ export async function analyzeSentiment(
 export async function analyzeSingleText(
   text: string
 ): Promise<{ sentiment: 'positive' | 'negative' | 'neutral'; method: SentimentMethod }> {
-  const settings = await getSettings()
-  return analyzeSingleHeadline(text, settings.huggingFaceToken)
+  return analyzeSingleHeadline(text)
 }
 
 /**
  * Initialize sentiment analysis (legacy compatibility)
- * Now a no-op since we don't use workers anymore
+ * Now a no-op since we use Ollama
  */
 export function initializeSentimentAnalysis(): void {
-  console.log('[Sentiment] Service initialized (HF API + fallbacks)')
+  console.log('[Sentiment] Service initialized (Ollama + keywords)')
 }
 
 /**
  * Check if sentiment model is ready (legacy compatibility)
- * Always returns true since we use API-based analysis
+ * Returns true if Ollama is running
  */
 export async function isSentimentModelReady(): Promise<boolean> {
-  return true
+  try {
+    const response = await fetch(`${OLLAMA_API}/api/tags`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(2000)
+    })
+    return response.ok
+  } catch {
+    // Ollama not running, but keywords still work
+    return true
+  }
 }
 
 /**
@@ -289,62 +218,4 @@ export async function isSentimentModelReady(): Promise<boolean> {
  */
 export function terminateSentimentAnalysis(): void {
   console.log('[Sentiment] Service terminated')
-}
-
-/**
- * Reset HF cooldown (for testing or manual retry)
- */
-export function resetHFCooldown(): void {
-  hfApiFailures = 0
-  hfCooldownUntil = 0
-  console.log('[Sentiment] HF cooldown reset')
-}
-
-/**
- * Test HuggingFace token validity
- * Makes a test request to the FinBERT model
- */
-export async function testHuggingFaceToken(token: string): Promise<{ valid: boolean; message: string }> {
-  if (!token || !token.startsWith('hf_')) {
-    return { valid: false, message: 'Token must start with "hf_"' }
-  }
-
-  try {
-    const response = await fetch(
-      'https://api-inference.huggingface.co/models/ProsusAI/finbert',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ inputs: 'Stock market gains on positive earnings' })
-      }
-    )
-
-    if (response.ok) {
-      const data = await response.json()
-      // Verify we got a valid response structure
-      if (Array.isArray(data) && Array.isArray(data[0]) && data[0].length > 0) {
-        return { valid: true, message: 'Token verified - FinBERT API working' }
-      }
-      return { valid: true, message: 'Token accepted' }
-    }
-
-    if (response.status === 401) {
-      return { valid: false, message: 'Invalid token - unauthorized' }
-    }
-
-    if (response.status === 403) {
-      return { valid: false, message: 'Token lacks Inference permission' }
-    }
-
-    if (response.status === 429) {
-      return { valid: true, message: 'Token valid (rate limited - try again later)' }
-    }
-
-    return { valid: false, message: `API error: ${response.status}` }
-  } catch (error) {
-    return { valid: false, message: 'Connection failed - check your network' }
-  }
 }

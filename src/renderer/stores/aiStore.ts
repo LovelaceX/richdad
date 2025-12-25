@@ -86,6 +86,10 @@ export const useAIStore = create<AIState>((set, get) => ({
       playSound(actionSound, rec.confidence).catch(console.error)
     }
 
+    // Get persona for rich recommendation card BEFORE setting state
+    const settings = await getSettings()
+    const persona = settings.persona || 'sterling'
+
     set({ currentRecommendation: rec })
     if (rec) {
       set(state => {
@@ -103,9 +107,14 @@ export const useAIStore = create<AIState>((set, get) => ({
         const newRecommendationMessage = {
           id: generateId(),
           type: 'recommendation' as const,
-          content: `Generated ${rec.action} signal for ${rec.ticker}. Confidence: ${rec.confidence}%.`,
+          content: rec.rationale || `Generated ${rec.action} signal for ${rec.ticker}. Confidence: ${rec.confidence}%.`,
           timestamp: Date.now(),
           ticker: rec.ticker,
+          // Include full recommendation data for rich UI cards
+          recommendation: {
+            ...rec,
+            persona,
+          },
         }
 
         return {

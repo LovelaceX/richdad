@@ -126,7 +126,7 @@ export function OllamaStatusIndicator() {
 
             {(status === 'not_running' || status === 'start_failed' || status === 'not_installed') && (
               <a
-                href="https://ollama.ai/download"
+                href="https://ollama.com/download"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 mt-2 text-terminal-amber text-xs hover:underline"

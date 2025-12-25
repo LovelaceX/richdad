@@ -235,9 +235,9 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
         {/* Info about Finnhub */}
         <div className="bg-terminal-bg/50 border border-terminal-border/50 rounded-lg p-4">
           <p className="text-gray-400 text-xs">
-            <span className="text-terminal-amber font-medium">Looking for Economic Calendar or News?</span>
+            <span className="text-terminal-amber font-medium">Looking for Ticker-Specific News?</span>
             <br />
-            Configure your Finnhub API key in Settings → News Sources to enable Economic Calendar and ticker-specific news.
+            Configure your Finnhub API key in Settings → News Sources to enable ticker-specific news for AI analysis.
           </p>
         </div>
       </div>

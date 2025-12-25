@@ -19,8 +19,8 @@ const PLATFORM_NAMES: Record<Platform, string> = {
 }
 
 const DOWNLOAD_URLS: Record<Platform, string> = {
-  mac: 'https://ollama.ai/download/mac',
-  windows: 'https://ollama.ai/download/windows'
+  mac: 'https://ollama.com/download/mac',
+  windows: 'https://ollama.com/download/windows'
 }
 
 interface MultiProviderManagerProps {
@@ -262,7 +262,7 @@ export function MultiProviderManager({ providers, onChange }: MultiProviderManag
               <li>Try restarting your computer</li>
             </ul>
             <p className="text-gray-500 text-xs mt-2">
-              Still stuck? Visit <a href="https://ollama.ai" target="_blank" rel="noopener noreferrer" className="text-terminal-amber hover:underline">ollama.ai</a> for help.
+              Still stuck? Visit <a href="https://ollama.com" target="_blank" rel="noopener noreferrer" className="text-terminal-amber hover:underline">ollama.com</a> for help.
             </p>
           </div>
         </details>

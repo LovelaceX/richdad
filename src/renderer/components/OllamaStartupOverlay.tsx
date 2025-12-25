@@ -93,7 +93,7 @@ export function OllamaStartupOverlay({ onDismiss }: OllamaStartupOverlayProps) {
 
               <div className="flex items-center justify-center gap-4 pt-2">
                 <a
-                  href="https://ollama.ai/download"
+                  href="https://ollama.com/download"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 text-terminal-amber text-sm hover:underline"

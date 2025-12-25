@@ -64,7 +64,7 @@ export interface UserSettings {
   // Data Sources (simplified: TwelveData for free, Polygon for paid)
   marketDataProvider: 'polygon' | 'twelvedata'
   polygonApiKey?: string
-  finnhubApiKey?: string  // Optional: enables Economic Calendar + ticker-specific news
+  finnhubApiKey?: string  // Optional: enables ticker-specific news for AI analysis
   twelvedataApiKey?: string  // TwelveData.com - 800 calls/day free, real-time (default)
 
   // Simplified plan selection: Free or Pro
@@ -90,7 +90,6 @@ export interface UserSettings {
   // News Sources Settings
   headlineLimit?: number           // Max headlines per hour (default: 20)
   aiNewsFiltering?: boolean        // Enable AI-based news filtering by watchlist/market relevance
-  huggingFaceToken?: string        // Optional HF API token for faster sentiment analysis
 
   // Web Search is now free via DuckDuckGo - no API key needed!
 
@@ -233,7 +232,7 @@ export const AI_PROVIDERS = {
     name: 'Ollama (Local)',
     models: ['dolphin-llama3:8b'],
     keyPlaceholder: '',
-    instructions: 'Install Ollama from ollama.ai, then run: ollama pull dolphin-llama3:8b',
+    instructions: 'Install Ollama from ollama.com, then run: ollama pull dolphin-llama3:8b',
     endpoint: 'http://localhost:11434',
     requiresKey: false
   }
@@ -539,7 +538,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   // Data Sources (simplified: TwelveData for free, Polygon for paid)
   marketDataProvider: 'twelvedata',  // TwelveData recommended: 800 calls/day free tier
   polygonApiKey: undefined,
-  finnhubApiKey: undefined,  // Optional: enables Economic Calendar + ticker-specific news
+  finnhubApiKey: undefined,  // Optional: enables ticker-specific news for AI analysis
   twelvedataApiKey: undefined,
 
   // Plan Selection (defaults to free)

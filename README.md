@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-6.0.0-gold?style=for-the-badge" alt="Version 6.0.0"/>
+  <img src="https://img.shields.io/badge/version-7.0.0-gold?style=for-the-badge" alt="Version 7.0.0"/>
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License"/>
   <img src="https://img.shields.io/badge/tauri-2.x-blue?style=for-the-badge&logo=tauri" alt="Tauri 2.x"/>
   <img src="https://img.shields.io/badge/react-18-61DAFB?style=for-the-badge&logo=react" alt="React 18"/>
@@ -24,8 +24,8 @@
 RichDad is an open-source trading research tool for individual investors who want AI-assisted analysis without subscription fees or cloud dependencies.
 
 **What it does:**
-- Fetches market data from free APIs (Massive.com, Alpha Vantage)
-- Sends data to your AI provider of choice for analysis
+- Fetches market data from free APIs (TwelveData, Polygon)
+- Uses local AI (Ollama) for private, uncensored analysis
 - Displays recommendations with confidence scores
 - Tracks trade decisions and outcomes over time
 - Stores everything locally—no accounts, no servers, no data collection
@@ -50,9 +50,10 @@ RichDad is an open-source trading research tool for individual investors who wan
 ## Features
 
 ### AI Analysis
-- **Multi-Provider Support**: OpenAI, Claude, Gemini, Grok, DeepSeek, Llama
+- **Local AI (Ollama)**: Free, private, uncensored analysis using dolphin-llama3 model
+- **No Cloud Dependencies**: AI runs entirely on your machine—no API costs, no rate limits
 - **Configurable Settings**: Recommendation intervals and confidence thresholds
-- **Performance Tracking**: W-L-P records and export to CSV
+- **Performance Tracking**: Win/Loss records with batting average comparison (You vs AI)
 - **Combined Signals**: Technical indicators + news sentiment
 - **Options-Aware Mode**: Optional suggestions like "Buy Call for leverage" on high-confidence signals
 - **Market Context**: AI adapts analysis based on selected market (tech-heavy for NASDAQ, blue-chip for Dow)
@@ -80,18 +81,6 @@ RichDad is an open-source trading research tool for individual investors who wan
 - **Position Sizing Calculator**: Based on risk parameters
 - **Trade History**: Decision log with outcome tracking
 - **Notification Center**: Queue for pending recommendations
-
-### Economic Calendar
-- **Finnhub Integration**: Economic events data from Finnhub (free tier available)
-- **Upcoming Events**: CPI, Jobs Report, Fed Decisions, GDP releases
-- **Countdown Display**: Days/hours until major market-moving events
-- **Ticker View**: Scrolling ticker below news for quick glance
-
-#### Getting a Finnhub API Key
-1. Visit [finnhub.io](https://finnhub.io/register)
-2. Create a free account
-3. Copy your API key from the dashboard
-4. Paste in Settings > News Sources > Finnhub
 
 ### Accessibility
 - **CVD Mode**: Colorblind-friendly display
@@ -133,11 +122,11 @@ RichDad stores all data locally. There are no user accounts, no cloud servers, a
 
 RichDad makes direct API calls to services you configure:
 - **Market Data**: TwelveData or Polygon (your key, your account)
-- **AI Analysis**: Your chosen provider (OpenAI, Claude, Groq)
-- **News**: Public RSS feeds + Finnhub (optional)
-- **Economic Calendar**: Finnhub API (optional)
+- **AI Analysis**: Ollama (runs locally on your machine—no external calls)
+- **News**: Public RSS feeds + Finnhub (optional for ticker-specific news)
+- **Sentiment**: Ollama local AI with keyword fallback (100% private)
 
-These calls go directly from your machine to the provider.
+These calls go directly from your machine to the provider. AI analysis runs entirely locally.
 
 ---
 
@@ -183,19 +172,16 @@ The app includes guided onboarding:
 **Market Data (choose one or more)**:
 | Provider | Free Tier | Paid Tiers | Link |
 |----------|-----------|------------|------|
-| Polygon | 5 calls/min | Starter: 100/min, Developer: 1K/min, Advanced: Unlimited | [Get Key](https://polygon.io/dashboard/signup) |
 | TwelveData | 8 calls/min, 800/day | Basic: 30/min, Pro: 80/min | [Get Key](https://twelvedata.com/account) |
-| Alpha Vantage | 25 calls/day | Premium: Higher limits | [Get Key](https://www.alphavantage.co/support/#api-key) |
+| Polygon | 5 calls/min | Starter: 100/min, Developer: 1K/min, Advanced: Unlimited | [Get Key](https://polygon.io/dashboard/signup) |
 | Finnhub | 60 calls/min | Premium: Higher limits | [Get Key](https://finnhub.io/register) |
 
-**AI Provider (choose one)**:
-| Provider | Link |
-|----------|------|
-| OpenAI | [platform.openai.com](https://platform.openai.com/api-keys) |
-| Anthropic (Claude) | [console.anthropic.com](https://console.anthropic.com/) |
-| Google (Gemini) | [makersuite.google.com](https://makersuite.google.com/app/apikey) |
-| Grok | [console.x.ai](https://console.x.ai/) |
-| DeepSeek | [platform.deepseek.com](https://platform.deepseek.com/) |
+**AI (Local - No API Key Required)**:
+| Provider | Requirements | Link |
+|----------|--------------|------|
+| Ollama | macOS/Windows, ~5GB disk space | [ollama.com/download](https://ollama.com/download) |
+
+After installing Ollama, run: `ollama pull dolphin-llama3:8b`
 
 ### 3. Start Using
 - Dashboard opens to SPY by default
@@ -342,6 +328,37 @@ See [LICENSE](./LICENSE) for full text.
 ---
 
 ## Changelog
+
+### v7.0.0 - Local-First AI
+
+**Simplified AI Architecture**
+- Ollama is now the only AI provider (removed cloud AI dependencies)
+- dolphin-llama3:8b model provides uncensored trading recommendations
+- No API costs, no rate limits, 100% private
+
+**New Sentiment System**
+- Primary: Ollama local AI for sentiment analysis
+- Fallback: Keyword matching (works even without Ollama running)
+- Headlines never leave your machine
+
+**Performance Tracking**
+- New "You vs AI" batting average comparison
+- Only executed trades count toward win rate
+- Skipped recommendations logged but don't affect stats
+- 30-day monitoring window for trade outcomes
+
+**Documentation & UX**
+- Comprehensive "Verify Setup" checklist in Help Modal
+- Updated all Ollama URLs (ollama.ai → ollama.com)
+- Removed Economic Calendar feature (was deprecated)
+- Removed HuggingFace sentiment (replaced by local Ollama)
+
+**Bug Fixes**
+- Fixed memory leak in NewsPanel JustUpdatedBadge component
+- Fixed race conditions in MarketIndexDropdown async operations
+- Added mounted ref pattern to prevent setState on unmounted components
+
+---
 
 ### v6.0.0 - Stability & Self-Service Release
 
@@ -563,7 +580,7 @@ See [LICENSE](./LICENSE) for full text.
 
 ## Acknowledgments
 
-Built with [Tauri](https://tauri.app), [React](https://react.dev), [Lightweight Charts](https://tradingview.github.io/lightweight-charts/), [Massive.com](https://massive.com/), and [Alpha Vantage](https://www.alphavantage.co).
+Built with [Tauri](https://tauri.app), [React](https://react.dev), [Lightweight Charts](https://tradingview.github.io/lightweight-charts/), [Ollama](https://ollama.com), [TwelveData](https://twelvedata.com), and [Polygon](https://polygon.io).
 
 ---
 

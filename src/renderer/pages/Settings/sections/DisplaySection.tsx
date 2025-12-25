@@ -360,7 +360,7 @@ export function DisplaySection() {
           </div>
 
           <p className="text-gray-400 text-xs mb-4">
-            Control the scrolling speed of the News and Economic Calendar tickers.
+            Control the scrolling speed of the News ticker.
           </p>
 
           {/* Slider - same style as Daily Loss Limit */}

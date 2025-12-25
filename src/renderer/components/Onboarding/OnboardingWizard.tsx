@@ -4,7 +4,7 @@ import { X, Leaf, Crown, Brain, CheckCircle2, Download, Copy, Check, Target, Bar
 import { PERSONA_PROMPTS } from '../../lib/ai'
 import type { PersonaType } from '../../types'
 
-// Platform detection (Mac and Windows only)
+// Platform detection (Mac and Windows)
 type Platform = 'mac' | 'windows'
 
 const getPlatform = (): Platform => {
@@ -19,8 +19,8 @@ const PLATFORM_NAMES: Record<Platform, string> = {
 }
 
 const DOWNLOAD_URLS: Record<Platform, string> = {
-  mac: 'https://ollama.ai/download/mac',
-  windows: 'https://ollama.ai/download/windows'
+  mac: 'https://ollama.com/download/mac',
+  windows: 'https://ollama.com/download/windows'
 }
 import { WelcomeStep } from './WelcomeStep'
 import { TermsStep } from './TermsStep'

@@ -63,16 +63,25 @@ export function MarketIndexDropdown() {
   const [showRegimeTooltip, setShowRegimeTooltip] = useState(false)
   const [regime, setRegime] = useState<MarketRegime | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const isMountedRef = useRef(true)
 
   // Get quote for selected market from store
   const watchlist = useMarketStore(state => state.watchlist)
   const selectedQuote = watchlist.find(w => w.symbol === selectedMarket.etf)?.quote
 
+  // Track mounted state
+  useEffect(() => {
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
+    }
+  }, [])
+
   // Load selected market from settings on mount
   useEffect(() => {
     async function loadSettings() {
       const settings = await getSettings()
-      if (settings.selectedMarket) {
+      if (isMountedRef.current && settings.selectedMarket) {
         const market = MARKETS.find(m => m.etf === settings.selectedMarket?.etf)
         if (market) {
           setSelectedMarket(market)
@@ -87,7 +96,9 @@ export function MarketIndexDropdown() {
     const loadRegime = async () => {
       try {
         const result = await calculateMarketRegime()
-        setRegime(result)
+        if (isMountedRef.current) {
+          setRegime(result)
+        }
       } catch (error) {
         console.error('[MarketIndexDropdown] Failed to load regime:', error)
       }

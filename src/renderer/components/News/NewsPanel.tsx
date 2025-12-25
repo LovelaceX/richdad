@@ -64,18 +64,24 @@ function JustUpdatedBadge({ lastUpdated }: { lastUpdated: number | null }) {
   const [secondsAgo, setSecondsAgo] = useState(0)
   const lastSeenRef = useRef<number | null>(null)
   const fadeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
+    // Clear any existing timers first
+    if (fadeTimeoutRef.current) {
+      clearTimeout(fadeTimeoutRef.current)
+      fadeTimeoutRef.current = null
+    }
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+
     // Only show badge when lastUpdated changes to a new value
     if (lastUpdated && lastUpdated !== lastSeenRef.current) {
       lastSeenRef.current = lastUpdated
       setSecondsAgo(0)
       setVisible(true)
-
-      // Clear any existing timeout
-      if (fadeTimeoutRef.current) {
-        clearTimeout(fadeTimeoutRef.current)
-      }
 
       // Hide badge after 5 seconds
       fadeTimeoutRef.current = setTimeout(() => {
@@ -83,33 +89,28 @@ function JustUpdatedBadge({ lastUpdated }: { lastUpdated: number | null }) {
       }, 5000)
 
       // Update seconds counter
-      const interval = setInterval(() => {
-        if (lastUpdated) {
-          const secs = Math.floor((Date.now() - lastUpdated) / 1000)
-          setSecondsAgo(secs)
-          if (secs >= 5) {
-            clearInterval(interval)
-          }
+      intervalRef.current = setInterval(() => {
+        const secs = Math.floor((Date.now() - lastUpdated) / 1000)
+        setSecondsAgo(secs)
+        if (secs >= 5 && intervalRef.current) {
+          clearInterval(intervalRef.current)
+          intervalRef.current = null
         }
       }, 1000)
-
-      return () => {
-        clearInterval(interval)
-        if (fadeTimeoutRef.current) {
-          clearTimeout(fadeTimeoutRef.current)
-        }
-      }
     }
-  }, [lastUpdated])
 
-  // Cleanup on unmount
-  useEffect(() => {
+    // Cleanup function always runs
     return () => {
       if (fadeTimeoutRef.current) {
         clearTimeout(fadeTimeoutRef.current)
+        fadeTimeoutRef.current = null
+      }
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
       }
     }
-  }, [])
+  }, [lastUpdated])
 
   if (!visible) return null
 
@@ -430,7 +431,7 @@ export function NewsPanel({ isOpen, onClose }: NewsPanelProps) {
 
         {/* Footer */}
         <div className="flex items-center justify-between p-3 border-t border-terminal-border text-xs text-gray-500">
-          <span>Sentiment powered by FinBERT + keyword analysis</span>
+          <span>Sentiment powered by Ollama + keyword analysis</span>
           <span>{counts.positive} positive, {counts.negative} negative</span>
         </div>
       </motion.div>

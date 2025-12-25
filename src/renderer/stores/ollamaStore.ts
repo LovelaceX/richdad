@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import {
-  checkOllamaRunning,
   startOllama,
   getOllamaStatus,
   type OllamaStatus
@@ -19,7 +18,7 @@ interface OllamaStore {
   attemptAutoStart: () => Promise<boolean>
 }
 
-export const useOllamaStore = create<OllamaStore>((set, get) => ({
+export const useOllamaStore = create<OllamaStore>((set) => ({
   status: 'checking',
   models: [],
   hasRequiredModel: false,

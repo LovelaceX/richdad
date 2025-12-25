@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertCircle, TrendingUp, Info, Zap, User, ChevronDown, ChevronUp } from 'lucide-react'
+import { AlertCircle, TrendingUp, Info, Zap, User, ChevronDown, ChevronUp, BarChart2, Target, Microscope } from 'lucide-react'
 import type { AIMessage } from '../../types'
 import { formatRelativeTime } from '../../lib/utils'
 
@@ -35,6 +35,30 @@ const typeConfig = {
   },
 }
 
+const personaConfig = {
+  sterling: {
+    name: 'Sterling',
+    title: 'The Analyst',
+    icon: BarChart2,
+    color: 'text-blue-400',
+    borderColor: 'border-blue-400/30',
+  },
+  jax: {
+    name: 'Jax',
+    title: 'The Veteran',
+    icon: Target,
+    color: 'text-orange-400',
+    borderColor: 'border-orange-400/30',
+  },
+  cipher: {
+    name: 'Cipher',
+    title: 'The Tech Wiz',
+    icon: Microscope,
+    color: 'text-green-400',
+    borderColor: 'border-green-400/30',
+  },
+}
+
 const COLLAPSED_LENGTH = 150
 
 export function ChatMessage({ message }: ChatMessageProps) {
@@ -67,7 +91,119 @@ export function ChatMessage({ message }: ChatMessageProps) {
     )
   }
 
-  // AI message styling
+  // Rich recommendation card (when full recommendation data is available)
+  if (message.type === 'recommendation' && message.recommendation) {
+    const rec = message.recommendation
+    const persona = personaConfig[rec.persona] || personaConfig.sterling
+    const PersonaIcon = persona.icon
+
+    const actionColor = rec.action === 'BUY'
+      ? 'text-semantic-up'
+      : rec.action === 'SELL'
+        ? 'text-semantic-down'
+        : 'text-gray-400'
+
+    const actionBg = rec.action === 'BUY'
+      ? 'bg-semantic-up/20'
+      : rec.action === 'SELL'
+        ? 'bg-semantic-down/20'
+        : 'bg-gray-400/20'
+
+    return (
+      <div className={`rounded-lg border ${persona.borderColor} bg-terminal-panel/50 overflow-hidden`}>
+        {/* Persona header */}
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-700/50 bg-black/20">
+          <PersonaIcon size={14} className={persona.color} />
+          <span className={`text-xs font-medium ${persona.color}`}>{persona.name}</span>
+          <span className="text-[10px] text-gray-500">{persona.title}</span>
+        </div>
+
+        {/* Action + Ticker + Confidence */}
+        <div className="px-3 py-2">
+          <div className="flex items-center gap-3 mb-2">
+            <span className={`text-sm font-bold ${actionColor} ${actionBg} px-2 py-0.5 rounded`}>
+              {rec.action}
+            </span>
+            <span className="text-terminal-amber font-mono font-semibold">
+              {rec.ticker}
+            </span>
+            {rec.confidence && (
+              <div className="flex items-center gap-2 flex-1">
+                <div className="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full ${rec.confidence >= 70 ? 'bg-semantic-up' : rec.confidence >= 50 ? 'bg-yellow-500' : 'bg-semantic-down'}`}
+                    style={{ width: `${rec.confidence}%` }}
+                  />
+                </div>
+                <span className="text-[10px] text-gray-400 font-mono">{rec.confidence}%</span>
+              </div>
+            )}
+          </div>
+
+          {/* Rationale */}
+          {rec.rationale && (
+            <p className="text-xs text-gray-300 italic mb-2 leading-relaxed">
+              "{rec.rationale}"
+            </p>
+          )}
+
+          {/* Price targets */}
+          <div className="flex gap-4 text-[10px]">
+            {rec.priceTarget && (
+              <span className="text-semantic-up">
+                Target: ${rec.priceTarget.toFixed(2)}
+              </span>
+            )}
+            {rec.stopLoss && (
+              <span className="text-semantic-down">
+                Stop: ${rec.stopLoss.toFixed(2)}
+              </span>
+            )}
+            {rec.suggestedShares && (
+              <span className="text-gray-400">
+                Size: {rec.suggestedShares} shares
+              </span>
+            )}
+          </div>
+
+          {/* Sources */}
+          {rec.sources && rec.sources.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-gray-700/50">
+              <div className="text-[10px] text-gray-500">
+                Based on:{' '}
+                {rec.sources.map((s, i) => (
+                  <span key={i}>
+                    {i > 0 && ', '}
+                    {s.url ? (
+                      <a
+                        href={s.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-terminal-amber hover:underline"
+                      >
+                        {s.title}
+                      </a>
+                    ) : (
+                      s.title
+                    )}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Timestamp */}
+        <div className="px-3 py-1 bg-black/20 border-t border-gray-700/50">
+          <span className="text-[10px] text-gray-500">
+            {formatRelativeTime(message.timestamp)}
+          </span>
+        </div>
+      </div>
+    )
+  }
+
+  // AI message styling (default)
   return (
     <div
       className={`

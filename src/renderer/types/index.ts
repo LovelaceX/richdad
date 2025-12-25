@@ -65,6 +65,10 @@ export interface AIMessage {
   content: string
   timestamp: number
   ticker?: string
+  // Full recommendation data for rich UI cards (optional, only for recommendation type)
+  recommendation?: AIRecommendation & {
+    persona: 'sterling' | 'jax' | 'cipher'
+  }
 }
 
 export interface WatchlistItem extends Ticker {
