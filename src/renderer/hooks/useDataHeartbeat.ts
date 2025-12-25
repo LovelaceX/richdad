@@ -122,13 +122,18 @@ export function useDataHeartbeat() {
         break
 
       case 'news':
-        setNews(payload)
+        // Only update news if payload has content - preserves existing data on empty payload
+        if (Array.isArray(payload) && payload.length > 0) {
+          setNews(payload)
+        }
         setLoading(false)
         break
 
       case 'sentiment':
-        // News with updated sentiment
-        setNews(payload)
+        // News with updated sentiment - only update if payload has content
+        if (Array.isArray(payload) && payload.length > 0) {
+          setNews(payload)
+        }
         break
 
       case 'ai_recommendation':

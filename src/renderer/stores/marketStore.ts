@@ -3,6 +3,7 @@ import type { Quote, CandleData, WatchlistItem } from '../types'
 import { TOP_10_TICKERS, isTop10Symbol, getIndexConstituents } from '../lib/constants'
 import { getUserWatchlist, addToUserWatchlist, removeFromUserWatchlist, getSettings } from '../lib/db'
 import { fetchLivePrices } from '../../services/marketData'
+import { dataHeartbeat } from '../../services/DataHeartbeatService'
 
 // Track chart load requests to prevent stale data from race conditions
 let chartLoadSequence = 0
@@ -161,12 +162,36 @@ export const useMarketStore = create<MarketState>((set, get) => ({
   },
 
   /**
-   * @deprecated This function is a no-op. Quote refresh is handled by DataHeartbeatService.
-   * Will be removed in a future version.
+   * Trigger a manual refresh of all quotes for watchlist symbols.
+   * This calls the DataHeartbeatService with actual symbols.
    */
-  refreshAllQuotes: () => {
-    // No-op - quote refresh is handled by DataHeartbeatService fetching real API data
-    // Kept for backward compatibility but should not be relied upon
+  refreshAllQuotes: async () => {
+    const { watchlist, selectedTicker } = get()
+    // Collect unique symbols: selected ticker + watchlist symbols
+    const symbols = [...new Set([
+      selectedTicker,
+      ...watchlist.map(w => w.symbol)
+    ].filter(Boolean))]
+
+    if (symbols.length === 0) {
+      console.log('[Market Store] No symbols to refresh')
+      return
+    }
+
+    try {
+      const quotes = await dataHeartbeat.updateMarketData(symbols)
+      // Update watchlist with new quotes
+      if (quotes.length > 0) {
+        set(state => ({
+          watchlist: state.watchlist.map(item => {
+            const quote = quotes.find(q => q.symbol === item.symbol)
+            return quote ? { ...item, quote } : item
+          })
+        }))
+      }
+    } catch (error) {
+      console.error('[Market Store] Failed to refresh quotes:', error)
+    }
   },
 
   setTimeframe: (timeframe: Timeframe) => {
@@ -210,10 +235,12 @@ export const useMarketStore = create<MarketState>((set, get) => ({
 
           const result = await fetchHistoricalData(targetSymbol, targetInterval, { signal })
 
-          // Check if this request is still the latest (prevent stale data from race conditions)
-          if (currentSequence !== chartLoadSequence) {
+          // Check if this request is still recent (allow 1 overlap for debounce timing)
+          // Only discard if significantly stale (more than 1 behind current)
+          if (currentSequence < chartLoadSequence - 1) {
+            console.log('[Market Store] Discarding stale chart response', currentSequence, 'vs', chartLoadSequence)
             resolve()
-            return // Discard stale response
+            return
           }
 
           // Update chart data and data source info
@@ -234,8 +261,8 @@ export const useMarketStore = create<MarketState>((set, get) => ({
             return
           }
 
-          // Only update state if this is still the latest request
-          if (currentSequence !== chartLoadSequence) {
+          // Only update state if this is still a recent request
+          if (currentSequence < chartLoadSequence - 1) {
             resolve()
             return
           }

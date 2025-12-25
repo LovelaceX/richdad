@@ -308,6 +308,10 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
     // Check budget before making API call
     if (!canUsePolygon()) {
       console.warn('[Market Data] Polygon rate limit reached, using cached/mock data')
+      // Emit event for UI to show toast notification
+      window.dispatchEvent(new CustomEvent('api-budget-exhausted', {
+        detail: { provider: 'polygon', type: 'quotes' }
+      }))
       // Try to return cached data if available
       const age = Date.now() - cacheTimestamp
       if (cachedQuotes.length > 0 && age < CACHE_DURATION_MS * 2) {
@@ -324,9 +328,10 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
     }
 
     try {
-      recordPolygonCall()
       const quotes = await withRetry(() => fetchPolygonQuotes(symbols, polygonKey))
       if (quotes.length > 0) {
+        // Record call AFTER successful response (not before)
+        recordPolygonCall()
         // Update cache
         cachedQuotes = quotes
         cacheTimestamp = Date.now()
@@ -334,7 +339,7 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
       }
     } catch (error) {
       console.error('[Market Data] Polygon fetch failed after retries:', error)
-      // Try cache on error
+      // Try cache on error - don't consume budget for failed calls
       const age = Date.now() - cacheTimestamp
       if (cachedQuotes.length > 0) {
         const filtered = cachedQuotes.filter(q => symbols.includes(q.symbol))
@@ -356,6 +361,10 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
     // Check budget before making API call
     if (!canUseTwelveData()) {
       console.warn('[Market Data] TwelveData rate limit reached, using cached data')
+      // Emit event for UI to show toast notification
+      window.dispatchEvent(new CustomEvent('api-budget-exhausted', {
+        detail: { provider: 'twelvedata', type: 'quotes' }
+      }))
       const age = Date.now() - cacheTimestamp
       if (cachedQuotes.length > 0 && age < CACHE_DURATION_MS * 2) {
         const filtered = cachedQuotes.filter(q => symbols.includes(q.symbol))
@@ -371,7 +380,6 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
     }
 
     try {
-      recordTwelveDataCall()
       const quotesMap = await withRetry(() => fetchTwelveDataBatchQuotes(symbols, twelveDataKey))
       const quotes: Quote[] = symbols
         .map(symbol => {
@@ -393,13 +401,17 @@ async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
           return null // No data for this symbol
         })
         .filter((q): q is Quote => q !== null) // Filter out nulls
+      // Record call AFTER successful response (not before)
+      if (quotes.length > 0) {
+        recordTwelveDataCall()
+      }
       // Update cache
       cachedQuotes = quotes
       cacheTimestamp = Date.now()
       return addCacheMetadata(quotes, 'api', 0)
     } catch (error) {
       console.error('[Market Data] TwelveData fetch failed after retries:', error)
-      // Try cache on error
+      // Try cache on error - don't consume budget for failed calls
       const age = Date.now() - cacheTimestamp
       if (cachedQuotes.length > 0) {
         const filtered = cachedQuotes.filter(q => symbols.includes(q.symbol))
@@ -515,6 +527,10 @@ async function fetchHistoricalDataInternal(
     // Check budget before making API call
     if (!canUsePolygon()) {
       console.warn('[Market Data] Polygon rate limit reached, checking cache')
+      // Emit event for UI to show toast notification
+      window.dispatchEvent(new CustomEvent('api-budget-exhausted', {
+        detail: { provider: 'polygon', type: 'historical' }
+      }))
       // Try to return cached historical data
       const cacheKey = `${symbol}_${interval}`
       if (cachedHistoricalData.has(cacheKey)) {
@@ -532,9 +548,10 @@ async function fetchHistoricalDataInternal(
 
     try {
       checkAborted() // Check before API call
-      recordPolygonCall()
       const candles = await withRetry(() => fetchPolygonHistorical(symbol, interval, polygonKey))
       if (candles.length > 0) {
+        // Record call AFTER successful response (not before)
+        recordPolygonCall()
         // Cache the results
         const cacheKey = `${symbol}_${interval}`
         cachedHistoricalData.set(cacheKey, candles)
@@ -547,6 +564,7 @@ async function fetchHistoricalDataInternal(
       }
     } catch (error) {
       console.error('[Market Data] Polygon historical fetch failed after retries:', error)
+      // Don't consume budget for failed calls
     }
     // No data available
     return {
@@ -569,6 +587,10 @@ async function fetchHistoricalDataInternal(
     // Check budget before making API call
     if (!canUseTwelveData()) {
       console.warn('[Market Data] TwelveData rate limit reached, checking cache')
+      // Emit event for UI to show toast notification
+      window.dispatchEvent(new CustomEvent('api-budget-exhausted', {
+        detail: { provider: 'twelvedata', type: 'historical' }
+      }))
       const cacheKey = `${symbol}_${interval}`
       if (cachedHistoricalData.has(cacheKey)) {
         const cacheAge = Date.now() - (historicalCacheTimestamps.get(cacheKey) || 0)
@@ -585,9 +607,10 @@ async function fetchHistoricalDataInternal(
 
     try {
       checkAborted() // Check before API call
-      recordTwelveDataCall()
       const candles = await withRetry(() => fetchTwelveDataCandles(symbol, interval, twelveDataKey))
       if (candles.length > 0) {
+        // Record call AFTER successful response (not before)
+        recordTwelveDataCall()
         return {
           candles,
           source: createDataSource('twelvedata', false, 0) // TwelveData is real-time
@@ -595,6 +618,7 @@ async function fetchHistoricalDataInternal(
       }
     } catch (error) {
       console.error('[Market Data] TwelveData historical fetch failed after retries:', error)
+      // Don't consume budget for failed calls
     }
     // No data available
     return {
