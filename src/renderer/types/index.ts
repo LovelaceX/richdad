@@ -88,7 +88,7 @@ export type PageId = 'dashboard' | 'news' | 'backtest' | 'settings'
 export type ToneType = 'conservative' | 'aggressive' | 'humorous' | 'professional'
 
 // Persona types for AI Copilot character
-export type PersonaType = 'sterling' | 'jax' | 'cipher' | 'kai'
+export type PersonaType = 'sterling' | 'jax' | 'cipher'
 
 // Sound types
 export type SoundType = 'buy' | 'sell' | 'hold' | 'alert'

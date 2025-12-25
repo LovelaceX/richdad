@@ -30,7 +30,7 @@ export interface TradeDecision {
 export interface UserSettings {
   id?: number
   // AI Persona (new - replaces tone)
-  persona: 'sterling' | 'jax' | 'cipher' | 'kai'
+  persona: 'sterling' | 'jax' | 'cipher'
   // Deprecated: kept for migration from older versions
   tone?: 'conservative' | 'aggressive' | 'humorous' | 'professional'
   dailyBudget: number
@@ -478,16 +478,17 @@ class DadAppDatabase extends Dexie {
       errorLogs: '++id, timestamp, service, severity, resolved, [resolved+timestamp]'
     }).upgrade(async tx => {
       // Migration: Convert tone to persona
+      // Note: 'kai' was removed, conservative now maps to 'jax' (direct, pragmatic)
       const TONE_TO_PERSONA: Record<string, string> = {
         'professional': 'sterling',
         'aggressive': 'jax',
         'humorous': 'cipher',
-        'conservative': 'kai'
+        'conservative': 'jax'  // Kai removed, conservative users get Jax
       }
 
       const settings = await tx.table('userSettings').toCollection().first()
       if (settings && settings.tone && !settings.persona) {
-        const persona = TONE_TO_PERSONA[settings.tone] || 'sterling'
+        const persona = TONE_TO_PERSONA[settings.tone] || 'jax'  // Default to Jax
         await tx.table('userSettings').update(settings.id, { persona })
         console.log(`[DB Migration v10] Migrated tone '${settings.tone}' to persona '${persona}'`)
       }
@@ -499,7 +500,7 @@ export const db = new DadAppDatabase()
 
 // Default settings
 export const DEFAULT_SETTINGS: UserSettings = {
-  persona: 'sterling',  // Default AI persona (Sterling = formal, data-centric)
+  persona: 'jax',  // Default AI persona (Jax = direct, no-nonsense veteran trader)
   tone: 'professional', // Deprecated: kept for migration
   dailyBudget: 1000,
   dailyLossLimit: 2,

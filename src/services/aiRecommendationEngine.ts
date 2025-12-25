@@ -9,6 +9,7 @@
  */
 
 import { getAISettings, getSettings } from '../renderer/lib/db'
+import { PERSONA_PROMPTS } from '../renderer/lib/ai'
 import { fetchHistoricalData, fetchLivePrices } from './marketData'
 import {
   calculateIndicators,
@@ -439,7 +440,7 @@ export async function generateRecommendation(
       positionSizeLimit: userSettings.positionSizeLimit ?? 5
     }
 
-    const prompt = buildAnalysisPrompt(symbol, quote, indicators, newsHeadlines, marketRegime, recentPatterns, memoryContext, includeOptionsLanguage, relativeStrength, recommendationFormat, riskSettings)
+    const prompt = buildAnalysisPrompt(symbol, quote, indicators, newsHeadlines, marketRegime, recentPatterns, memoryContext, includeOptionsLanguage, relativeStrength, recommendationFormat, riskSettings, persona)
     const aiResponse = await sendAnalysisToAI(prompt, aiSettings.provider, aiSettings.apiKey, aiSettings.model, persona)
 
     // Record the AI call (budget tracking)
@@ -513,7 +514,8 @@ function buildAnalysisPrompt(
   includeOptionsLanguage: boolean = false,
   relativeStrength: RelativeStrength | null = null,
   recommendationFormat: 'standard' | 'concise' | 'detailed' = 'standard',
-  riskSettings?: RiskSettings
+  riskSettings?: RiskSettings,
+  persona?: 'sterling' | 'jax' | 'cipher'
 ): string {
   // Sanitize all external inputs before including in prompt
   const safeSymbol = sanitizeSymbol(symbol)
@@ -593,6 +595,12 @@ ${riskSettings ? `
 - In HIGH_VOL regimes, reduce position size by 50%` : ''}
 
 **OUTPUT FORMAT:** ${recommendationFormat === 'concise' ? 'Keep rationale under 50 words. Be direct and actionable.' : recommendationFormat === 'detailed' ? 'Provide comprehensive breakdown with all indicators, patterns, risk factors, and confidence reasoning.' : 'Include 2-3 sentences with key data points and reasoning.'}
+${persona && PERSONA_PROMPTS[persona] ? `
+**RATIONALE STYLE (IMPORTANT):**
+You are ${PERSONA_PROMPTS[persona].name}, ${PERSONA_PROMPTS[persona].title}.
+${PERSONA_PROMPTS[persona].rationaleStyle}
+
+Write the rationale field in this voice. The rationale should sound like ${PERSONA_PROMPTS[persona].name} is speaking directly to the trader.` : ''}
 
 Respond ONLY with valid JSON in this exact format:
 
@@ -630,7 +638,7 @@ async function sendAnalysisToAI(
   _provider: string,
   _apiKey: string,
   _model?: string,
-  persona: 'sterling' | 'jax' | 'cipher' | 'kai' = 'sterling'
+  persona: 'sterling' | 'jax' | 'cipher' = 'jax'
 ): Promise<string | null> {
   try {
     // Import AI library functions

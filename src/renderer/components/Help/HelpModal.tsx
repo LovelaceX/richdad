@@ -1466,7 +1466,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               </div>
               <div className="flex gap-3">
                 <span className="text-terminal-amber w-32 flex-shrink-0">AI Persona</span>
-                <span className="text-gray-400">Choose your co-pilot's personality: Sterling, Jax, Cipher, or Kai.</span>
+                <span className="text-gray-400">Choose your co-pilot's personality: Jax, Sterling, or Cipher.</span>
               </div>
             </div>
           </div>
@@ -1965,34 +1965,6 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Pattern-obsessed</span>
                 <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Probability-focused</span>
                 <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Nerdy</span>
-              </div>
-            </div>
-
-            {/* Kai */}
-            <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-5 mb-4">
-              <div className="flex items-center gap-2.5 mb-3">
-                <Leaf className="w-5 h-5 text-purple-400" />
-                <span className="text-purple-400 font-semibold">Kai - The Sage</span>
-              </div>
-              <p className="text-gray-300 text-sm mb-4 leading-relaxed">
-                Kai is a wise trading mentor with decades of experience and a deep focus on market psychology. He uses metaphors from nature and martial arts, emphasizing patience, discipline, and emotional control. Frames advice as timeless principles rather than urgent directives.
-              </p>
-              <div className="bg-black/30 rounded-md p-3.5 mb-3">
-                <p className="text-gray-500 text-[10px] uppercase tracking-wide mb-2">Sample Recommendation</p>
-                <div className="text-gray-200 text-sm leading-relaxed">
-                  <span className="inline-block bg-terminal-amber/20 text-terminal-amber px-1.5 py-0.5 rounded text-xs font-semibold mr-1.5">NVDA</span>
-                  <span className="inline-block bg-yellow-500/20 text-yellow-400 px-1.5 py-0.5 rounded text-[11px] font-semibold">PATIENT BUY</span>
-                  <p className="mt-2.5">The market, like water, seeks its level. NVDA has found temporary equilibrium at its 50-day moving average - a moment of stillness before the next move.</p>
-                  <p className="mt-2">The indicators suggest accumulation, but patience here is strategic. A disciplined entry at $875 honors the risk, with $845 as your line in the sand.</p>
-                  <p className="mt-2">Remember: the trader who controls their emotions controls their destiny. Size your position so a loss doesn't disturb your inner calm.</p>
-                  <p className="mt-2 italic text-gray-400">When the breakout comes, you will be ready.</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Calm</span>
-                <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Philosophical</span>
-                <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Patient</span>
-                <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-gray-400">Psychology-focused</span>
               </div>
             </div>
 

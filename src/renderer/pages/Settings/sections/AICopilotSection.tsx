@@ -5,7 +5,7 @@
  */
 
 // React import not needed for JSX in modern TypeScript
-import { Cpu, AlertCircle, Check, Search, BarChart2, Target, Microscope, Leaf, type LucideIcon } from 'lucide-react'
+import { Cpu, AlertCircle, Check, Search, BarChart2, Target, Microscope, type LucideIcon } from 'lucide-react'
 import { MultiProviderManager } from '../../../components/Settings/MultiProviderManager'
 import { HelpTooltip } from '../../../components/common'
 import { PERSONA_PROMPTS } from '../../../lib/ai'
@@ -24,15 +24,14 @@ interface AICopilotSectionProps {
   onSaveAISettings: (updates: Partial<AISettings>) => Promise<void>
 }
 
-// Persona display order
-const PERSONA_ORDER: PersonaType[] = ['sterling', 'jax', 'cipher', 'kai']
+// Persona display order (Jax first as default)
+const PERSONA_ORDER: PersonaType[] = ['jax', 'sterling', 'cipher']
 
 // Lucide icon mapping for personas
 const PERSONA_ICONS: Record<PersonaType, LucideIcon> = {
-  sterling: BarChart2,
   jax: Target,
+  sterling: BarChart2,
   cipher: Microscope,
-  kai: Leaf,
 }
 
 // Color class mapping for icons

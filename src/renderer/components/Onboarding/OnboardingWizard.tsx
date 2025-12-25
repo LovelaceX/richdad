@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, Leaf, Crown, Brain, CheckCircle2, Download, Copy, Check, ExternalLink } from 'lucide-react'
+import { X, Leaf, Crown, Brain, CheckCircle2, Download, Copy, Check, ExternalLink, Target, BarChart2, Microscope, type LucideIcon } from 'lucide-react'
+import { PERSONA_PROMPTS } from '../../lib/ai'
+import type { PersonaType } from '../../types'
 
 // Platform detection (Mac and Windows only)
 type Platform = 'mac' | 'windows'
@@ -33,7 +35,21 @@ interface OnboardingWizardProps {
 
 type MarketDataProvider = 'polygon' | 'twelvedata'
 type SetupPath = 'free' | 'pro'
-type WizardStepType = 'welcome' | 'terms' | 'path-selection' | 'api-key' | 'ai-provider'
+type WizardStepType = 'welcome' | 'terms' | 'path-selection' | 'api-key' | 'ai-provider' | 'persona'
+
+// Lucide icon mapping for personas
+const PERSONA_ICONS: Record<PersonaType, LucideIcon> = {
+  jax: Target,
+  sterling: BarChart2,
+  cipher: Microscope,
+}
+
+// Color class mapping for personas
+const PERSONA_COLORS: Record<PersonaType, string> = {
+  jax: 'text-orange-400',
+  sterling: 'text-blue-400',
+  cipher: 'text-green-400',
+}
 
 export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
   const [currentStep, setCurrentStep] = useState<WizardStepType>('welcome')
@@ -42,6 +58,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
   const [polygonKey, setPolygonKey] = useState('')
   const [twelvedataKey, setTwelvedataKey] = useState('')
   const [copied, setCopied] = useState(false)
+  const [selectedPersona, setSelectedPersona] = useState<PersonaType>('jax')
 
   // Platform detection for download links
   const platform = getPlatform()
@@ -95,14 +112,20 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
         await updateSettings({ twelvedataApiKey: twelvedataKey })
       }
       setCurrentStep('ai-provider')
-    } else {
-      // Save Ollama as the AI provider and complete onboarding
+    } else if (currentStep === 'ai-provider') {
+      // Save Ollama as the AI provider and go to persona selection
       await updateAISettings({
         provider: 'ollama',
         apiKey: '',  // Not needed for Ollama
         model: 'dolphin-llama3:8b'
       })
-      await updateSettings({ hasCompletedOnboarding: true })
+      setCurrentStep('persona')
+    } else {
+      // Save persona selection and complete onboarding
+      await updateSettings({
+        persona: selectedPersona,
+        hasCompletedOnboarding: true
+      })
       onClose()
     }
   }
@@ -113,7 +136,8 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
       terms: 2,
       'path-selection': 3,
       'api-key': 4,
-      'ai-provider': 5
+      'ai-provider': 5,
+      'persona': 6
     }
     return stepOrder[currentStep]
   }
@@ -126,12 +150,12 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
   }
 
   const getButtonText = () => {
-    if (currentStep === 'ai-provider') return 'Finish'
+    if (currentStep === 'persona') return 'Finish'
     return 'Continue'
   }
 
   const renderStep = () => {
-    const totalSteps = 5
+    const totalSteps = 6
     const stepNumber = getStepNumber()
 
     switch (currentStep) {
@@ -324,9 +348,63 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
 
             <div className="text-center">
               <p className="text-gray-500 text-xs">
-                Click Finish to complete setup. You can configure AI later in Settings.
+                Click Continue to choose your AI copilot's personality.
               </p>
             </div>
+          </div>
+        )
+      case 'persona':
+        return (
+          <div className="space-y-4">
+            <div className="text-center">
+              <p className="text-terminal-amber text-sm mb-1">Step {stepNumber} of {totalSteps}</p>
+              <h3 className="text-white text-lg font-medium">Choose Your AI Copilot</h3>
+              <p className="text-gray-500 text-sm mt-2">Pick a personality for your trading assistant</p>
+            </div>
+
+            <div className="space-y-3">
+              {(['jax', 'sterling', 'cipher'] as PersonaType[]).map((personaId) => {
+                const persona = PERSONA_PROMPTS[personaId]
+                const isSelected = selectedPersona === personaId
+                const IconComponent = PERSONA_ICONS[personaId]
+                const iconColor = PERSONA_COLORS[personaId]
+
+                return (
+                  <button
+                    key={personaId}
+                    onClick={() => setSelectedPersona(personaId)}
+                    className={`w-full p-4 rounded-lg border text-left transition-colors ${
+                      isSelected
+                        ? 'border-terminal-amber bg-terminal-amber/10'
+                        : 'border-terminal-border hover:border-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <IconComponent className={`w-5 h-5 ${iconColor} flex-shrink-0 mt-0.5`} />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="text-white font-medium">{persona.name}</span>
+                            <span className="text-gray-500 text-sm ml-2">{persona.title}</span>
+                          </div>
+                          {isSelected && <Check size={16} className="text-terminal-amber" />}
+                        </div>
+                        <p className="text-gray-400 text-sm mt-1">
+                          {persona.description.split('.')[0]}.
+                        </p>
+                        <p className="text-gray-500 text-xs mt-1">
+                          Best for {persona.bestFor.toLowerCase()}.
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            <p className="text-center text-gray-500 text-xs">
+              You can change your AI persona anytime in Settings → AI Copilot
+            </p>
           </div>
         )
     }
@@ -357,11 +435,11 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
               <div className="flex items-center justify-between p-6">
                 <div>
                   <h2 className="text-white text-xl font-semibold">
-                    {currentStep === 'path-selection' || currentStep === 'api-key' || currentStep === 'ai-provider'
+                    {currentStep === 'path-selection' || currentStep === 'api-key' || currentStep === 'ai-provider' || currentStep === 'persona'
                       ? 'Setup Wizard'
                       : ''}
                   </h2>
-                  {(currentStep === 'path-selection' || currentStep === 'api-key' || currentStep === 'ai-provider') && (
+                  {(currentStep === 'path-selection' || currentStep === 'api-key' || currentStep === 'ai-provider' || currentStep === 'persona') && (
                     <p className="text-gray-400 text-sm mt-1">
                       Configure your market data and AI sources
                     </p>
@@ -387,7 +465,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
                 {currentStep !== 'welcome' ? (
                   <button
                     onClick={() => {
-                      const stepOrder: WizardStepType[] = ['welcome', 'terms', 'path-selection', 'api-key', 'ai-provider']
+                      const stepOrder: WizardStepType[] = ['welcome', 'terms', 'path-selection', 'api-key', 'ai-provider', 'persona']
                       const currentIndex = stepOrder.indexOf(currentStep)
                       if (currentIndex > 0) {
                         setCurrentStep(stepOrder[currentIndex - 1])
