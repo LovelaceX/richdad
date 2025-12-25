@@ -307,11 +307,12 @@ export const useMarketStore = create<MarketState>((set, get) => ({
           console.error('[Market Store] Failed to load chart data:', error)
 
           // Show empty state - no mock data
+          // Always set lastUpdated to avoid "Loading..." stuck forever
           set({
             chartData: [],
             dataSource: {
               provider: null,
-              lastUpdated: null,
+              lastUpdated: Date.now(),
               isDelayed: false,
               cacheAge: 0
             }

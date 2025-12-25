@@ -291,14 +291,16 @@ export function ChartPanel() {
 
             {/* Last updated time */}
             <span className="text-gray-500 text-[10px] tabular-nums">
-              {dataSource?.lastUpdated
-                ? new Date(dataSource.lastUpdated).toLocaleTimeString('en-US', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: true
-                  })
-                : 'Loading...'}
+              {dataSource?.provider === null
+                ? 'No data'
+                : dataSource?.lastUpdated
+                  ? new Date(dataSource.lastUpdated).toLocaleTimeString('en-US', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                      hour12: true
+                    })
+                  : 'Loading...'}
             </span>
 
             {/* Refresh button */}
