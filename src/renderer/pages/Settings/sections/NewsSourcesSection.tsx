@@ -17,7 +17,8 @@ import {
   Check,
   Info,
   Loader2,
-  X
+  X,
+  Globe
 } from 'lucide-react'
 import { useProTraderStore } from '../../../stores/proTraderStore'
 import { getSettings, updateSettings, type UserSettings } from '../../../lib/db'
@@ -55,6 +56,11 @@ export function NewsSourcesSection() {
   const [hfTesting, setHfTesting] = useState(false)
   const [hfTestStatus, setHfTestStatus] = useState<'idle' | 'valid' | 'invalid'>('idle')
   const [hfTestMessage, setHfTestMessage] = useState('')
+
+  // Brave Search API key test state
+  const [braveTesting, setBraveTesting] = useState(false)
+  const [braveTestStatus, setBraveTestStatus] = useState<'idle' | 'valid' | 'invalid'>('idle')
+  const [braveTestMessage, setBraveTestMessage] = useState('')
 
   // Check if Finnhub is configured (provides ticker-specific news)
   const providerHasNews = Boolean(settings?.finnhubApiKey)
@@ -128,6 +134,32 @@ export function NewsSourcesSection() {
     }
   }
 
+  // Test Brave Search API key
+  const handleTestBraveKey = async () => {
+    const apiKey = settings?.braveSearchApiKey
+    if (!apiKey) {
+      setBraveTestStatus('invalid')
+      setBraveTestMessage('No API key entered')
+      return
+    }
+
+    setBraveTesting(true)
+    setBraveTestStatus('idle')
+    setBraveTestMessage('')
+
+    try {
+      const { testBraveSearchKey } = await import('../../../../services/webSearchService')
+      const result = await testBraveSearchKey(apiKey)
+      setBraveTestStatus(result.valid ? 'valid' : 'invalid')
+      setBraveTestMessage(result.message)
+    } catch (error) {
+      setBraveTestStatus('invalid')
+      setBraveTestMessage('Test failed')
+    } finally {
+      setBraveTesting(false)
+    }
+  }
+
   if (!settings) {
     return <div className="text-gray-500">Loading...</div>
   }
@@ -135,6 +167,7 @@ export function NewsSourcesSection() {
   const headlineLimit = settings.headlineLimit ?? 20
   const aiNewsFiltering = settings.aiNewsFiltering ?? false
   const huggingFaceToken = settings.huggingFaceToken ?? ''
+  const braveSearchApiKey = settings.braveSearchApiKey ?? ''
 
   return (
     <div className="space-y-8">
@@ -279,6 +312,91 @@ export function NewsSourcesSection() {
           <p className="text-gray-600 text-xs">
             100% optional. Sentiment works without it.
           </p>
+        </div>
+      </div>
+
+      {/* Web Search for Historical Data */}
+      <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Globe className="w-4 h-4 text-terminal-amber" />
+          <h3 className="text-white text-sm font-medium">Web Search (Optional)</h3>
+          <HelpTooltip content="Enables AI to search the web for historical market events. Ask questions like 'What happened to AAPL in 2014?' and AI will search and summarize results." />
+        </div>
+        <p className="text-gray-500 text-xs mb-4">
+          Enable AI to search the web for historical market events beyond chart data.
+          Free tier includes 2,000 searches/month.
+        </p>
+
+        <div className="space-y-3">
+          <a
+            href="https://brave.com/search/api/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-terminal-amber text-sm hover:underline"
+          >
+            Get Free Brave Search API Key
+            <ExternalLink className="w-3 h-3" />
+          </a>
+
+          <div className="flex gap-2">
+            <input
+              type="password"
+              placeholder="BSA_xxxxxxxxxx..."
+              value={braveSearchApiKey}
+              onChange={(e) => {
+                saveSettings({ braveSearchApiKey: e.target.value })
+                setBraveTestStatus('idle')
+                setBraveTestMessage('')
+              }}
+              className="flex-1 bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white placeholder:text-gray-600 font-mono"
+            />
+            <button
+              onClick={handleTestBraveKey}
+              disabled={braveTesting || !braveSearchApiKey}
+              className="px-4 py-2 bg-terminal-bg border border-terminal-border rounded text-sm text-white hover:border-terminal-amber/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {braveTesting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                'Test'
+              )}
+            </button>
+            {braveSearchApiKey && (
+              <button
+                onClick={() => {
+                  saveSettings({ braveSearchApiKey: '' })
+                  setBraveTestStatus('idle')
+                  setBraveTestMessage('')
+                }}
+                className="px-3 py-2 text-gray-400 hover:text-white transition-colors"
+                title="Clear API key"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Test Result Message */}
+          {braveTestMessage && (
+            <div className={`flex items-center gap-2 text-xs ${
+              braveTestStatus === 'valid' ? 'text-green-400' : 'text-red-400'
+            }`}>
+              {braveTestStatus === 'valid' ? (
+                <Check className="w-3 h-3" />
+              ) : (
+                <X className="w-3 h-3" />
+              )}
+              {braveTestMessage}
+            </div>
+          )}
+
+          <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded text-xs text-blue-300">
+            <p className="font-medium mb-1">How it works:</p>
+            <p className="text-blue-200/70">
+              When you ask AI about historical events (e.g., "What happened to AAPL 10 years ago?"),
+              it will automatically search the web and include relevant sources in its response.
+            </p>
+          </div>
         </div>
       </div>
 

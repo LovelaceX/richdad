@@ -1,8 +1,29 @@
-import { getEnabledProviders, AI_PROVIDERS, type AIProviderConfig, type AIProvider } from './db'
+import { getEnabledProviders, getSettings, AI_PROVIDERS, type AIProviderConfig, type AIProvider } from './db'
 import type { AIMessage, PersonaType } from '../types'
+import { searchWeb, formatSearchResultsForPrompt } from '../../services/webSearchService'
 
 // Timeout for AI API requests (30 seconds)
 const AI_REQUEST_TIMEOUT_MS = 30000
+
+// Patterns that suggest user wants historical data beyond API limits
+const HISTORICAL_QUERY_PATTERNS = [
+  /what happened.*(ago|in \d{4}|years? ago|last year)/i,
+  /history of .*(stock|price|market|company)/i,
+  /\d{4}.*(crash|rally|earnings|split|ipo|merger)/i,
+  /how did .*(perform|do) in \d{4}/i,
+  /tell me about .*(past|historical)/i,
+  /(10|5|2|3|4|6|7|8|9|15|20) years? ago/i,
+  /back in (19|20)\d{2}/i,
+  /during the .*(crisis|crash|bubble|recession)/i,
+  /what was .*(price|stock|market).*(in|during|back)/i
+]
+
+/**
+ * Check if a message is asking about historical data
+ */
+function isHistoricalQuery(message: string): boolean {
+  return HISTORICAL_QUERY_PATTERNS.some(pattern => pattern.test(message))
+}
 
 /**
  * Fetch with timeout using AbortController
@@ -191,6 +212,28 @@ export async function sendChatMessage(
     throw new Error('No AI providers configured. Please add your API key in Settings.')
   }
 
+  // Check if this is a historical query that needs web search
+  let enhancedMessage = userMessage
+  if (isHistoricalQuery(userMessage)) {
+    console.log('[AI] Detected historical query, checking for web search...')
+    try {
+      const settings = await getSettings()
+      if (settings.braveSearchApiKey) {
+        const searchResults = await searchWeb(userMessage, settings.braveSearchApiKey)
+        if (searchResults.results.length > 0) {
+          const webContext = formatSearchResultsForPrompt(searchResults.results)
+          enhancedMessage = `${userMessage}\n\n${webContext}`
+          console.log('[AI] Added', searchResults.results.length, 'web search results to context')
+        }
+      } else {
+        console.log('[AI] No Brave Search API key configured, skipping web search')
+      }
+    } catch (error) {
+      console.warn('[AI] Web search failed:', error)
+      // Continue without web search results
+    }
+  }
+
   // Convert history to chat format
   const chatHistory: ChatMessage[] = history
     .filter(m => m.type === 'chat' && m.role)
@@ -206,7 +249,7 @@ export async function sendChatMessage(
   for (const providerConfig of enabledProviders) {
     try {
       console.log(`[AI] Trying ${providerConfig.provider} (priority ${providerConfig.priority})...`)
-      const response = await callProvider(providerConfig, userMessage, chatHistory, persona)
+      const response = await callProvider(providerConfig, enhancedMessage, chatHistory, persona)
       console.log(`[AI] ${providerConfig.provider} succeeded`)
       return response
     } catch (error) {

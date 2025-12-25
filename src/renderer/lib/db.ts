@@ -91,6 +91,9 @@ export interface UserSettings {
   aiNewsFiltering?: boolean        // Enable AI-based news filtering by watchlist/market relevance
   huggingFaceToken?: string        // Optional HF API token for faster sentiment analysis
 
+  // Web Search (for historical data queries)
+  braveSearchApiKey?: string       // Brave Search API key for historical market event lookup
+
   // Market View Selection
   selectedMarket?: {
     name: string   // "S&P 500", "NASDAQ-100", etc.

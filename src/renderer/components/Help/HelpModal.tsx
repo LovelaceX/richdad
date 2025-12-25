@@ -1824,6 +1824,31 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             </p>
           </div>
 
+          {/* Web Search for Historical Data */}
+          <div className="bg-terminal-bg/50 border border-terminal-border rounded-lg p-5">
+            <h3 className="text-white font-semibold mb-3">Historical Web Search (Optional)</h3>
+            <p className="text-gray-300 text-sm mb-4">
+              Ask AI about historical market events beyond chart data:
+            </p>
+            <div className="space-y-3 text-sm">
+              <div className="bg-terminal-panel rounded p-3">
+                <p className="text-gray-400 text-xs mb-2">Example questions:</p>
+                <ul className="text-gray-300 space-y-1">
+                  <li>• "What happened to AAPL 10 years ago?"</li>
+                  <li>• "Tell me about the 2020 crash"</li>
+                  <li>• "How did Tesla perform during the 2022 bear market?"</li>
+                </ul>
+              </div>
+              <p className="text-gray-400 text-xs">
+                <strong className="text-white">How it works:</strong> When you ask about historical events,
+                AI automatically searches the web and includes sources in its response.
+              </p>
+              <p className="text-gray-500 text-xs">
+                Enable in Settings → News Sources → Web Search. Free tier: 2,000 searches/month.
+              </p>
+            </div>
+          </div>
+
           {/* Acting on Recommendations */}
           <div>
             <h3 className="text-white text-lg font-semibold mb-4">Acting on Recommendations</h3>
