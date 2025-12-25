@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Bot, Loader2, Trash2, AlertTriangle } from 'lucide-react'
+import { X, Bot, Loader2, AlertTriangle } from 'lucide-react'
 import { ActivityLog } from './ActivityLog'
 import { ChatInput } from './ChatInput'
 import { AIPerformanceSummary } from './AIPerformanceSummary'
@@ -115,14 +115,13 @@ export function AIModal({ isOpen, onClose }: AIModalProps) {
               </div>
 
               <div className="flex items-center gap-2">
-                {/* Clear All Button */}
+                {/* Clear Chat Button */}
                 {messages.length > 0 && (
                   <button
                     onClick={handleClear}
-                    className="p-1.5 hover:bg-terminal-border rounded transition-colors"
-                    title="Clear chat history"
+                    className="px-2 py-1 text-xs text-gray-500 hover:text-red-400 hover:bg-terminal-border rounded transition-colors"
                   >
-                    <Trash2 size={14} className="text-gray-500 hover:text-red-400" />
+                    Clear chat
                   </button>
                 )}
 

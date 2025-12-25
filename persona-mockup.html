@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Persona Cards - Design Mockup v2</title>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      padding: 40px;
+      line-height: 1.5;
+    }
+
+    h1 {
+      color: #f5a623;
+      margin-bottom: 10px;
+      font-size: 24px;
+    }
+
+    h2 {
+      color: #fff;
+      margin-bottom: 8px;
+      font-size: 18px;
+    }
+
+    h3 {
+      color: #fff;
+      margin-bottom: 16px;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+
+    .section {
+      margin-bottom: 60px;
+    }
+
+    .section-header {
+      border-bottom: 1px solid #333;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+
+    /* ========== SETTINGS UI - COMPACT ========== */
+    .settings-container {
+      max-width: 500px;
+    }
+
+    .persona-grid-compact {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .persona-card-compact {
+      background: transparent;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .persona-card-compact:hover {
+      border-color: #555;
+    }
+
+    .persona-card-compact.selected {
+      border-color: #f5a623;
+      background: rgba(245, 166, 35, 0.1);
+    }
+
+    .compact-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .compact-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .compact-icon {
+      width: 18px;
+      height: 18px;
+    }
+
+    .compact-icon.blue { color: #60a5fa; }
+    .compact-icon.orange { color: #fb923c; }
+    .compact-icon.green { color: #4ade80; }
+    .compact-icon.purple { color: #a78bfa; }
+
+    .compact-name {
+      font-weight: 500;
+      color: #fff;
+      font-size: 14px;
+    }
+
+    .compact-title {
+      color: #6b7280;
+      font-size: 12px;
+      margin-left: 4px;
+    }
+
+    .compact-best-for {
+      color: #6b7280;
+      font-size: 11px;
+    }
+
+    .check-icon {
+      color: #f5a623;
+      width: 16px;
+      height: 16px;
+    }
+
+    /* ========== HELP MODAL - COMPREHENSIVE ========== */
+    .help-container {
+      max-width: 700px;
+    }
+
+    .help-intro {
+      color: #d1d5db;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    .help-card {
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .help-card.blue {
+      background: rgba(96, 165, 250, 0.08);
+      border: 1px solid rgba(96, 165, 250, 0.25);
+    }
+
+    .help-card.orange {
+      background: rgba(251, 146, 60, 0.08);
+      border: 1px solid rgba(251, 146, 60, 0.25);
+    }
+
+    .help-card.green {
+      background: rgba(74, 222, 128, 0.08);
+      border: 1px solid rgba(74, 222, 128, 0.25);
+    }
+
+    .help-card.purple {
+      background: rgba(167, 139, 250, 0.08);
+      border: 1px solid rgba(167, 139, 250, 0.25);
+    }
+
+    .help-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .help-icon {
+      width: 22px;
+      height: 22px;
+    }
+
+    .help-name {
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .help-name.blue { color: #60a5fa; }
+    .help-name.orange { color: #fb923c; }
+    .help-name.green { color: #4ade80; }
+    .help-name.purple { color: #a78bfa; }
+
+    .help-description {
+      color: #d1d5db;
+      font-size: 13px;
+      margin-bottom: 16px;
+      line-height: 1.6;
+    }
+
+    .sample-rec {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 6px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .sample-rec-label {
+      color: #9ca3af;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .sample-rec-content {
+      color: #e5e7eb;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .sample-rec-ticker {
+      display: inline-block;
+      background: rgba(245, 166, 35, 0.2);
+      color: #f5a623;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-weight: 600;
+      font-size: 12px;
+      margin-right: 6px;
+    }
+
+    .sample-rec-action {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-weight: 600;
+      font-size: 11px;
+      margin-right: 6px;
+    }
+
+    .sample-rec-action.buy {
+      background: rgba(74, 222, 128, 0.2);
+      color: #4ade80;
+    }
+
+    .sample-rec-action.hold {
+      background: rgba(251, 191, 36, 0.2);
+      color: #fbbf24;
+    }
+
+    .help-traits {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .help-trait {
+      background: rgba(255, 255, 255, 0.08);
+      color: #9ca3af;
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    .divider {
+      border-top: 1px solid #333;
+      margin: 50px 0;
+    }
+
+    .version-note {
+      color: #555;
+      font-size: 11px;
+      margin-top: 40px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>AI Persona Cards - Design Mockup v2</h1>
+  <p class="subtitle">Tighter Settings UI + Comprehensive Help Modal with Sample Recommendations</p>
+
+  <!-- ========== SETTINGS UI - COMPACT ========== -->
+  <div class="section">
+    <div class="section-header">
+      <h2>Settings UI - Compact Persona Selection</h2>
+      <p class="subtitle">Tighter cards with essential info only</p>
+    </div>
+
+    <div class="settings-container">
+      <div class="persona-grid-compact">
+        <!-- Sterling - Selected -->
+        <div class="persona-card-compact selected">
+          <div class="compact-header">
+            <div class="compact-left">
+              <i data-lucide="bar-chart-2" class="compact-icon blue"></i>
+              <span class="compact-name">Sterling</span>
+              <span class="compact-title">The Analyst</span>
+            </div>
+            <i data-lucide="check" class="check-icon"></i>
+          </div>
+          <div class="compact-best-for" style="margin-top: 6px; margin-left: 28px;">
+            Formal, data-centric. Best for systematic traders.
+          </div>
+        </div>
+
+        <!-- Jax -->
+        <div class="persona-card-compact">
+          <div class="compact-header">
+            <div class="compact-left">
+              <i data-lucide="target" class="compact-icon orange"></i>
+              <span class="compact-name">Jax</span>
+              <span class="compact-title">The Veteran</span>
+            </div>
+          </div>
+          <div class="compact-best-for" style="margin-top: 6px; margin-left: 28px;">
+            Direct, no-nonsense. Best for active traders.
+          </div>
+        </div>
+
+        <!-- Cipher -->
+        <div class="persona-card-compact">
+          <div class="compact-header">
+            <div class="compact-left">
+              <i data-lucide="microscope" class="compact-icon green"></i>
+              <span class="compact-name">Cipher</span>
+              <span class="compact-title">The Tech Wiz</span>
+            </div>
+          </div>
+          <div class="compact-best-for" style="margin-top: 6px; margin-left: 28px;">
+            Energetic, pattern-focused. Best for quant traders.
+          </div>
+        </div>
+
+        <!-- Kai -->
+        <div class="persona-card-compact">
+          <div class="compact-header">
+            <div class="compact-left">
+              <i data-lucide="leaf" class="compact-icon purple"></i>
+              <span class="compact-name">Kai</span>
+              <span class="compact-title">The Sage</span>
+            </div>
+          </div>
+          <div class="compact-best-for" style="margin-top: 6px; margin-left: 28px;">
+            Calm, philosophical. Best for swing traders.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ========== HELP MODAL - COMPREHENSIVE ========== -->
+  <div class="section">
+    <div class="section-header">
+      <h2>Help Modal - Comprehensive Persona Guide</h2>
+      <p class="subtitle">Full descriptions + sample recommendations</p>
+    </div>
+
+    <div class="help-container">
+      <h3>AI Personas</h3>
+      <p class="help-intro">
+        Choose your AI co-pilot's personality in Settings. Each persona analyzes the same data but communicates in their unique style.
+      </p>
+
+      <!-- Sterling -->
+      <div class="help-card blue">
+        <div class="help-header">
+          <i data-lucide="bar-chart-2" class="help-icon blue"></i>
+          <span class="help-name blue">Sterling - The Analyst</span>
+        </div>
+        <p class="help-description">
+          Sterling is a former quantitative analyst from a top-tier hedge fund. He communicates with the precision of a Bloomberg terminal, always backing recommendations with specific data points and risk metrics. His responses are structured with clear bullet points and never include casual language.
+        </p>
+
+        <div class="sample-rec">
+          <div class="sample-rec-label">Sample Recommendation</div>
+          <div class="sample-rec-content">
+            <span class="sample-rec-ticker">NVDA</span>
+            <span class="sample-rec-action buy">BUY</span>
+            <br><br>
+            Technical confluence at the 50-day MA ($875) suggests favorable risk-adjusted entry.
+            <br><br>
+            <strong>Key metrics:</strong><br>
+            • RSI: 58 (neutral-bullish)<br>
+            • MACD: Bullish crossover confirmed<br>
+            • Volume: 1.2x 20-day average<br>
+            • Risk/Reward: 2.8:1<br><br>
+            <strong>Price Target:</strong> $950 | <strong>Stop Loss:</strong> $845
+          </div>
+        </div>
+
+        <div class="help-traits">
+          <span class="help-trait">Formal</span>
+          <span class="help-trait">Data-centric</span>
+          <span class="help-trait">Structured</span>
+          <span class="help-trait">Risk metrics</span>
+        </div>
+      </div>
+
+      <!-- Jax -->
+      <div class="help-card orange">
+        <div class="help-header">
+          <i data-lucide="target" class="help-icon orange"></i>
+          <span class="help-name orange">Jax - The Veteran Trader</span>
+        </div>
+        <p class="help-description">
+          Jax spent 30 years in the trading pits of Chicago. He's seen every market cycle and has the scars to prove it. Jax keeps sentences short and punchy, using trader slang. He won't sugarcoat bad news and cuts through complexity with simple analogies.
+        </p>
+
+        <div class="sample-rec">
+          <div class="sample-rec-label">Sample Recommendation</div>
+          <div class="sample-rec-content">
+            <span class="sample-rec-ticker">NVDA</span>
+            <span class="sample-rec-action buy">BUY</span>
+            <br><br>
+            Look, this chart's screaming. We're sitting right on the 50-day and catching a bid. I've seen this setup a thousand times.
+            <br><br>
+            Get in around $875. If it breaks $845, get out - don't be a hero. Target's $950, maybe higher if momentum picks up.
+            <br><br>
+            Volume's there. MACD just flipped. Don't overthink it.
+          </div>
+        </div>
+
+        <div class="help-traits">
+          <span class="help-trait">Direct</span>
+          <span class="help-trait">Pragmatic</span>
+          <span class="help-trait">Street-smart</span>
+          <span class="help-trait">No-nonsense</span>
+        </div>
+      </div>
+
+      <!-- Cipher -->
+      <div class="help-card green">
+        <div class="help-header">
+          <i data-lucide="microscope" class="help-icon green"></i>
+          <span class="help-name green">Cipher - The Tech Wiz</span>
+        </div>
+        <p class="help-description">
+          Cipher is an algorithmic trading developer and data scientist who gets genuinely excited about statistical edges. He thinks in terms of signal-to-noise ratios, probability distributions, and backtested patterns. Shows enthusiasm when multiple indicators align.
+        </p>
+
+        <div class="sample-rec">
+          <div class="sample-rec-label">Sample Recommendation</div>
+          <div class="sample-rec-content">
+            <span class="sample-rec-ticker">NVDA</span>
+            <span class="sample-rec-action buy">BUY</span>
+            <br><br>
+            Whoa, this is interesting! Three of my detection algos just triggered simultaneously on NVDA.
+            <br><br>
+            The pattern recognition picked up a bullish engulfing right at the 50-MA support - that's a high-probability setup in my backtests (~68% win rate over 5 years).
+            <br><br>
+            RSI at 58 means we're not overbought, and the MACD histogram just flipped positive. The signal-to-noise ratio on this one is solid.
+            <br><br>
+            Entry: $875 | Target: $950 | Stop: $845
+          </div>
+        </div>
+
+        <div class="help-traits">
+          <span class="help-trait">Energetic</span>
+          <span class="help-trait">Pattern-obsessed</span>
+          <span class="help-trait">Probability-focused</span>
+          <span class="help-trait">Nerdy</span>
+        </div>
+      </div>
+
+      <!-- Kai -->
+      <div class="help-card purple">
+        <div class="help-header">
+          <i data-lucide="leaf" class="help-icon purple"></i>
+          <span class="help-name purple">Kai - The Sage</span>
+        </div>
+        <p class="help-description">
+          Kai is a wise trading mentor with decades of experience and a deep focus on market psychology. He uses metaphors from nature and martial arts, emphasizing patience, discipline, and emotional control. Frames advice as timeless principles rather than urgent directives.
+        </p>
+
+        <div class="sample-rec">
+          <div class="sample-rec-label">Sample Recommendation</div>
+          <div class="sample-rec-content">
+            <span class="sample-rec-ticker">NVDA</span>
+            <span class="sample-rec-action hold">HOLD / PATIENT BUY</span>
+            <br><br>
+            The market, like water, seeks its level. NVDA has found temporary equilibrium at its 50-day moving average - a moment of stillness before the next move.
+            <br><br>
+            The indicators suggest accumulation, but patience here is strategic. A disciplined entry at $875 honors the risk, with $845 as your line in the sand.
+            <br><br>
+            Remember: the trader who controls their emotions controls their destiny. Size your position so a loss doesn't disturb your inner calm.
+            <br><br>
+            When the breakout comes, you will be ready.
+          </div>
+        </div>
+
+        <div class="help-traits">
+          <span class="help-trait">Calm</span>
+          <span class="help-trait">Philosophical</span>
+          <span class="help-trait">Patient</span>
+          <span class="help-trait">Psychology-focused</span>
+        </div>
+      </div>
+
+      <p style="color: #6b7280; font-size: 12px; margin-top: 20px;">
+        All personas provide the same quality analysis - only the communication style differs.
+        Change your persona anytime in Settings → AI Copilot.
+      </p>
+    </div>
+  </div>
+
+  <p class="version-note">Mockup v2 - Compact Settings + Comprehensive Help with Sample Recommendations</p>
+
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { AnimatePresence } from 'framer-motion'
-import { Bot, Loader2, Trash2 } from 'lucide-react'
+import { Bot, Loader2 } from 'lucide-react'
 import { ActivityLog } from './ActivityLog'
 import { ChatInput } from './ChatInput'
 import { AIPerformanceSummary } from './AIPerformanceSummary'
@@ -55,14 +55,13 @@ export function AIPanel() {
             </div>
           )}
 
-          {/* Clear All Button */}
+          {/* Clear Chat Button */}
           {messages.length > 0 && (
             <button
               onClick={handleClear}
-              className="p-1 hover:bg-terminal-border rounded transition-colors"
-              title="Clear chat history"
+              className="px-2 py-1 text-xs text-gray-500 hover:text-red-400 hover:bg-terminal-border rounded transition-colors"
             >
-              <Trash2 size={12} className="text-gray-500 hover:text-red-400" />
+              Clear chat
             </button>
           )}
         </div>

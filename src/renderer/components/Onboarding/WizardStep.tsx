@@ -114,6 +114,16 @@ export function WizardStep({
           <span className="text-terminal-amber">Note:</span> {config.budgetNote}
         </p>
       </div>
+
+      {/* Rate Limit Warning for TwelveData */}
+      {provider === 'twelvedata' && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-3">
+          <p className="text-yellow-400 text-xs">
+            <span className="font-medium">Rate limit:</span> Free tier allows 8 API calls per minute.
+            You may briefly see rate limit messages while initial data loads — this is normal and will resolve quickly.
+          </p>
+        </div>
+      )}
     </div>
   )
 }

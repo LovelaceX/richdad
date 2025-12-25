@@ -215,18 +215,13 @@ export async function sendChatMessage(
   // Check if this is a historical query that needs web search
   let enhancedMessage = userMessage
   if (isHistoricalQuery(userMessage)) {
-    console.log('[AI] Detected historical query, checking for web search...')
+    console.log('[AI] Detected historical query, performing web search...')
     try {
-      const settings = await getSettings()
-      if (settings.braveSearchApiKey) {
-        const searchResults = await searchWeb(userMessage, settings.braveSearchApiKey)
-        if (searchResults.results.length > 0) {
-          const webContext = formatSearchResultsForPrompt(searchResults.results)
-          enhancedMessage = `${userMessage}\n\n${webContext}`
-          console.log('[AI] Added', searchResults.results.length, 'web search results to context')
-        }
-      } else {
-        console.log('[AI] No Brave Search API key configured, skipping web search')
+      const searchResults = await searchWeb(userMessage)
+      if (searchResults.results.length > 0) {
+        const webContext = formatSearchResultsForPrompt(searchResults.results)
+        enhancedMessage = `${userMessage}\n\n${webContext}`
+        console.log('[AI] Added', searchResults.results.length, 'web search results to context')
       }
     } catch (error) {
       console.warn('[AI] Web search failed:', error)

@@ -127,11 +127,11 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
         <div className="mt-4 text-xs">
           {currentPlan === 'free' ? (
             <div className="text-gray-400">
-              <span className="text-terminal-amber font-medium">Free Plan:</span> TwelveData (800 calls/day), Groq AI (free), RSS News
+              <span className="text-terminal-amber font-medium">Free Plan:</span> TwelveData (800 calls/day), Local AI (Ollama), RSS News
             </div>
           ) : (
             <div className="text-gray-400">
-              <span className="text-terminal-amber font-medium">Pro Plan:</span> Polygon (unlimited), OpenAI/Claude, All news sources
+              <span className="text-terminal-amber font-medium">Pro Plan:</span> Polygon (unlimited), Local AI (Ollama), All news sources
             </div>
           )}
         </div>

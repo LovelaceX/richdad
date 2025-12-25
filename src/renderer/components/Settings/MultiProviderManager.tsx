@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Check, AlertCircle, Cpu, Loader2, Download, Copy, RefreshCw, ExternalLink } from 'lucide-react'
+import { Check, AlertCircle, Cpu, Loader2, Download, Copy, RefreshCw } from 'lucide-react'
 import { AI_PROVIDERS, type AIProviderConfig } from '../../lib/db'
+import { useOllamaStore } from '../../stores/ollamaStore'
+import { getRequiredModel } from '../../lib/ollamaService'
 
 // Platform detection (Mac and Windows only)
 type Platform = 'mac' | 'windows'
@@ -26,83 +28,51 @@ interface MultiProviderManagerProps {
   onChange: (providers: AIProviderConfig[]) => void
 }
 
-type OllamaStatus = 'checking' | 'running' | 'not_running' | 'model_missing'
-
-interface OllamaInfo {
-  status: OllamaStatus
-  models: string[]
-  error?: string
-}
-
 export function MultiProviderManager({ providers, onChange }: MultiProviderManagerProps) {
-  const [ollamaInfo, setOllamaInfo] = useState<OllamaInfo>({ status: 'checking', models: [] })
+  // Use shared Ollama store instead of local state
+  const ollamaStatus = useOllamaStore(state => state.status)
+  const ollamaModels = useOllamaStore(state => state.models)
+  const hasRequiredModel = useOllamaStore(state => state.hasRequiredModel)
+  const ollamaError = useOllamaStore(state => state.error)
+  const refreshOllama = useOllamaStore(state => state.refresh)
+
   const [copied, setCopied] = useState(false)
   const platform = getPlatform()
   const platformName = PLATFORM_NAMES[platform]
 
   const copyCommand = () => {
-    navigator.clipboard.writeText('ollama pull dolphin-llama3:8b')
+    navigator.clipboard.writeText(`ollama pull ${getRequiredModel()}`)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
-  // Check Ollama status on mount and periodically
+  // Refresh status periodically when Settings page is open
   useEffect(() => {
-    checkOllamaStatus()
-    const interval = setInterval(checkOllamaStatus, 30000) // Check every 30s
+    const interval = setInterval(refreshOllama, 30000) // Check every 30s
     return () => clearInterval(interval)
-  }, [])
+  }, [refreshOllama])
 
-  const checkOllamaStatus = async () => {
-    try {
-      // Check if Ollama is running by hitting the tags endpoint
-      const response = await fetch('http://localhost:11434/api/tags', {
-        method: 'GET',
-        signal: AbortSignal.timeout(5000)
-      })
-
-      if (!response.ok) {
-        setOllamaInfo({ status: 'not_running', models: [], error: 'Ollama not responding' })
-        return
-      }
-
-      const data = await response.json()
-      const models = (data.models || []).map((m: { name: string }) => m.name)
-
-      // Check if the required model is installed
-      const requiredModel = 'dolphin-llama3:8b'
-      const hasRequiredModel = models.some((m: string) =>
-        m.includes('dolphin-llama3') || m === requiredModel
-      )
-
-      if (hasRequiredModel) {
-        setOllamaInfo({ status: 'running', models })
-
-        // Auto-configure Ollama if not already configured
-        if (providers.length === 0) {
-          onChange([{
-            provider: 'ollama',
-            apiKey: '',  // Not needed
-            model: requiredModel,
-            enabled: true,
-            priority: 1
-          }])
-        }
-      } else {
-        setOllamaInfo({
-          status: 'model_missing',
-          models,
-          error: `Model ${requiredModel} not found. Run: ollama pull ${requiredModel}`
-        })
-      }
-    } catch (error) {
-      setOllamaInfo({
-        status: 'not_running',
-        models: [],
-        error: 'Cannot connect to Ollama. Is it running?'
-      })
+  // Auto-configure Ollama if detected and not already configured
+  useEffect(() => {
+    if (ollamaStatus === 'running' && hasRequiredModel && providers.length === 0) {
+      onChange([{
+        provider: 'ollama',
+        apiKey: '',  // Not needed
+        model: getRequiredModel(),
+        enabled: true,
+        priority: 1
+      }])
     }
-  }
+  }, [ollamaStatus, hasRequiredModel, providers.length, onChange])
+
+  // Convert store status to component's expected format
+  const ollamaInfo = {
+    status: ollamaStatus === 'running'
+      ? (hasRequiredModel ? 'running' : 'model_missing')
+      : (ollamaStatus === 'checking' || ollamaStatus === 'starting' ? 'checking' : 'not_running'),
+    models: ollamaModels,
+    error: ollamaError
+  } as const
 
   const getStatusBadge = () => {
     switch (ollamaInfo.status) {
@@ -156,7 +126,7 @@ export function MultiProviderManager({ providers, onChange }: MultiProviderManag
           </p>
         </div>
         <button
-          onClick={checkOllamaStatus}
+          onClick={refreshOllama}
           className="p-2 text-gray-400 hover:text-white hover:bg-terminal-border rounded transition-colors"
           title="Refresh status"
         >
@@ -180,9 +150,7 @@ export function MultiProviderManager({ providers, onChange }: MultiProviderManag
       {/* Step-by-Step Setup Guide */}
       <div className="space-y-3">
         {/* Step 1: Download Ollama */}
-        <div className={`p-3 rounded-lg border transition-colors ${
-          step1Complete ? 'border-green-500/50 bg-green-500/5' : 'border-terminal-border'
-        }`}>
+        <div className="p-3 rounded-lg border border-terminal-border">
           <div className="flex items-center gap-2 mb-2">
             <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
               step1Complete ? 'bg-green-500 text-black' : 'bg-terminal-border text-white'
@@ -198,16 +166,13 @@ export function MultiProviderManager({ providers, onChange }: MultiProviderManag
             onClick={() => window.open(DOWNLOAD_URLS[platform], '_blank')}
             className="ml-8 px-4 py-2 bg-terminal-amber text-black rounded font-medium hover:bg-amber-500 transition-colors flex items-center gap-2 text-sm"
           >
-            <Download size={16} />
             Download for {platformName}
-            <ExternalLink size={12} />
+            <Download size={16} />
           </button>
         </div>
 
         {/* Step 2: Install the AI Model */}
-        <div className={`p-3 rounded-lg border transition-colors ${
-          step2Complete ? 'border-green-500/50 bg-green-500/5' : 'border-terminal-border'
-        }`}>
+        <div className="p-3 rounded-lg border border-terminal-border">
           <div className="flex items-center gap-2 mb-2">
             <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
               step2Complete ? 'bg-green-500 text-black' : 'bg-terminal-border text-white'
@@ -237,9 +202,7 @@ export function MultiProviderManager({ providers, onChange }: MultiProviderManag
         </div>
 
         {/* Step 3: Ready! */}
-        <div className={`p-3 rounded-lg border transition-colors ${
-          step3Complete ? 'border-green-500/50 bg-green-500/5' : 'border-terminal-border'
-        }`}>
+        <div className="p-3 rounded-lg border border-terminal-border">
           <div className="flex items-center gap-2 mb-2">
             <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
               step3Complete ? 'bg-green-500 text-black' : 'bg-terminal-border text-white'

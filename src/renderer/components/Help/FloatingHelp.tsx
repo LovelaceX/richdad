@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { HelpCircle, X, Maximize2, Keyboard, Zap, Gauge, BookOpen } from 'lucide-react'
+import { HelpCircle, X, Maximize2, Keyboard, Zap, Gauge, BookOpen, ClipboardCheck } from 'lucide-react'
 import { useHelpStore, type HelpSection } from '../../stores/helpStore'
 
 interface QuickLink {
@@ -11,6 +11,7 @@ interface QuickLink {
 
 const quickLinks: QuickLink[] = [
   { icon: <Zap size={14} />, label: 'Getting Started', section: 'get-started' },
+  { icon: <ClipboardCheck size={14} />, label: 'Verify Setup', section: 'verify-setup' },
   { icon: <Keyboard size={14} />, label: 'Shortcuts', section: 'shortcuts' },
   { icon: <Gauge size={14} />, label: 'API Limits', section: 'api-limits' },
   { icon: <BookOpen size={14} />, label: 'Full Guide', section: 'full' },

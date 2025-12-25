@@ -67,8 +67,8 @@ export interface UserSettings {
   twelvedataApiKey?: string  // TwelveData.com - 800 calls/day free, real-time (default)
 
   // Simplified plan selection: Free or Pro
-  // Free: TwelveData (800/day), Groq AI, RSS news
-  // Pro: Polygon (unlimited), OpenAI/Claude, all news sources
+  // Free: TwelveData (800/day), Local AI (Ollama), RSS news
+  // Pro: Polygon (unlimited), Local AI (Ollama), all news sources
   plan?: 'free' | 'pro'
 
   // Onboarding
@@ -91,8 +91,7 @@ export interface UserSettings {
   aiNewsFiltering?: boolean        // Enable AI-based news filtering by watchlist/market relevance
   huggingFaceToken?: string        // Optional HF API token for faster sentiment analysis
 
-  // Web Search (for historical data queries)
-  braveSearchApiKey?: string       // Brave Search API key for historical market event lookup
+  // Web Search is now free via DuckDuckGo - no API key needed!
 
   // Market View Selection
   selectedMarket?: {
@@ -1193,7 +1192,7 @@ export async function getEnabledProviders(): Promise<AIProviderConfig[]> {
   // If we have multi-provider config, use it
   if (settings.providers && settings.providers.length > 0) {
     return settings.providers
-      .filter(p => p.enabled && p.apiKey)
+      .filter(p => p.enabled && (AI_PROVIDERS[p.provider].requiresKey === false || p.apiKey))
       .sort((a, b) => a.priority - b.priority)
   }
 

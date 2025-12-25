@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 export type HelpSection =
-  | 'get-started' | 'whats-new' | 'dashboard' | 'watchlist'
+  | 'get-started' | 'verify-setup' | 'ollama-setup' | 'whats-new' | 'dashboard' | 'watchlist'
   | 'news' | 'intel-panel' | 'price-alerts'
   | 'chart-guide' | 'ai-copilot' | 'api-limits' | 'shortcuts'
   | 'troubleshooting' | 'faq' | 'terms' | 'privacy'

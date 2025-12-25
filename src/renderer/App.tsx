@@ -3,6 +3,8 @@ import { invoke } from '@tauri-apps/api/core'
 import { TopBar } from './components/TopBar'
 import { useNavigationStore } from './stores/navigationStore'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { useOllamaStore } from './stores/ollamaStore'
+import { OllamaStartupOverlay } from './components/OllamaStartupOverlay'
 
 // Lazy load pages for better code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })))
@@ -52,6 +54,12 @@ export default function App() {
   const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true)
   const [showWizard, setShowWizard] = useState(false)
   const [showFindInPage, setShowFindInPage] = useState(false)
+  const [showOllamaOverlay, setShowOllamaOverlay] = useState(true)
+
+  // Ollama store
+  const ollamaStatus = useOllamaStore(state => state.status)
+  const ollamaInitialized = useOllamaStore(state => state.isInitialized)
+  const initializeOllama = useOllamaStore(state => state.initialize)
 
   // Initialize database, load user watchlist, and selected market on mount
   useEffect(() => {
@@ -60,9 +68,23 @@ export default function App() {
       await migrateApiKeysToEncrypted() // Encrypt any existing plaintext API keys
       await loadUserWatchlist()
       await loadSelectedMarket()
+      // Initialize Ollama after DB (non-blocking)
+      initializeOllama()
     }
     init().catch(console.error)
-  }, [loadUserWatchlist, loadSelectedMarket])
+  }, [loadUserWatchlist, loadSelectedMarket, initializeOllama])
+
+  // Auto-dismiss Ollama overlay after success or timeout
+  useEffect(() => {
+    if (ollamaStatus === 'running') {
+      setShowOllamaOverlay(false)
+    }
+    // Auto-dismiss after 8 seconds regardless (give it time to start)
+    if (ollamaInitialized && ollamaStatus !== 'checking' && ollamaStatus !== 'starting') {
+      const timer = setTimeout(() => setShowOllamaOverlay(false), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [ollamaStatus, ollamaInitialized])
 
   // Check if user needs onboarding wizard on mount
   useEffect(() => {
@@ -211,6 +233,11 @@ export default function App() {
         isOpen={showFindInPage}
         onClose={() => setShowFindInPage(false)}
       />
+
+      {/* Ollama Startup Overlay - show only during startup if not in wizard */}
+      {showOllamaOverlay && !showWizard && !isCheckingOnboarding && (ollamaStatus === 'checking' || ollamaStatus === 'starting' || ollamaStatus === 'start_failed') && (
+        <OllamaStartupOverlay onDismiss={() => setShowOllamaOverlay(false)} />
+      )}
     </>
   )
 }

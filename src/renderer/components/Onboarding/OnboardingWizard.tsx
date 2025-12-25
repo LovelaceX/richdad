@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { X, Leaf, Crown, Brain, CheckCircle2, Download, Copy, Check, ExternalLink, Target, BarChart2, Microscope, type LucideIcon } from 'lucide-react'
+import { X, Leaf, Crown, Brain, CheckCircle2, Download, Copy, Check, Target, BarChart2, Microscope, type LucideIcon } from 'lucide-react'
 import { PERSONA_PROMPTS } from '../../lib/ai'
 import type { PersonaType } from '../../types'
 
@@ -131,13 +131,15 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
   }
 
   const getStepNumber = () => {
+    // Welcome has no step number (returns 0)
+    // All other steps are numbered 1-5
     const stepOrder: Record<WizardStepType, number> = {
-      welcome: 1,
-      terms: 2,
-      'path-selection': 3,
-      'api-key': 4,
-      'ai-provider': 5,
-      'persona': 6
+      welcome: 0,           // Not numbered
+      terms: 1,             // Step 1 of 5
+      'path-selection': 2,  // Step 2 of 5
+      'api-key': 3,         // Step 3 of 5
+      'ai-provider': 4,     // Step 4 of 5
+      'persona': 5          // Step 5 of 5
     }
     return stepOrder[currentStep]
   }
@@ -155,12 +157,12 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
   }
 
   const renderStep = () => {
-    const totalSteps = 6
+    const totalSteps = 5  // Welcome doesn't count as a numbered step
     const stepNumber = getStepNumber()
 
     switch (currentStep) {
       case 'welcome':
-        return <WelcomeStep stepNumber={stepNumber} totalSteps={totalSteps} />
+        return <WelcomeStep />
       case 'terms':
         return (
           <TermsStep
@@ -201,7 +203,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
                     <div className="text-gray-400 text-sm mt-1">Perfect for getting started</div>
                     <div className="text-gray-500 text-xs mt-2 space-y-1">
                       <div>• TwelveData (800 calls/day)</div>
-                      <div>• Groq AI (Llama 3 - free)</div>
+                      <div>• Ollama AI (local, free, private)</div>
                       <div>• RSS News feeds</div>
                     </div>
                   </div>
@@ -229,7 +231,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
                     <div className="text-gray-400 text-sm mt-1">Unlimited data + premium AI</div>
                     <div className="text-gray-500 text-xs mt-2 space-y-1">
                       <div>• Polygon (unlimited calls)</div>
-                      <div>• OpenAI or Claude</div>
+                      <div>• Ollama AI (local, free, private)</div>
                       <div>• All news sources</div>
                     </div>
                   </div>
@@ -292,20 +294,21 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
               {/* Step 1: Download */}
               <div className="p-3 rounded-lg border border-terminal-border">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 rounded-full bg-terminal-amber flex items-center justify-center text-xs font-bold text-black">1</div>
+                  <div className="w-6 h-6 rounded-full bg-terminal-border flex items-center justify-center text-xs font-bold text-white">1</div>
                   <span className="text-white font-medium text-sm">Download Ollama</span>
                 </div>
                 <p className="text-gray-400 text-sm ml-8 mb-2">
                   Free AI that runs on your computer - no account needed
                 </p>
-                <button
-                  onClick={() => window.open(DOWNLOAD_URLS[platform], '_blank')}
-                  className="ml-8 px-4 py-2 bg-terminal-amber text-black rounded font-medium hover:bg-amber-500 transition-colors flex items-center gap-2 text-sm"
+                <a
+                  href={DOWNLOAD_URLS[platform]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-8 px-4 py-2 bg-terminal-amber text-black rounded font-medium hover:bg-amber-500 transition-colors inline-flex items-center gap-2 text-sm"
                 >
-                  <Download size={16} />
                   Download for {platformName}
-                  <ExternalLink size={12} />
-                </button>
+                  <Download size={16} />
+                </a>
               </div>
 
               {/* Step 2: Install Model */}
@@ -314,9 +317,30 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
                   <div className="w-6 h-6 rounded-full bg-terminal-border flex items-center justify-center text-xs font-bold text-white">2</div>
                   <span className="text-white font-medium text-sm">Install the AI Model</span>
                 </div>
-                <p className="text-gray-400 text-sm ml-8 mb-2">
-                  Open {platform === 'mac' ? 'Terminal' : platform === 'windows' ? 'Command Prompt' : 'Terminal'} and paste this:
-                </p>
+
+                {/* Platform-specific instructions */}
+                {platform === 'mac' && (
+                  <div className="text-gray-400 text-xs ml-8 mb-3 space-y-1">
+                    <p className="text-white font-medium">How to open Terminal:</p>
+                    <ol className="list-decimal list-inside ml-2 space-y-0.5">
+                      <li>Press <kbd className="bg-terminal-bg px-1.5 py-0.5 rounded text-terminal-amber">⌘ Cmd</kbd> + <kbd className="bg-terminal-bg px-1.5 py-0.5 rounded text-terminal-amber">Space</kbd></li>
+                      <li>Type "Terminal" and press Enter</li>
+                      <li>Paste the command below and press Enter</li>
+                    </ol>
+                  </div>
+                )}
+
+                {platform === 'windows' && (
+                  <div className="text-gray-400 text-xs ml-8 mb-3 space-y-1">
+                    <p className="text-white font-medium">How to open Command Prompt:</p>
+                    <ol className="list-decimal list-inside ml-2 space-y-0.5">
+                      <li>Press the <kbd className="bg-terminal-bg px-1.5 py-0.5 rounded text-terminal-amber">Windows</kbd> key</li>
+                      <li>Type "cmd" and press Enter</li>
+                      <li>Paste the command below and press Enter</li>
+                    </ol>
+                  </div>
+                )}
+
                 <div className="ml-8 flex items-center gap-2">
                   <code className="flex-1 bg-terminal-bg px-3 py-2 rounded text-sm text-terminal-amber font-mono">
                     ollama pull dolphin-llama3:8b

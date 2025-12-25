@@ -51,7 +51,7 @@ export const useSettingsStore = create<SettingsState>()(
       zoomLevel: 100,
       tickerSpeed: 60,  // Default middle speed (60 seconds - readable pace)
       theme: getSavedTheme(),
-      isLiveDataEnabled: false,  // Paused by default - user clicks to start
+      isLiveDataEnabled: true,  // Auto-enabled - data flows on app launch
       panelSizes: {
         leftPanel: 15,  // Reduced from 20% to give more space to chart
         rightPanel: 20, // Reduced from 25% to give more space to chart

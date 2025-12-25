@@ -4,7 +4,7 @@ import { NavBar } from '../Navigation/NavBar'
 import { APIBudgetAlert } from './APIBudgetAlert'
 import { AIBudgetAlert } from './AIBudgetAlert'
 import { AICopilotButton } from './AICopilotButton'
-import { LiveDataToggle } from './LiveDataToggle'
+import { OllamaStatusIndicator } from './OllamaStatusIndicator'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useNetworkStatus } from '../../hooks/useNetworkStatus'
 
@@ -61,9 +61,9 @@ export function TopBar() {
           <CommandInput />
         </div>
 
-        {/* Right: Live Toggle + AI Copilot + Zoom Controls */}
+        {/* Right: Ollama Status + AI Copilot + Zoom Controls */}
         <div className="flex justify-end items-center gap-2 no-drag" style={{ width: '280px' }}>
-          <LiveDataToggle />
+          <OllamaStatusIndicator />
           <AICopilotButton />
           <ZoomControls />
         </div>

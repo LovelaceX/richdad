@@ -27,6 +27,7 @@ type Section =
   | 'chart-guide'
   | 'settings-guide'
   | 'ai-copilot'
+  | 'ollama-setup'
   | 'api-limits'
   | 'shortcuts'
   | 'troubleshooting'
@@ -87,6 +88,10 @@ const sectionContent: Record<Section, { title: string; searchableText: string }>
   'ai-copilot': {
     title: 'AI Copilot',
     searchableText: 'openai claude gemini grok deepseek groq llama recommendation chat provider thinking animation phases finnhub news buy call buy put options options-aware call put leverage buy sell hold confidence technical analysis sentiment market regime risk management position size stop loss take profit price target rationale explanation ai analysis automatic manual trigger chat interface conversation history performance tracking win rate accuracy options trading suggestions rate limit unlimited fallback persona personality sterling analyst jax veteran trader cipher tech wiz kai sage quant formal professional direct pragmatic energetic nerdy calm philosophical patient communication style voice character traits'
+  },
+  'ollama-setup': {
+    title: 'Ollama Setup Guide',
+    searchableText: 'ollama local ai install download setup configure run free private offline model llama mistral codellama phi neural chat localhost port 11434 pull serve terminal command line homebrew macos windows linux docker no api key unlimited requests privacy on device machine learning inference'
   },
   'api-limits': {
     title: 'API Limits & Usage',
@@ -195,6 +200,7 @@ export function HelpModal({ isOpen, onClose, initialSection }: HelpModalProps) {
     { id: 'chart-guide', label: 'Chart Controls', icon: BarChart3 },
     { id: 'settings-guide', label: 'Settings Guide', icon: Settings },
     { id: 'ai-copilot', label: 'AI Copilot', icon: Zap },
+    { id: 'ollama-setup', label: 'Ollama Setup', icon: Database },
     { id: 'api-limits', label: 'API Limits & Usage', icon: Gauge },
     { id: 'shortcuts', label: 'Keyboard Shortcuts', icon: Keyboard },
     { id: 'troubleshooting', label: 'Troubleshooting', icon: AlertTriangle },
@@ -1826,7 +1832,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
 
           {/* Web Search for Historical Data */}
           <div className="bg-terminal-bg/50 border border-terminal-border rounded-lg p-5">
-            <h3 className="text-white font-semibold mb-3">Historical Web Search (Optional)</h3>
+            <h3 className="text-white font-semibold mb-3">Historical Web Search</h3>
             <p className="text-gray-300 text-sm mb-4">
               Ask AI about historical market events beyond chart data:
             </p>
@@ -1843,9 +1849,9 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 <strong className="text-white">How it works:</strong> When you ask about historical events,
                 AI automatically searches the web and includes sources in its response.
               </p>
-              <p className="text-gray-500 text-xs">
-                Enable in Settings → News Sources → Web Search. Free tier: 2,000 searches/month.
-              </p>
+              <div className="bg-terminal-up/10 border border-terminal-up/30 rounded p-2 text-terminal-up text-xs">
+                Works automatically - no setup needed!
+              </div>
             </div>
           </div>
 
@@ -2014,6 +2020,238 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             <p className="text-gray-500 text-xs mt-5">
               All personas provide the same quality analysis - only the communication style differs.
               Change your persona anytime in Settings → AI Copilot.
+            </p>
+          </div>
+        </div>
+      )
+
+    case 'ollama-setup':
+      return (
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-terminal-amber text-2xl font-bold mb-2">Ollama Setup Guide</h2>
+            <p className="text-gray-400">Run AI locally on your machine - free, private, and unlimited</p>
+          </div>
+
+          {/* What is Ollama */}
+          <div className="bg-terminal-amber/10 border border-terminal-amber/30 rounded-lg p-5">
+            <div className="flex items-start gap-3">
+              <div className="w-12 h-12 rounded-lg bg-terminal-amber/20 flex items-center justify-center flex-shrink-0">
+                <span className="text-3xl">🦙</span>
+              </div>
+              <div>
+                <h3 className="text-white font-semibold text-lg">What is Ollama?</h3>
+                <p className="text-gray-300 text-sm mt-2">
+                  Ollama is a tool that runs AI models locally on your computer. Instead of sending your data to cloud services like OpenAI or Claude, everything stays on your machine - completely private and free.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Why Local AI */}
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Why Run AI Locally?</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
+                <div className="flex items-center gap-2 text-terminal-up mb-2">
+                  <span>✓</span>
+                  <span className="font-medium">100% Free</span>
+                </div>
+                <p className="text-gray-400 text-sm">No API costs, no subscriptions, no usage limits</p>
+              </div>
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
+                <div className="flex items-center gap-2 text-terminal-up mb-2">
+                  <span>✓</span>
+                  <span className="font-medium">Private</span>
+                </div>
+                <p className="text-gray-400 text-sm">Your trading data never leaves your computer</p>
+              </div>
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
+                <div className="flex items-center gap-2 text-terminal-up mb-2">
+                  <span>✓</span>
+                  <span className="font-medium">Unlimited</span>
+                </div>
+                <p className="text-gray-400 text-sm">No rate limits - analyze as much as you want</p>
+              </div>
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
+                <div className="flex items-center gap-2 text-terminal-up mb-2">
+                  <span>✓</span>
+                  <span className="font-medium">Uncensored</span>
+                </div>
+                <p className="text-gray-400 text-sm">Direct trading advice without excessive disclaimers</p>
+              </div>
+            </div>
+          </div>
+
+          <SectionDivider />
+
+          {/* Installation by Platform */}
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Installation</h3>
+
+            {/* macOS */}
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5 mb-4">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-2xl">🍎</span>
+                <span className="text-white font-medium">macOS</span>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-gray-400 text-sm mb-2">Option 1: Download from website</p>
+                  <div className="bg-terminal-panel rounded p-3">
+                    <p className="text-gray-300 text-sm">Visit <span className="text-terminal-amber">ollama.ai</span> → Download for Mac</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-gray-400 text-sm mb-2">Option 2: Homebrew</p>
+                  <div className="bg-terminal-panel rounded p-3">
+                    <code className="text-terminal-amber text-sm">brew install ollama</code>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Windows */}
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5 mb-4">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-2xl">🪟</span>
+                <span className="text-white font-medium">Windows</span>
+              </div>
+              <div className="bg-terminal-panel rounded p-3">
+                <p className="text-gray-300 text-sm">Visit <span className="text-terminal-amber">ollama.ai</span> → Download for Windows</p>
+              </div>
+            </div>
+
+            {/* Linux */}
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-2xl">🐧</span>
+                <span className="text-white font-medium">Linux</span>
+              </div>
+              <div className="bg-terminal-panel rounded p-3">
+                <code className="text-terminal-amber text-sm">curl -fsSL https://ollama.ai/install.sh | sh</code>
+              </div>
+            </div>
+          </div>
+
+          <SectionDivider />
+
+          {/* Download the Model */}
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Download the AI Model</h3>
+            <p className="text-gray-300 text-sm mb-4">
+              After installing Ollama, open Terminal (Mac/Linux) or Command Prompt (Windows) and run:
+            </p>
+            <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4 mb-4">
+              <code className="text-terminal-amber text-lg">ollama pull dolphin-llama3:8b</code>
+            </div>
+            <div className="space-y-2 text-sm">
+              <Step>This downloads the <span className="text-white">dolphin-llama3:8b</span> model (~5GB)</Step>
+              <Step>One-time download - model is cached locally</Step>
+              <Step>Requires ~8GB RAM for optimal performance</Step>
+            </div>
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mt-4">
+              <p className="text-blue-400 text-sm">
+                <strong>Why dolphin-llama3?</strong> This model is fine-tuned to be helpful without excessive guardrails. It provides direct trading advice that cloud AI models refuse to give.
+              </p>
+            </div>
+          </div>
+
+          <SectionDivider />
+
+          {/* Running Ollama */}
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Running Ollama</h3>
+            <div className="space-y-4">
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+                <p className="text-white font-medium mb-3">macOS / Windows</p>
+                <p className="text-gray-300 text-sm">
+                  Ollama runs automatically as a background service after installation. Look for the llama icon in your menu bar (Mac) or system tray (Windows).
+                </p>
+              </div>
+              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+                <p className="text-white font-medium mb-3">Linux / Manual Start</p>
+                <div className="bg-terminal-panel rounded p-3 mb-2">
+                  <code className="text-terminal-amber text-sm">ollama serve</code>
+                </div>
+                <p className="text-gray-400 text-sm">
+                  Keep this terminal window open while using RichDad
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <SectionDivider />
+
+          {/* Verify It's Working */}
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Verify It's Working</h3>
+            <div className="space-y-3">
+              <Step><span className="text-white font-medium">1.</span> Open RichDad → Settings (<kbd className="bg-terminal-border px-2 py-0.5 rounded text-xs mx-1">Cmd/Ctrl+3</kbd>)</Step>
+              <Step><span className="text-white font-medium">2.</span> Go to <span className="text-white">AI Copilot</span> section</Step>
+              <Step><span className="text-white font-medium">3.</span> Look for the green "Ollama Connected" status</Step>
+            </div>
+            <div className="bg-terminal-up/10 border border-terminal-up/30 rounded-lg p-4 mt-4">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-terminal-up"></span>
+                <span className="text-terminal-up font-medium">Ollama Connected</span>
+              </div>
+              <p className="text-gray-400 text-sm mt-2">
+                When you see this, AI Copilot is ready to use!
+              </p>
+            </div>
+          </div>
+
+          {/* Troubleshooting */}
+          <div className="bg-terminal-down/10 border border-terminal-down/30 rounded-lg p-5">
+            <h3 className="text-terminal-down font-semibold mb-3">Connection Issues?</h3>
+            <div className="space-y-3 text-sm">
+              <div>
+                <p className="text-white font-medium">Ollama not detected</p>
+                <p className="text-gray-400">Make sure Ollama is running (check menu bar icon or run <code className="text-terminal-amber">ollama serve</code>)</p>
+              </div>
+              <div>
+                <p className="text-white font-medium">Model not found</p>
+                <p className="text-gray-400">Run <code className="text-terminal-amber">ollama pull dolphin-llama3:8b</code> to download the model</p>
+              </div>
+              <div>
+                <p className="text-white font-medium">Slow responses</p>
+                <p className="text-gray-400">Close other resource-intensive apps. AI runs on your CPU/GPU and needs memory.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Alternative Models */}
+          <div>
+            <h3 className="text-white text-lg font-semibold mb-4">Alternative Models</h3>
+            <p className="text-gray-400 text-sm mb-4">
+              While dolphin-llama3:8b is recommended, you can try other models:
+            </p>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between bg-terminal-bg border border-terminal-border rounded p-3">
+                <div>
+                  <span className="text-white font-medium">llama3.1:8b</span>
+                  <span className="text-gray-500 text-sm ml-2">~5GB</span>
+                </div>
+                <span className="text-gray-400 text-sm">More cautious, fewer direct recommendations</span>
+              </div>
+              <div className="flex items-center justify-between bg-terminal-bg border border-terminal-border rounded p-3">
+                <div>
+                  <span className="text-white font-medium">mistral:7b</span>
+                  <span className="text-gray-500 text-sm ml-2">~4GB</span>
+                </div>
+                <span className="text-gray-400 text-sm">Fast, good for chat</span>
+              </div>
+              <div className="flex items-center justify-between bg-terminal-bg border border-terminal-border rounded p-3">
+                <div>
+                  <span className="text-white font-medium">dolphin-mistral:7b</span>
+                  <span className="text-gray-500 text-sm ml-2">~4GB</span>
+                </div>
+                <span className="text-gray-400 text-sm">Smaller alternative to dolphin-llama3</span>
+              </div>
+            </div>
+            <p className="text-gray-500 text-xs mt-3">
+              To use a different model: Settings → AI Copilot → Custom Model Name
             </p>
           </div>
         </div>
@@ -2676,6 +2914,66 @@ This will let the AI learn from YOUR trading patterns without requiring a local 
 - No account required - no data leaves your machine
 
 You own your data. You can export or delete it anytime from Settings.`
+            },
+            {
+              q: 'How do I install Ollama?',
+              a: `Ollama is free and easy to install:
+
+macOS: Download from ollama.ai or run "brew install ollama"
+Windows: Download from ollama.ai
+Linux: Run "curl -fsSL https://ollama.ai/install.sh | sh"
+
+After installation, run: ollama pull dolphin-llama3:8b
+
+This downloads the recommended AI model (~5GB). See Help → Ollama Setup for detailed instructions.`
+            },
+            {
+              q: 'Why is Ollama not connecting?',
+              a: `Common fixes:
+
+1. Make sure Ollama is running (look for llama icon in menu bar/system tray)
+2. Try running "ollama serve" in terminal
+3. Verify the model is downloaded: "ollama list" should show dolphin-llama3:8b
+4. Check if port 11434 is available (Ollama's default port)
+5. Restart Ollama and RichDad
+
+If still not working, see Help → Ollama Setup → Troubleshooting.`
+            },
+            {
+              q: 'What are the system requirements for Ollama?',
+              a: `Minimum requirements:
+- 8GB RAM (16GB recommended)
+- 10GB free disk space
+- macOS 11+, Windows 10+, or Linux
+
+The AI runs on your CPU by default. If you have an NVIDIA GPU with 8GB+ VRAM, Ollama will automatically use it for faster responses.
+
+Tip: Close other memory-intensive apps while using AI for best performance.`
+            },
+            {
+              q: 'Can I use a different AI model with Ollama?',
+              a: `Yes! While dolphin-llama3:8b is recommended, you can use any Ollama model:
+
+1. Download a model: "ollama pull mistral:7b"
+2. Go to Settings → AI Copilot
+3. Enter the model name in "Custom Model Name"
+
+Popular alternatives:
+- llama3.1:8b - More cautious recommendations
+- mistral:7b - Faster, smaller model
+- dolphin-mistral:7b - Uncensored, smaller than dolphin-llama3`
+            },
+            {
+              q: 'Why use Ollama instead of OpenAI/Claude?',
+              a: `Ollama has key advantages for trading analysis:
+
+1. Free - No API costs or subscriptions
+2. Private - Your data never leaves your computer
+3. Uncensored - Gives direct BUY/SELL recommendations
+4. No rate limits - Analyze as much as you want
+5. Offline capable - Works without internet (after model download)
+
+Cloud AI providers have safety guardrails that prevent direct trading advice. Local models like dolphin-llama3 are fine-tuned to be helpful without excessive disclaimers.`
             },
             {
               q: 'Why use RichDad vs TradingView or NinjaTrader?',

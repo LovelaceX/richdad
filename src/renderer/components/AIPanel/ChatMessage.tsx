@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import { AlertCircle, TrendingUp, Info, Zap, User, ChevronDown, ChevronUp, X } from 'lucide-react'
+import { AlertCircle, TrendingUp, Info, Zap, User, ChevronDown, ChevronUp } from 'lucide-react'
 import type { AIMessage } from '../../types'
 import { formatRelativeTime } from '../../lib/utils'
-import { useAIStore } from '../../stores/aiStore'
 
 interface ChatMessageProps {
   message: AIMessage
@@ -40,8 +39,6 @@ const COLLAPSED_LENGTH = 150
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const [expanded, setExpanded] = useState(false)
-  const [isHovered, setIsHovered] = useState(false)
-  const removeAlert = useAIStore(state => state.removeAlert)
   const config = typeConfig[message.type] || typeConfig.info
   const Icon = config.icon
 
@@ -54,12 +51,8 @@ export function ChatMessage({ message }: ChatMessageProps) {
   // User message styling
   if (isUserMessage) {
     return (
-      <div
-        className="flex justify-end group"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        <div className="relative max-w-[85%] p-2 rounded text-xs bg-terminal-amber/20 border-r-2 border-terminal-amber">
+      <div className="flex justify-end group">
+        <div className="max-w-[85%] p-2 rounded text-xs bg-terminal-amber/20 border-r-2 border-terminal-amber">
           <div className="flex items-start gap-2">
             <div className="flex-1 min-w-0">
               <p className="text-gray-200 leading-relaxed">{message.content}</p>
@@ -69,16 +62,6 @@ export function ChatMessage({ message }: ChatMessageProps) {
             </div>
             <User size={12} className="text-terminal-amber mt-0.5 flex-shrink-0" />
           </div>
-          {/* Delete button for user messages */}
-          {isHovered && (
-            <button
-              onClick={() => removeAlert(message.id)}
-              className="absolute top-1 left-1 p-1 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-              title="Delete message"
-            >
-              <X size={12} />
-            </button>
-          )}
         </div>
       </div>
     )
@@ -88,13 +71,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
   return (
     <div
       className={`
-        relative p-2 rounded text-xs
+        p-2 rounded text-xs
         ${config.bgColor}
         border-l-2
         ${message.type === 'recommendation' ? 'border-terminal-amber' : 'border-transparent'}
       `}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
       <div className="flex items-start gap-2">
         <Icon size={12} className={`${config.color} mt-0.5 flex-shrink-0`} />
@@ -132,17 +113,6 @@ export function ChatMessage({ message }: ChatMessageProps) {
             {formatRelativeTime(message.timestamp)}
           </span>
         </div>
-
-        {/* Delete button - shows on hover for all AI messages */}
-        {isHovered && (
-          <button
-            onClick={() => removeAlert(message.id)}
-            className="absolute top-1 right-1 p-1 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-            title="Delete message"
-          >
-            <X size={12} />
-          </button>
-        )}
       </div>
     </div>
   )

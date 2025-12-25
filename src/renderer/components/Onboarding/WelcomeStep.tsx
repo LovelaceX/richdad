@@ -1,22 +1,10 @@
 import { TrendingUp, Shield, Brain } from 'lucide-react'
 
-interface WelcomeStepProps {
-  stepNumber: number
-  totalSteps: number
-}
-
-export function WelcomeStep({ stepNumber, totalSteps }: WelcomeStepProps) {
+// WelcomeStep has no props - it's just the welcome screen without step numbers
+export function WelcomeStep() {
   return (
     <div className="space-y-4">
-      {/* Step Progress */}
-      <div className="flex items-center gap-2 text-sm">
-        <span className="text-terminal-amber font-medium">
-          Step {stepNumber} of {totalSteps}:
-        </span>
-        <span className="text-gray-400">Welcome</span>
-      </div>
-
-      {/* Welcome Header */}
+      {/* Welcome Header - no step indicator */}
       <div className="text-center py-2">
         <div className="inline-flex items-center justify-center mb-4">
           <img src="/richdad-logo.png" alt="RichDad" className="w-20 h-20 object-contain" />

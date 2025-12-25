@@ -18,6 +18,43 @@ const CHART_LOAD_DEBOUNCE_MS = 300 // 300ms debounce
 // Store market-changed listener reference for proper cleanup
 let marketChangedHandler: ((e: Event) => void) | null = null
 
+/**
+ * Staggered fetch for TwelveData to avoid rate limit (8 calls/min)
+ * Fetches symbols in small batches with delays between them
+ */
+async function staggeredFetchForTwelveData(
+  symbols: string[],
+  provider: string
+): Promise<Quote[]> {
+  // Only stagger for TwelveData (8 calls/min limit)
+  if (provider !== 'twelvedata') {
+    return fetchLivePrices(symbols)
+  }
+
+  const BATCH_SIZE = 3  // Fetch 3 symbols at a time
+  const BATCH_DELAY_MS = 8000  // 8 second delay between batches (safe for 8/min)
+
+  const results: Quote[] = []
+
+  for (let i = 0; i < symbols.length; i += BATCH_SIZE) {
+    const batch = symbols.slice(i, i + BATCH_SIZE)
+    try {
+      const quotes = await fetchLivePrices(batch)
+      results.push(...quotes)
+    } catch (error) {
+      console.warn(`[Market Store] Batch fetch failed for ${batch.join(', ')}:`, error)
+    }
+
+    // Delay before next batch (except for last batch)
+    if (i + BATCH_SIZE < symbols.length) {
+      console.log(`[Market Store] Rate limit protection: waiting ${BATCH_DELAY_MS/1000}s before next batch...`)
+      await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS))
+    }
+  }
+
+  return results
+}
+
 // Extended timeframe options: 1M, 5M, 15M, 30M, 45M, 1H, 2H, 4H, 5H, 1D, 1W
 type Timeframe = '1min' | '5min' | '15min' | '30min' | '45min' | '60min' | '120min' | '240min' | '300min' | 'daily' | 'weekly'
 
@@ -339,9 +376,11 @@ export const useMarketStore = create<MarketState>((set, get) => ({
 
       // Fetch initial quotes for watchlist (so Market Watch shows data on startup)
       // This is a one-time fetch that doesn't require Live Data toggle
+      // Uses staggered fetching for TwelveData to avoid rate limit (8/min)
       try {
         const symbols = [etf, ...constituents.map(c => c.symbol)]
-        const quotes = await fetchLivePrices(symbols)
+        const provider = settings.marketDataProvider || 'polygon'
+        const quotes = await staggeredFetchForTwelveData(symbols, provider)
         if (quotes.length > 0) {
           console.log(`[Market Store] Initial quotes fetched: ${quotes.length} symbols`)
           set(state => ({

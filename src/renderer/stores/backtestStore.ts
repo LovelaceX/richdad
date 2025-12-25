@@ -50,7 +50,7 @@ interface BacktestState {
 
 // Default backtest configuration
 const DEFAULT_CONFIG: Omit<BacktestConfig, 'id'> = {
-  symbol: 'SPY',
+  symbol: '',
   startDate: Date.now() - (90 * 24 * 60 * 60 * 1000), // 90 days ago
   endDate: Date.now() - (24 * 60 * 60 * 1000), // Yesterday (previous day)
   timeframe: '1d',

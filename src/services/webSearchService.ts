@@ -1,8 +1,8 @@
 /**
  * Web Search Service
  *
- * Provides web search capability for historical market data queries.
- * Uses Brave Search API (2000 free searches/month).
+ * Provides free web search using DuckDuckGo HTML scraping.
+ * No API key required - works out of the box!
  */
 
 // Types
@@ -10,40 +10,88 @@ export interface WebSearchResult {
   title: string
   url: string
   description: string
-  date?: string
 }
 
 export interface WebSearchResponse {
   results: WebSearchResult[]
   query: string
-  source: 'brave' | 'fallback'
+  source: 'duckduckgo'
   error?: string
 }
 
-// Brave Search API endpoint
-const BRAVE_SEARCH_ENDPOINT = 'https://api.search.brave.com/res/v1/web/search'
+// DuckDuckGo HTML endpoint (no API key needed)
+const DUCKDUCKGO_HTML = 'https://html.duckduckgo.com/html/'
 
 // Cache for search results (5 minute TTL)
 const searchCache = new Map<string, { results: WebSearchResponse; timestamp: number }>()
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
 /**
- * Search the web using Brave Search API
+ * Parse DuckDuckGo HTML search results
  */
-export async function searchWeb(
-  query: string,
-  apiKey?: string
-): Promise<WebSearchResponse> {
-  // Return empty results if no API key
-  if (!apiKey) {
-    return {
-      results: [],
-      query,
-      source: 'fallback',
-      error: 'No Brave Search API key configured'
+function parseSearchResults(html: string): WebSearchResult[] {
+  const results: WebSearchResult[] = []
+
+  // DuckDuckGo HTML results are in <div class="result"> elements
+  // Each has: <a class="result__a"> for title/url, <a class="result__snippet"> for description
+
+  // Extract result blocks - they're between "result__" class markers
+  const resultPattern = /<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>[\s\S]*?<a[^>]*class="result__snippet"[^>]*>([^<]*(?:<[^>]*>[^<]*)*)<\/a>/gi
+
+  let match
+  while ((match = resultPattern.exec(html)) !== null && results.length < 5) {
+    const [, rawUrl, title, rawDescription] = match
+
+    // DuckDuckGo wraps URLs in a redirect, extract actual URL
+    let url = rawUrl
+    const uddgMatch = rawUrl.match(/uddg=([^&]+)/)
+    if (uddgMatch) {
+      url = decodeURIComponent(uddgMatch[1])
+    }
+
+    // Clean up description (remove HTML tags)
+    const description = rawDescription
+      .replace(/<[^>]*>/g, '')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .trim()
+
+    if (title && url && description) {
+      results.push({
+        title: title.trim(),
+        url,
+        description
+      })
     }
   }
 
+  // Fallback: try simpler pattern if regex didn't work
+  if (results.length === 0) {
+    // Look for result__url and result__title patterns
+    const simplePattern = /<a[^>]*class="[^"]*result__url[^"]*"[^>]*>([^<]+)<\/a>[\s\S]*?<a[^>]*class="[^"]*result__a[^"]*"[^>]*>([^<]+)<\/a>/gi
+
+    while ((match = simplePattern.exec(html)) !== null && results.length < 5) {
+      const [, urlText, title] = match
+      if (title && urlText) {
+        results.push({
+          title: title.trim(),
+          url: urlText.includes('://') ? urlText.trim() : `https://${urlText.trim()}`,
+          description: ''
+        })
+      }
+    }
+  }
+
+  return results
+}
+
+/**
+ * Search the web using DuckDuckGo (free, no API key needed!)
+ */
+export async function searchWeb(query: string): Promise<WebSearchResponse> {
   // Check cache first
   const cacheKey = query.toLowerCase().trim()
   const cached = searchCache.get(cacheKey)
@@ -53,44 +101,31 @@ export async function searchWeb(
   }
 
   try {
-    console.log('[WebSearch] Searching for:', query)
+    console.log('[WebSearch] Searching DuckDuckGo for:', query)
 
-    const response = await fetch(
-      `${BRAVE_SEARCH_ENDPOINT}?q=${encodeURIComponent(query)}&count=5`,
-      {
-        headers: {
-          'Accept': 'application/json',
-          'X-Subscription-Token': apiKey
-        }
-      }
-    )
+    // POST to DuckDuckGo HTML search
+    const formData = new URLSearchParams({ q: query })
+
+    const response = await fetch(DUCKDUCKGO_HTML, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+      },
+      body: formData
+    })
 
     if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error('Invalid Brave Search API key')
-      }
-      if (response.status === 429) {
-        throw new Error('Brave Search rate limit exceeded')
-      }
-      throw new Error(`Brave Search error: ${response.status}`)
+      throw new Error(`DuckDuckGo error: ${response.status}`)
     }
 
-    const data = await response.json()
+    const html = await response.text()
+    const results = parseSearchResults(html)
 
     const result: WebSearchResponse = {
-      results: data.web?.results?.map((r: {
-        title?: string
-        url?: string
-        description?: string
-        age?: string
-      }) => ({
-        title: r.title || 'Untitled',
-        url: r.url || '',
-        description: r.description || '',
-        date: r.age
-      })) || [],
+      results,
       query,
-      source: 'brave'
+      source: 'duckduckgo'
     }
 
     // Cache the results
@@ -104,7 +139,7 @@ export async function searchWeb(
     return {
       results: [],
       query,
-      source: 'fallback',
+      source: 'duckduckgo',
       error: error instanceof Error ? error.message : 'Search failed'
     }
   }
@@ -120,7 +155,7 @@ export function formatSearchResultsForPrompt(results: WebSearchResult[]): string
 **WEB SEARCH RESULTS:**
 ${results.map((r, i) => `${i + 1}. ${r.title}
    ${r.description}
-   Source: ${r.url}${r.date ? ` (${r.date})` : ''}`).join('\n\n')}
+   Source: ${r.url}`).join('\n\n')}
 
 Use these sources to answer the user's question about historical events. Cite the sources in your response.
 `
@@ -132,42 +167,4 @@ Use these sources to answer the user's question about historical events. Cite th
 export function clearSearchCache(): void {
   searchCache.clear()
   console.log('[WebSearch] Cache cleared')
-}
-
-/**
- * Test if a Brave Search API key is valid
- */
-export async function testBraveSearchKey(apiKey: string): Promise<{ valid: boolean; message: string }> {
-  if (!apiKey) {
-    return { valid: false, message: 'No API key provided' }
-  }
-
-  try {
-    const response = await fetch(
-      `${BRAVE_SEARCH_ENDPOINT}?q=test&count=1`,
-      {
-        headers: {
-          'Accept': 'application/json',
-          'X-Subscription-Token': apiKey
-        }
-      }
-    )
-
-    if (response.ok) {
-      return { valid: true, message: 'API key verified' }
-    }
-
-    if (response.status === 401) {
-      return { valid: false, message: 'Invalid API key' }
-    }
-
-    if (response.status === 429) {
-      return { valid: true, message: 'API key valid (rate limited)' }
-    }
-
-    return { valid: false, message: `API error: ${response.status}` }
-
-  } catch (error) {
-    return { valid: false, message: 'Connection failed' }
-  }
 }
