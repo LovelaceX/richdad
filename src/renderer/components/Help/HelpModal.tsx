@@ -142,6 +142,8 @@ interface SetupChecklist {
     sentimentColors: boolean
   }
   aiCopilot: {
+    ollamaRunning: boolean
+    personaSelected: boolean
     chatResponds: boolean
     analyzeWorks: boolean
     recommendationsAppear: boolean
@@ -159,6 +161,8 @@ const defaultChecklist: SetupChecklist = {
     sentimentColors: false
   },
   aiCopilot: {
+    ollamaRunning: false,
+    personaSelected: false,
     chatResponds: false,
     analyzeWorks: false,
     recommendationsAppear: false
@@ -601,6 +605,20 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           <div>
             <SectionLabel label="AI Copilot" />
             <div className="space-y-1">
+              <ChecklistItem
+                id="ollamaRunning"
+                sectionKey="aiCopilot"
+                title="Ollama is running"
+                hint="Settings → AI Copilot should show green 'Running' status"
+                checked={checklist.aiCopilot.ollamaRunning}
+              />
+              <ChecklistItem
+                id="personaSelected"
+                sectionKey="aiCopilot"
+                title="AI persona selected"
+                hint="Choose Jax, Sterling, or Cipher in Settings → AI Copilot"
+                checked={checklist.aiCopilot.personaSelected}
+              />
               <ChecklistItem
                 id="chatResponds"
                 sectionKey="aiCopilot"
