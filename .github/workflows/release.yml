@@ -6,8 +6,17 @@ on:
       - 'v*'
 
 jobs:
-  build-macos:
-    runs-on: macos-latest
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: ''
+          - platform: windows-latest
+            args: ''
+
+    runs-on: ${{ matrix.platform }}
     permissions:
       contents: write
 
@@ -38,15 +47,22 @@ jobs:
             ## RichDad ${{ github.ref_name }}
 
             ### Download
-            - **macOS**: Download the .dmg file below
+            - **macOS**: Download the `.dmg` file
+            - **Windows**: Download the `.msi` installer
 
-            ### Installation
+            ### macOS Installation
             1. Download the DMG file
             2. Open the DMG and drag RichDad to Applications
-            3. First launch: Right-click then Open (to bypass Gatekeeper)
+            3. First launch: Right-click → Open (to bypass Gatekeeper)
+
+            ### Windows Installation
+            1. Download the MSI installer
+            2. Run the installer and follow prompts
+            3. Launch RichDad from Start Menu
 
             ### Requirements
-            - macOS 11.0 or later
+            - macOS 11.0+ or Windows 10+
             - Ollama for AI features (https://ollama.com)
           releaseDraft: false
           prerelease: false
+          args: ${{ matrix.args }}
