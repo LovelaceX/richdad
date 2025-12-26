@@ -14,12 +14,11 @@ import { useMarketStore } from '../../stores/marketStore'
 import { useAIStore } from '../../stores/aiStore'
 import { usePatternStore } from '../../stores/patternStore'
 import { useDrawingStore } from '../../stores/drawingStore'
-import { formatPrice, formatChange, formatPercent, getColorClass } from '../../lib/utils'
+// formatPrice, formatChange, formatPercent, getColorClass moved to MarketIndexDropdown
 import { getSettings } from '../../lib/db'
 
 export function ChartPanel() {
   const selectedTicker = useMarketStore(state => state.selectedTicker)
-  const watchlist = useMarketStore(state => state.watchlist)
   const timeframe = useMarketStore(state => state.timeframe)
   const setTimeframe = useMarketStore(state => state.setTimeframe)
   const selectedDate = useMarketStore(state => state.selectedDate)
@@ -89,13 +88,6 @@ export function ChartPanel() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isChartExpanded, toggleChartExpanded])
 
-  // Memoize the selected item lookup to avoid re-computing on every render
-  const selectedItem = useMemo(
-    () => watchlist.find(item => item.symbol === selectedTicker),
-    [watchlist, selectedTicker]
-  )
-  const quote = selectedItem?.quote
-
   // Date picker constraints
   const today = new Date().toISOString().split('T')[0]
   const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -109,36 +101,23 @@ export function ChartPanel() {
   return (
     <div className={wrapperClasses}>
       {/* Header with ticker info */}
-      <div className="panel-header flex items-center justify-between gap-2 overflow-visible">
-        {/* Essential info - always visible, never shrink */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="panel-header flex items-center gap-2 overflow-visible">
+        {/* Left group: Symbol + Buy/Sell - always visible */}
+        <div className="flex items-center gap-3 flex-shrink-0">
           <TrendingUp size={14} />
-          {/* Market Index Dropdown shows symbol + price + regime */}
+          {/* Market Index Dropdown shows symbol + price */}
           <MarketIndexDropdown />
-        </div>
-
-        {/* Controls - can shrink/scroll */}
-        <div className="flex items-center gap-4 flex-shrink-0">
-          {quote && (
-            <div className="flex items-center gap-4 text-[11px] font-normal">
-              <span className="text-white tabular-nums">
-                ${formatPrice(quote.price)}
-              </span>
-              <span className={`tabular-nums ${getColorClass(quote.change)}`}>
-                {formatChange(quote.change)} ({formatPercent(quote.changePercent)})
-              </span>
-              <span className="text-gray-500">
-                Vol: {(quote.volume / 1_000_000).toFixed(2)}M
-              </span>
-            </div>
-          )}
-
-          {/* Quick Buy/Sell Buttons */}
+          {/* Quick Buy/Sell Buttons - right next to symbol */}
           <QuickTradeButtons />
-
           {/* Position Size Calculator */}
           <PositionSizeCalculator />
+        </div>
 
+        {/* Flexible spacer */}
+        <div className="flex-1" />
+
+        {/* Right group: Tools and controls */}
+        <div className="flex items-center gap-4 flex-shrink-0">
           {/* Pattern / News / Market Context Toggles */}
           <div className="flex items-center gap-1 border-l border-terminal-border pl-3">
             <button
