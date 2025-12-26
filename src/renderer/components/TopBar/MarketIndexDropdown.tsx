@@ -105,7 +105,10 @@ export function MarketIndexDropdown() {
           title={selectedMarket.fullName}
         >
           <span className="text-terminal-amber font-medium text-sm">
-            {selectedMarket.etf}
+            {selectedMarket.name}
+          </span>
+          <span className="text-gray-400 text-xs">
+            ({selectedMarket.etf})
           </span>
           <ChevronDown
             size={14}

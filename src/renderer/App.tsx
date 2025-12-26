@@ -58,7 +58,6 @@ export default function App() {
 
   // Ollama store
   const ollamaStatus = useOllamaStore(state => state.status)
-  const ollamaInitialized = useOllamaStore(state => state.isInitialized)
   const initializeOllama = useOllamaStore(state => state.initialize)
 
   // Initialize database, load user watchlist, and selected market on mount
@@ -74,17 +73,14 @@ export default function App() {
     init().catch(console.error)
   }, [loadUserWatchlist, loadSelectedMarket, initializeOllama])
 
-  // Auto-dismiss Ollama overlay after success or timeout
+  // Auto-dismiss Ollama overlay only on success
+  // Keep overlay visible on failure so user can click "Try Again" or "Continue Without AI"
   useEffect(() => {
     if (ollamaStatus === 'running') {
       setShowOllamaOverlay(false)
     }
-    // Auto-dismiss after 8 seconds regardless (give it time to start)
-    if (ollamaInitialized && ollamaStatus !== 'checking' && ollamaStatus !== 'starting') {
-      const timer = setTimeout(() => setShowOllamaOverlay(false), 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [ollamaStatus, ollamaInitialized])
+    // NOTE: Do NOT auto-dismiss on failure - let user decide
+  }, [ollamaStatus])
 
   // Check if user needs onboarding wizard on mount
   useEffect(() => {
