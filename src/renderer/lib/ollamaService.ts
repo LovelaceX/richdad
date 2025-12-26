@@ -1,4 +1,5 @@
 import { Command } from '@tauri-apps/plugin-shell'
+import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
 
 export type OllamaStatus =
   | 'checking'
@@ -22,13 +23,19 @@ const REQUIRED_MODEL = 'dolphin-llama3:8b'
 
 /**
  * Check if Ollama API is responding
+ * Uses Tauri HTTP plugin to bypass CORS/WebView restrictions
  */
 export async function checkOllamaRunning(): Promise<boolean> {
   try {
-    const response = await fetch(`${OLLAMA_API}/api/tags`, {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), CHECK_TIMEOUT)
+
+    const response = await tauriFetch(`${OLLAMA_API}/api/tags`, {
       method: 'GET',
-      signal: AbortSignal.timeout(CHECK_TIMEOUT)
+      signal: controller.signal
     })
+
+    clearTimeout(timeoutId)
     return response.ok
   } catch {
     return false
@@ -37,13 +44,19 @@ export async function checkOllamaRunning(): Promise<boolean> {
 
 /**
  * Get installed models from Ollama
+ * Uses Tauri HTTP plugin to bypass CORS/WebView restrictions
  */
 export async function getOllamaModels(): Promise<string[]> {
   try {
-    const response = await fetch(`${OLLAMA_API}/api/tags`, {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), CHECK_TIMEOUT)
+
+    const response = await tauriFetch(`${OLLAMA_API}/api/tags`, {
       method: 'GET',
-      signal: AbortSignal.timeout(CHECK_TIMEOUT)
+      signal: controller.signal
     })
+
+    clearTimeout(timeoutId)
     if (!response.ok) return []
     const data = await response.json()
     return (data.models || []).map((m: { name: string }) => m.name)

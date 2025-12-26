@@ -13,7 +13,9 @@
       "identifier": "http:default",
       "allow": [
         { "url": "https://api.tiingo.com/**" },
-        { "url": "https://*.tiingo.com/**" }
+        { "url": "https://*.tiingo.com/**" },
+        { "url": "http://localhost:11434/**" },
+        { "url": "http://127.0.0.1:11434/**" }
       ]
     }
   ]

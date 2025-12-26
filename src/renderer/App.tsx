@@ -229,8 +229,13 @@ export default function App() {
         onClose={() => setShowFindInPage(false)}
       />
 
-      {/* Ollama Startup Overlay - show only during startup if not in wizard */}
-      {showOllamaOverlay && !showWizard && !isCheckingOnboarding && (ollamaStatus === 'checking' || ollamaStatus === 'starting' || ollamaStatus === 'start_failed') && (
+      {/* Ollama Startup Overlay - show during startup or on failure */}
+      {showOllamaOverlay && !showWizard && !isCheckingOnboarding && (
+        ollamaStatus === 'checking' ||
+        ollamaStatus === 'starting' ||
+        ollamaStatus === 'start_failed' ||
+        ollamaStatus === 'not_running'
+      ) && (
         <OllamaStartupOverlay onDismiss={() => setShowOllamaOverlay(false)} />
       )}
     </>
