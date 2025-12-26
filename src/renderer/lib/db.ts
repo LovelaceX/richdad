@@ -66,8 +66,8 @@ export interface UserSettings {
   tiingoApiKey?: string  // Tiingo.com - 50 tickers/hr free, 5000/hr on Power ($10/mo)
 
   // Simplified plan selection: Free or Pro
-  // Free: Tiingo (50 tickers/hr), Local AI (Ollama), RSS news
-  // Pro: Tiingo Power (5000 tickers/hr), Local AI (Ollama), all news sources
+  // Free: Tiingo (50 tickers/hr), Local AI (Ollama), 3 RSS feeds
+  // Pro: Tiingo Power (5000 tickers/hr), Local AI (Ollama), Unlimited RSS feeds
   plan?: 'free' | 'pro'
 
   // Onboarding

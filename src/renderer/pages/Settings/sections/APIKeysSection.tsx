@@ -109,11 +109,11 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
         <div className="mt-4 text-xs">
           {currentPlan === 'free' ? (
             <div className="text-gray-400">
-              <span className="text-terminal-amber font-medium">Free Plan:</span> Tiingo Starter (50/hour), Local AI (Ollama), RSS News
+              <span className="text-terminal-amber font-medium">Free Plan:</span> Tiingo Starter (50/hour), Local AI (Ollama), 3 RSS feeds
             </div>
           ) : (
             <div className="text-gray-400">
-              <span className="text-terminal-amber font-medium">Pro Plan:</span> Tiingo Power (5,000/hour), Local AI (Ollama), All news sources
+              <span className="text-terminal-amber font-medium">Pro Plan:</span> Tiingo Power (5,000/hour), Local AI (Ollama), Unlimited RSS feeds
             </div>
           )}
         </div>
@@ -190,7 +190,7 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
             <ul className="text-gray-400 text-sm space-y-2 mb-4">
               <li className="flex items-center gap-2">
                 <span className="text-terminal-amber">•</span>
-                <span>Watchlist: 5 → <span className="text-white">20 symbols</span></span>
+                <span>Watchlist: 10 → <span className="text-white">20 symbols</span></span>
               </li>
               <li className="flex items-center gap-2">
                 <span className="text-terminal-amber">•</span>
@@ -198,7 +198,7 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
               </li>
               <li className="flex items-center gap-2">
                 <span className="text-terminal-amber">•</span>
-                <span>Backtests: 5/day → <span className="text-white">Unlimited</span></span>
+                <span>Backtests: 10/day → <span className="text-white">Unlimited</span></span>
               </li>
               <li className="flex items-center gap-2">
                 <span className="text-terminal-amber">•</span>

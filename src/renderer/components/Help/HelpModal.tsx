@@ -453,7 +453,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 </p>
                 <Step><span className="text-white">Tiingo Power</span> - 5,000 tickers/hour ($10/mo)</Step>
                 <Step><span className="text-white">Same Ollama AI</span> - No API costs for AI</Step>
-                <Step>All RSS news sources</Step>
+                <Step>Unlimited RSS feeds</Step>
               </div>
             </div>
           </div>
@@ -3599,7 +3599,7 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
                 </div>
                 <div className="flex items-start gap-2">
                   <Check size={16} className="text-terminal-amber mt-0.5 flex-shrink-0" />
-                  <span>All RSS news sources</span>
+                  <span>Unlimited RSS feeds</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <Check size={16} className="text-terminal-amber mt-0.5 flex-shrink-0" />
