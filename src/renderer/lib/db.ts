@@ -1320,7 +1320,8 @@ export async function getEnabledProviders(): Promise<AIProviderConfig[]> {
   }
 
   // Fall back to legacy single-provider config
-  if (settings.apiKey) {
+  // Note: Ollama doesn't require an API key (it's local)
+  if (settings.apiKey || settings.provider === 'ollama') {
     return [{
       provider: settings.provider,
       apiKey: settings.apiKey,
