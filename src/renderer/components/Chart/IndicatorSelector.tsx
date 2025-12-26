@@ -18,11 +18,6 @@ const INDICATOR_OPTIONS: IndicatorOption[] = [
     type: 'macd',
     label: 'MACD',
     description: 'Moving Average Convergence Divergence (12, 26, 9)'
-  },
-  {
-    type: 'stochRsi',
-    label: 'Stoch RSI',
-    description: 'Stochastic Relative Strength Index (14, 14, 3, 3)'
   }
 ]
 

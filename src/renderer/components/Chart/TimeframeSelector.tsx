@@ -6,22 +6,22 @@ interface TimeframeSelectorProps {
   symbol: string
 }
 
+// Tiingo-supported timeframes only
 const SPY_TIMEFRAMES = [
   { label: '1M', value: '1min' },
   { label: '5M', value: '5min' },
   { label: '15M', value: '15min' },
   { label: '30M', value: '30min' },
-  { label: '45M', value: '45min' },
   { label: '1H', value: '60min' },
   { label: '2H', value: '120min' },
   { label: '4H', value: '240min' },
-  { label: '5H', value: '300min' },
   { label: '1D', value: 'daily' },
   { label: '1W', value: 'weekly' },
 ]
 
 const OTHER_TIMEFRAMES = [
   { label: '5M', value: '5min' },
+  { label: '1H', value: '60min' },
   { label: '1D', value: 'daily' },
 ]
 

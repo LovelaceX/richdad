@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Newspaper, Loader2, Maximize2 } from 'lucide-react'
+import { Newspaper, Loader2 } from 'lucide-react'
 import { useNewsStore } from '../../stores/newsStore'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useNewsPanelStore } from '../../stores/newsPanelStore'
@@ -65,8 +65,6 @@ export function NewsTicker() {
         >
           <Newspaper size={14} className="text-terminal-amber" />
           <span className="text-[11px] font-semibold tracking-wider text-white uppercase">News Feed</span>
-          <span className="w-1.5 h-1.5 bg-semantic-up rounded-full animate-pulse" />
-          <Maximize2 size={12} className="text-gray-500 ml-1" />
         </button>
         <span className="text-terminal-border text-lg font-light">|</span>
       </div>

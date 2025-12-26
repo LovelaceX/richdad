@@ -16,6 +16,7 @@ import {
   HelpCircle
 } from 'lucide-react'
 import { getSettings } from '../lib/db'
+import { useNavigationStore } from '../stores/navigationStore'
 import {
   useBacktestStore,
   useBacktestIsRunning,
@@ -146,13 +147,13 @@ export function Backtest() {
           </div>
 
           {/* CTA Button */}
-          <a
-            href="#/settings"
+          <button
+            onClick={() => useNavigationStore.getState().setPage('settings')}
             className="inline-flex items-center gap-2 px-6 py-3 bg-terminal-amber text-black font-medium rounded-lg hover:bg-terminal-amber/90 transition-colors"
           >
             <Settings className="w-5 h-5" />
             Go to Settings
-          </a>
+          </button>
 
           {/* Footer Note */}
           <p className="text-gray-500 text-xs mt-8 max-w-sm mx-auto">

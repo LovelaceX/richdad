@@ -9,7 +9,7 @@
  * Limits headlines to configurable amount per hour to avoid overload.
  */
 
-import { getSettings, type ProTrader } from '../renderer/lib/db'
+import { getSettings } from '../renderer/lib/db'
 import { db } from '../renderer/lib/db'
 import type { NewsItem } from '../renderer/types'
 
@@ -61,7 +61,7 @@ function smartBlend(
 
   // Sort each priority group by timestamp (newest first)
   for (const group of byPriority.values()) {
-    group.sort((a, b) => b.datetime - a.datetime)
+    group.sort((a, b) => b.timestamp - a.timestamp)
   }
 
   const result: NewsItem[] = []
@@ -85,7 +85,7 @@ function smartBlend(
   }
 
   // Sort remaining by timestamp (newest first)
-  remaining.sort((a, b) => b.datetime - a.datetime)
+  remaining.sort((a, b) => b.timestamp - a.timestamp)
 
   // Step 3: Fill up to limit
   const spotsRemaining = limit - result.length
@@ -119,13 +119,6 @@ async function getUserFocusSymbols(): Promise<Set<string>> {
     // Add selected ticker (currently viewing)
     if (marketState.selectedTicker) {
       symbols.add(marketState.selectedTicker.toUpperCase())
-    }
-
-    // Add market ETFs being watched
-    if (marketState.marketSymbols) {
-      for (const symbol of marketState.marketSymbols) {
-        symbols.add(symbol.toUpperCase())
-      }
     }
 
     // Get settings for selected market
@@ -199,7 +192,7 @@ function calculateRelevanceScore(headline: NewsItem, focusSymbols: Set<string>):
   }
 
   // Small boost for recency (prefer newer headlines)
-  const ageMs = Date.now() - headline.datetime
+  const ageMs = Date.now() - headline.timestamp
   const ageHours = ageMs / (60 * 60 * 1000)
   if (ageHours < 1) {
     score += 2  // Very recent

@@ -10,6 +10,7 @@
  * API Docs: https://api.tiingo.com/documentation
  */
 
+import { fetch } from '@tauri-apps/plugin-http'
 import type { Quote, CandleData } from '../renderer/types'
 import { safeJsonParse } from './safeJson'
 

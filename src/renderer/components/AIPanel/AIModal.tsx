@@ -11,7 +11,6 @@ import { ChatInput } from './ChatInput'
 import { AIPerformanceSummary } from './AIPerformanceSummary'
 import { ErrorBoundary } from '../ErrorBoundary'
 import { useAIStore } from '../../stores/aiStore'
-import { useMarketStore } from '../../stores/marketStore'
 
 interface AIModalProps {
   isOpen: boolean
@@ -21,7 +20,6 @@ interface AIModalProps {
 export function AIModal({ isOpen, onClose }: AIModalProps) {
   const messages = useAIStore(state => state.messages)
   const clearMessages = useAIStore(state => state.clearMessages)
-  const selectedTicker = useMarketStore(state => state.selectedTicker)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const statusTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -98,11 +96,6 @@ export function AIModal({ isOpen, onClose }: AIModalProps) {
               <div className="flex items-center gap-3">
                 <Bot size={18} className="text-terminal-amber" />
                 <span className="text-white font-medium">AI Copilot</span>
-                {selectedTicker && (
-                  <span className="text-terminal-amber text-xs font-mono bg-terminal-amber/10 px-2 py-0.5 rounded">
-                    {selectedTicker}
-                  </span>
-                )}
               </div>
 
               <div className="flex items-center gap-2">

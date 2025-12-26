@@ -3,7 +3,6 @@ import { X } from 'lucide-react'
 import type { WatchlistItem as WatchlistItemType } from '../../types'
 import { formatPrice, formatChange, formatPercent, getColorClass } from '../../lib/utils'
 import { useMarketStore } from '../../stores/marketStore'
-import { FreshnessBadge } from '../common'
 
 interface WatchlistItemProps {
   item: WatchlistItemType
@@ -30,7 +29,7 @@ export const WatchlistItem = memo(function WatchlistItem({ item, isSelected, onC
     <div
       onClick={onClick}
       className={`
-        group flex items-center px-3 py-2 cursor-pointer
+        group flex items-center px-2 py-2 cursor-pointer
         transition-colors duration-150
         ${isSelected
           ? 'bg-terminal-amber/10 border-l-2 border-terminal-amber'
@@ -38,38 +37,28 @@ export const WatchlistItem = memo(function WatchlistItem({ item, isSelected, onC
         }
       `}
     >
-      <span className={`font-semibold w-12 flex-shrink-0 text-xs ${isSelected ? 'text-terminal-amber' : 'text-white'}`}>
+      <span className={`font-semibold w-11 flex-shrink-0 text-xs truncate ${isSelected ? 'text-terminal-amber' : 'text-white'}`}>
         {item.symbol}
       </span>
 
-      <span className="text-right text-white tabular-nums w-14 flex-shrink-0 text-xs">
+      <span className="text-right text-white tabular-nums w-12 flex-shrink-0 text-xs">
         {quote ? formatPrice(quote.price) : '—'}
       </span>
 
-      <span className={`text-right tabular-nums w-12 flex-shrink-0 text-xs ${colorClass}`}>
+      <span className={`text-right tabular-nums w-11 flex-shrink-0 text-xs ${colorClass}`}>
         {quote ? formatChange(quote.change) : '—'}
       </span>
 
-      <span className={`text-right tabular-nums w-12 flex-shrink-0 text-xs ${colorClass}`}>
+      <span className={`text-right tabular-nums w-11 flex-shrink-0 text-xs ${colorClass}`}>
         {quote ? formatPercent(quote.changePercent) : '—'}
       </span>
 
-      {/* Data freshness indicator - fixed width column */}
-      <div className="w-12 flex-shrink-0 flex justify-center">
-        {quote && (
-          <FreshnessBadge
-            isFresh={quote.isFresh}
-            cacheAge={quote.cacheAge}
-          />
-        )}
-      </div>
-
       {/* Delete button column - fixed width, always present for alignment */}
-      <div className="w-5 flex-shrink-0 flex justify-center">
+      <div className="w-6 flex-shrink-0 flex justify-center">
         {!isTop10 && (
           <button
             onClick={handleDelete}
-            className="p-0.5 text-gray-600 hover:text-red-400 hover:bg-red-500/10 rounded transition-all opacity-0 group-hover:opacity-100"
+            className="p-1 text-gray-600 hover:text-red-400 hover:bg-red-500/20 rounded transition-colors opacity-0 group-hover:opacity-100"
             title="Remove from watchlist"
             aria-label={`Remove ${item.symbol} from watchlist`}
           >

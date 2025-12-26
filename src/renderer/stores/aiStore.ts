@@ -54,6 +54,9 @@ interface AIState {
   setMorningBriefing: (briefing: MorningBriefing | null) => void
   setBriefingRunning: (running: boolean) => void
   setBriefingProgress: (progress: { current: number; total: number; ticker: string } | null) => void
+
+  // Persona actions
+  sendPersonaIntroduction: (personaId: string) => void
 }
 
 export const useAIStore = create<AIState>((set, get) => ({
@@ -264,13 +267,24 @@ export const useAIStore = create<AIState>((set, get) => ({
       console.error('Failed to send message:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       const isTimeout = errorMessage.toLowerCase().includes('timeout')
-      const helpText = isTimeout
-        ? 'Ollama may still be loading the model. Try again in a moment, or check that Ollama is running.'
-        : 'Check that Ollama is running and has the dolphin-llama3:8b model installed.'
+      const isNotRunning = errorMessage.toLowerCase().includes('not running') || errorMessage.toLowerCase().includes('fetch failed')
+
+      let helpText: string
+      if (isTimeout) {
+        helpText = `Ollama may still be loading the model (first request can take 30-60s). Try again, or check that Ollama is running.`
+      } else if (isNotRunning) {
+        helpText = `To start Ollama:
+1. Open Terminal
+2. Run: ollama serve
+3. If model not installed: ollama pull dolphin-llama3:8b`
+      } else {
+        helpText = `Check that Ollama is running (ollama serve) and has dolphin-llama3:8b installed.`
+      }
+
       addMessage({
         type: 'info',
         role: 'assistant',
-        content: `Error: ${errorMessage}. ${helpText}`,
+        content: `⚠️ ${errorMessage}\n\n${helpText}`,
       })
     } finally {
       // Only update analyzing state if this is the current request
@@ -329,5 +343,26 @@ export const useAIStore = create<AIState>((set, get) => ({
 
   setBriefingProgress: (progress: { current: number; total: number; ticker: string } | null) => {
     set({ briefingProgress: progress })
+  },
+
+  // Persona introduction message when switching personas
+  sendPersonaIntroduction: (personaId: string) => {
+    const { addMessage } = get()
+
+    // Intro messages with each persona's voice
+    const introMessages: Record<string, string> = {
+      jax: "Hey! Jax here. I'm your go-to for quick momentum trades and bold calls. Let's find some setups.",
+      sterling: "Sterling reporting in. I'll provide measured analysis with risk-adjusted recommendations. How can I assist?",
+      cipher: "Cipher online. Deep pattern analysis and multi-factor correlations ready. What would you like me to examine?"
+    }
+
+    const intro = introMessages[personaId]
+    if (intro) {
+      addMessage({
+        type: 'info',
+        role: 'assistant',
+        content: intro
+      })
+    }
   },
 }))

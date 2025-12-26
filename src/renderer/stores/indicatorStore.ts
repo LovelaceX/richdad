@@ -1,13 +1,13 @@
 /**
  * Indicator Store
- * Manages technical indicator panels (MACD, Stochastic RSI)
+ * Manages technical indicator panels (MACD)
  * Persisted to localStorage for session persistence
  */
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type IndicatorType = 'macd' | 'stochRsi'
+export type IndicatorType = 'macd'
 
 export interface IndicatorConfig {
   id: string
@@ -19,11 +19,6 @@ export interface IndicatorConfig {
     fastPeriod?: number    // default 12
     slowPeriod?: number    // default 26
     signalPeriod?: number  // default 9
-    // Stochastic RSI settings
-    rsiPeriod?: number     // default 14
-    stochPeriod?: number   // default 14
-    kSmooth?: number       // default 3
-    dSmooth?: number       // default 3
   }
 }
 
@@ -47,12 +42,6 @@ const DEFAULT_MACD_SETTINGS = {
   signalPeriod: 9
 }
 
-const DEFAULT_STOCH_RSI_SETTINGS = {
-  rsiPeriod: 14,
-  stochPeriod: 14,
-  kSmooth: 3,
-  dSmooth: 3
-}
 
 export const useIndicatorStore = create<IndicatorState>()(
   persist(
@@ -78,7 +67,7 @@ export const useIndicatorStore = create<IndicatorState>()(
               type,
               visible: true,
               height: DEFAULT_INDICATOR_HEIGHT,
-              settings: type === 'macd' ? DEFAULT_MACD_SETTINGS : DEFAULT_STOCH_RSI_SETTINGS
+              settings: DEFAULT_MACD_SETTINGS
             }
             return { indicators: [...state.indicators, newIndicator] }
           }

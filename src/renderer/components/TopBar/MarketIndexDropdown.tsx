@@ -171,8 +171,8 @@ export function MarketIndexDropdown() {
       {/* Separator */}
       <div className="h-4 w-px bg-terminal-border" />
 
-      {/* Price & Change Display */}
-      {selectedQuote ? (
+      {/* Price & Change Display - only show when quote is available */}
+      {selectedQuote && (
         <div className="flex items-center gap-2 text-sm">
           <span className="text-white font-mono tabular-nums">
             ${formatPrice(selectedQuote.price)}
@@ -183,8 +183,6 @@ export function MarketIndexDropdown() {
             {formatPercent(selectedQuote.changePercent)}
           </span>
         </div>
-      ) : (
-        <span className="text-gray-500 text-xs">Loading...</span>
       )}
 
     </div>

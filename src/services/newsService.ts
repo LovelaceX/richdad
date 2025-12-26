@@ -1,25 +1,28 @@
 /**
  * News Service
- * RSS-only news architecture
- * - RSS feeds: Native browser parsing, free, unlimited sources
- * - Note: Neither TwelveData nor Polygon include news in their APIs
+ * Hybrid news architecture: Tiingo News API (Pro) + RSS feeds (all users)
+ *
+ * - Tiingo News: Pro users with Power tier ($10/mo) can enable ticker-specific news
+ * - RSS feeds: Free, unlimited sources, works for all users
+ * - Automatic fallback: If Tiingo fails, falls back to RSS
  */
 
 import { parseRSSFeed } from './rssParser'
-import { db } from '../renderer/lib/db'
+import { db, getSettings } from '../renderer/lib/db'
+import { canUseTiingoNews, fetchTiingoNews } from './tiingoNewsService'
 import type { NewsItem } from '../renderer/types'
 
 const RSS_FETCH_TIMEOUT_MS = 10000 // 10 seconds per feed
 
 export interface NewsResponse {
   articles: NewsItem[]
-  source: 'rss' | 'cache' | 'empty'
+  source: 'tiingo' | 'rss' | 'cache' | 'empty'
   hasSentiment: boolean
   error?: string
 }
 
 /**
- * Fetch news from RSS feeds (primary source)
+ * Fetch news from RSS feeds
  * Uses native browser DOMParser - zero dependencies
  */
 export async function fetchNewsFromRSS(): Promise<NewsItem[]> {
@@ -70,7 +73,11 @@ export async function fetchNewsFromRSS(): Promise<NewsItem[]> {
 
         console.log(`[News Service] Fetched ${items.length} items from ${source.name}`)
 
-        return items
+        // Attach source priority to each item for tie-breaking in sort
+        return items.map(item => ({
+          ...item,
+          sourcePriority: source.priority ?? 99
+        }))
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
         console.warn(`[News Service] Failed to fetch RSS from ${source.name}:`, errorMessage)
@@ -96,8 +103,17 @@ export async function fetchNewsFromRSS(): Promise<NewsItem[]> {
       }
     }
 
-    // Sort by timestamp (newest first)
-    allHeadlines.sort((a, b) => b.timestamp - a.timestamp)
+    // Sort by timestamp (newest first), with priority as tie-breaker
+    allHeadlines.sort((a, b) => {
+      // Primary: timestamp (newest first)
+      if (b.timestamp !== a.timestamp) {
+        return b.timestamp - a.timestamp
+      }
+      // Tie-breaker: priority (lower number = higher priority)
+      const aPriority = a.sourcePriority ?? 99
+      const bPriority = b.sourcePriority ?? 99
+      return aPriority - bPriority
+    })
 
     console.log(`[News Service] RSS fetch complete: ${allHeadlines.length} unique headlines`)
 
@@ -110,9 +126,45 @@ export async function fetchNewsFromRSS(): Promise<NewsItem[]> {
 
 /**
  * Unified news fetcher
- * All users get RSS feeds (neither TwelveData nor Polygon include news)
+ * Tries Tiingo News first (if enabled), falls back to RSS
  */
 export async function fetchNews(): Promise<NewsResponse> {
+  // Check if user has Tiingo News enabled and configured
+  const useTiingo = await canUseTiingoNews()
+
+  if (useTiingo) {
+    console.log('[News Service] Fetching news from Tiingo News API')
+    try {
+      // Get user's watchlist tickers for filtering
+      const settings = await getSettings()
+      const watchlistTickers = settings.marketOverviewSymbols || []
+
+      const tiingoResult = await fetchTiingoNews(
+        watchlistTickers.length > 0 ? watchlistTickers : undefined,
+        30 // Fetch up to 30 articles
+      )
+
+      if (tiingoResult.source === 'tiingo' && tiingoResult.articles.length > 0) {
+        console.log(`[News Service] Tiingo returned ${tiingoResult.articles.length} articles`)
+        return {
+          articles: tiingoResult.articles,
+          source: 'tiingo',
+          hasSentiment: false
+        }
+      }
+
+      // Tiingo failed or returned no articles, log and fall back to RSS
+      if (tiingoResult.error) {
+        console.warn(`[News Service] Tiingo News failed: ${tiingoResult.error}, falling back to RSS`)
+      } else {
+        console.warn('[News Service] Tiingo returned no articles, falling back to RSS')
+      }
+    } catch (error) {
+      console.warn('[News Service] Tiingo News error, falling back to RSS:', error)
+    }
+  }
+
+  // Default: Fetch from RSS
   console.log('[News Service] Fetching news from RSS feeds')
   try {
     const articles = await fetchNewsFromRSS()
@@ -136,4 +188,3 @@ export async function fetchNews(): Promise<NewsResponse> {
     error: 'No news sources available'
   }
 }
-

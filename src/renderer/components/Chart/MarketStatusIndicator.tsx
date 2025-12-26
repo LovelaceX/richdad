@@ -79,14 +79,6 @@ export function MarketStatusIndicator() {
       <span className={`text-[10px] font-medium ${config.textColor}`}>
         {status.label}
       </span>
-
-      {/* Separator */}
-      <span className="text-gray-600">|</span>
-
-      {/* Current ET time */}
-      <span className="text-gray-400 text-[10px] tabular-nums">
-        {status.currentTimeET}
-      </span>
     </div>
   )
 }

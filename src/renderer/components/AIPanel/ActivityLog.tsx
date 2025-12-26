@@ -1,17 +1,44 @@
+import { useState, useEffect } from 'react'
 import { useAIStore } from '../../stores/aiStore'
 import { ChatMessage } from './ChatMessage'
 import { Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
+// Rotating thinking messages (VS Code Copilot style)
+const THINKING_MESSAGES = [
+  'Analyzing...',
+  'Thinking...',
+  'Cooking...',
+  'Vibing...',
+  'Unraveling...',
+  'Schlepping...',
+  'Crunching numbers...',
+  'Reading the charts...',
+  'Consulting the algos...',
+]
+
 export function ActivityLog() {
   const messages = useAIStore(state => state.messages)
   const isAnalyzing = useAIStore(state => state.isAnalyzing)
   const analysisProgress = useAIStore(state => state.analysisProgress)
+  const [thinkingIndex, setThinkingIndex] = useState(0)
+
+  // Rotate through thinking messages every 2 seconds when analyzing
+  useEffect(() => {
+    if (!isAnalyzing) {
+      setThinkingIndex(0) // Reset on stop
+      return
+    }
+    const interval = setInterval(() => {
+      setThinkingIndex(i => (i + 1) % THINKING_MESSAGES.length)
+    }, 2000)
+    return () => clearInterval(interval)
+  }, [isAnalyzing])
 
   const getCurrentPhaseLabel = () => {
-    if (!analysisProgress) return 'Analyzing...'
+    if (!analysisProgress) return THINKING_MESSAGES[thinkingIndex]
     const activePhase = analysisProgress.phases.find(p => p.status === 'active')
-    return activePhase?.label || 'Analyzing...'
+    return activePhase?.label || THINKING_MESSAGES[thinkingIndex]
   }
 
   return (

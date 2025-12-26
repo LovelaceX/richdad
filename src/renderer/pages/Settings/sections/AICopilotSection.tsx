@@ -272,7 +272,12 @@ export function AICopilotSection({
               return (
                 <button
                   key={personaId}
-                  onClick={() => onSaveSettings({ persona: personaId })}
+                  onClick={async () => {
+                    await onSaveSettings({ persona: personaId })
+                    // Send intro message from new persona
+                    const { useAIStore } = await import('../../../stores/aiStore')
+                    useAIStore.getState().sendPersonaIntroduction(personaId)
+                  }}
                   className={`w-full px-3 py-2.5 rounded-lg border text-left transition-colors ${
                     isSelected
                       ? 'border-terminal-amber bg-terminal-amber/10'

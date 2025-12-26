@@ -1,44 +1,11 @@
-import { Minus, Plus, WifiOff } from 'lucide-react'
+import { WifiOff } from 'lucide-react'
 import { CommandInput } from './CommandInput'
 import { NavBar } from '../Navigation/NavBar'
 import { APIBudgetAlert } from './APIBudgetAlert'
 import { AIBudgetAlert } from './AIBudgetAlert'
 import { AICopilotButton } from './AICopilotButton'
 import { MarketStatusIndicator } from '../Chart/MarketStatusIndicator'
-import { useSettingsStore } from '../../stores/settingsStore'
 import { useNetworkStatus } from '../../hooks/useNetworkStatus'
-
-function ZoomControls() {
-  const zoomLevel = useSettingsStore(state => state.zoomLevel)
-  const zoomIn = useSettingsStore(state => state.zoomIn)
-  const zoomOut = useSettingsStore(state => state.zoomOut)
-
-  return (
-    <div className="flex items-center gap-1 no-drag mr-2">
-      <button
-        onClick={zoomOut}
-        disabled={zoomLevel === 90}
-        className="p-2 hover:bg-terminal-border rounded transition-colors disabled:opacity-30"
-        title="Zoom out (Cmd/Ctrl -)"
-      >
-        <Minus size={14} className="text-gray-400" />
-      </button>
-
-      <span className="text-gray-400 font-mono text-xs min-w-[42px] text-center">
-        {zoomLevel}%
-      </span>
-
-      <button
-        onClick={zoomIn}
-        disabled={zoomLevel === 125}
-        className="p-2 hover:bg-terminal-border rounded transition-colors disabled:opacity-30"
-        title="Zoom in (Cmd/Ctrl +)"
-      >
-        <Plus size={14} className="text-gray-400" />
-      </button>
-    </div>
-  )
-}
 
 export function TopBar() {
   const isOnline = useNetworkStatus()
@@ -61,11 +28,10 @@ export function TopBar() {
           <CommandInput />
         </div>
 
-        {/* Right: AI Copilot + Market Status + Zoom Controls */}
-        <div className="flex justify-end items-center gap-2 no-drag" style={{ width: '380px' }}>
+        {/* Right: AI Copilot + Market Status */}
+        <div className="flex justify-end items-center gap-2 no-drag" style={{ width: '280px' }}>
           <AICopilotButton />
           <MarketStatusIndicator />
-          <ZoomControls />
         </div>
       </div>
 

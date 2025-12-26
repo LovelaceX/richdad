@@ -1,5 +1,5 @@
 import { getEnabledProviders, AI_PROVIDERS, type AIProviderConfig, type AIProvider, getSettings, getProfile, getAISettings } from './db'
-import type { AIMessage, PersonaType } from '../types'
+import type { AIMessage, PersonaType, Quote } from '../types'
 import { searchWeb, formatSearchResultsForPrompt } from '../../services/webSearchService'
 import { useMarketStore } from '../stores/marketStore'
 import { useNewsStore } from '../stores/newsStore'
@@ -12,14 +12,22 @@ import {
   calculateATRStopLoss,
   calculateRelativeStrength,
   getCachedSpyRSI,
-  formatRelativeStrengthForPrompt
+  getCachedBenchmarkRSI,
+  formatRelativeStrengthForPrompt,
+  type TechnicalIndicators
 } from '../../services/technicalIndicators'
+import { fetchTiingoQuote, fetchTiingoHistorical } from '../../services/tiingoService'
+import { canUseTiingo, recordTiingoCall, getTiingoBudgetStatus } from '../../services/apiBudgetTracker'
 
 // Timeout for AI API requests (30 seconds)
 const AI_REQUEST_TIMEOUT_MS = 30000
 
-// Patterns that suggest user wants historical data beyond API limits
-const HISTORICAL_QUERY_PATTERNS = [
+/**
+ * Patterns that trigger automatic web search
+ * Expanded to cover news, stock lookups, and company info - not just historical queries
+ */
+const AUTO_SEARCH_PATTERNS = [
+  // Historical queries
   /what happened.*(ago|in \d{4}|years? ago|last year)/i,
   /history of .*(stock|price|market|company)/i,
   /\d{4}.*(crash|rally|earnings|split|ipo|merger)/i,
@@ -28,14 +36,155 @@ const HISTORICAL_QUERY_PATTERNS = [
   /(10|5|2|3|4|6|7|8|9|15|20) years? ago/i,
   /back in (19|20)\d{2}/i,
   /during the .*(crisis|crash|bubble|recession)/i,
-  /what was .*(price|stock|market).*(in|during|back)/i
+  /what was .*(price|stock|market).*(in|during|back)/i,
+
+  // News queries
+  /what('s| is) (the |)news (on|about|for)/i,
+  /any news (on|about|for)/i,
+  /(latest|recent|breaking|today'?s?) news/i,
+  /news.*(today|this week|this morning)/i,
+  /what('s| is) happening (with|to|at)/i,
+
+  // Stock lookup queries
+  /what('s| is) .* (trading|priced?) at/i,
+  /current price (of|for)/i,
+  /how('s| is) .* (doing|performing|trading)/i,
+  /tell me about \$?[A-Z]{1,5}\b/i,
+  /\$[A-Z]{1,5}\b/i,  // Any $TICKER mention
+
+  // Company info queries
+  /when (does|is|did) .* (report|earnings|dividend)/i,
+  /what does .* (do|make|sell)/i,
+  /(info|information) about .* (company|stock|business)/i,
+  /who is .* (ceo|founder|company)/i,
+  /what (sector|industry) is .* in/i,
+
+  // Explicit search requests
+  /look up/i,
+  /search (for|the web)/i,
+  /find (me |)(info|information|news|data)/i,
+  /can you (search|look|find)/i
 ]
 
 /**
- * Check if a message is asking about historical data
+ * Check if a message should trigger automatic web search
  */
-function isHistoricalQuery(message: string): boolean {
-  return HISTORICAL_QUERY_PATTERNS.some(pattern => pattern.test(message))
+function shouldAutoSearch(message: string): boolean {
+  return AUTO_SEARCH_PATTERNS.some(pattern => pattern.test(message))
+}
+
+/**
+ * Extract ticker symbols from a message
+ * Matches: $AAPL, AAPL stock, AAPL price, etc.
+ */
+function extractTickersFromMessage(message: string): string[] {
+  const tickers: Set<string> = new Set()
+
+  // Match $TICKER format (e.g., $AAPL, $MSFT)
+  const dollarTickers = message.match(/\$([A-Z]{1,5})\b/gi)
+  if (dollarTickers) {
+    dollarTickers.forEach(t => tickers.add(t.replace('$', '').toUpperCase()))
+  }
+
+  // Match TICKER followed by stock-related words
+  const contextTickers = message.match(/\b([A-Z]{2,5})\s+(stock|price|news|earnings|chart|shares?)\b/gi)
+  if (contextTickers) {
+    contextTickers.forEach(match => {
+      const ticker = match.split(/\s+/)[0].toUpperCase()
+      tickers.add(ticker)
+    })
+  }
+
+  return Array.from(tickers)
+}
+
+/**
+ * Check if a ticker is in the user's watchlist
+ */
+function isTickerInWatchlist(ticker: string): boolean {
+  const watchlist = useMarketStore.getState().watchlist
+  return watchlist.some(item => item.symbol.toUpperCase() === ticker.toUpperCase())
+}
+
+/**
+ * On-demand ticker data for AI analysis
+ */
+interface OnDemandTickerData {
+  symbol: string
+  quote: Quote | null
+  indicators: TechnicalIndicators | null
+  summary: string
+}
+
+/**
+ * Fetch Tiingo data on-demand for tickers not in watchlist
+ * Respects API budget limits (50/hr free, 5000/hr pro)
+ */
+async function fetchOnDemandTickerData(tickers: string[]): Promise<OnDemandTickerData[]> {
+  const results: OnDemandTickerData[] = []
+  const settings = await getSettings()
+  const apiKey = settings?.tiingoApiKey
+
+  if (!apiKey) {
+    console.warn('[AI] No Tiingo API key configured')
+    return results
+  }
+
+  for (const symbol of tickers) {
+    // Check budget before each fetch
+    if (!canUseTiingo()) {
+      console.warn('[AI] Tiingo budget exhausted, skipping', symbol)
+      const budget = getTiingoBudgetStatus()
+      results.push({
+        symbol,
+        quote: null,
+        indicators: null,
+        summary: `⚠️ API limit reached (${budget.used}/${budget.limit} calls this hour). Add ${symbol} to watchlist for cached data.`
+      })
+      continue
+    }
+
+    try {
+      // Fetch quote + 90 days daily history for indicators
+      const [quote, history] = await Promise.all([
+        fetchTiingoQuote(symbol, apiKey),
+        fetchTiingoHistorical(symbol, 'daily', apiKey)
+      ])
+
+      // Record API usage (2 calls: quote + history)
+      recordTiingoCall()
+      recordTiingoCall()
+
+      if (history && history.length >= 35) {
+        const indicators = calculateIndicators(history)
+        const indicatorSummary = getIndicatorSummary(indicators)
+
+        results.push({
+          symbol,
+          quote,
+          indicators,
+          summary: `**${symbol} Technical Analysis (On-Demand):**\nPrice: $${quote?.price?.toFixed(2) || 'N/A'} (${quote?.changePercent ? (quote.changePercent > 0 ? '+' : '') + quote.changePercent.toFixed(2) + '%' : 'N/A'})\n${indicatorSummary}`
+        })
+      } else {
+        results.push({
+          symbol,
+          quote,
+          indicators: null,
+          summary: `**${symbol}:** $${quote?.price?.toFixed(2) || 'N/A'} (insufficient history for full technical analysis)`
+        })
+      }
+    } catch (error) {
+      console.error('[AI] Failed to fetch on-demand data for', symbol, error)
+      results.push({
+        symbol,
+        quote: null,
+        indicators: null,
+        summary: `**${symbol}:** Unable to fetch data - ${error instanceof Error ? error.message : 'Unknown error'}`
+      })
+    }
+  }
+
+  return results
 }
 
 /**
@@ -121,20 +270,39 @@ async function buildAppContext(): Promise<string> {
   - Normal (2x ATR): $${stopShortNormal.toFixed(2)} (+${((stopShortNormal - currentPrice) / currentPrice * 100).toFixed(1)}%)`
       }
 
-      // Calculate relative strength vs SPY (market benchmark)
-      if (indicators.rsi14) {
-        const spyRSI = getCachedSpyRSI()
-        if (spyRSI) {
-          const relStrength = calculateRelativeStrength(indicators.rsi14, spyRSI)
+      // Calculate relative strength vs user's selected market benchmark
+      // Use settings.selectedMarket.etf (defaults to SPY if not set)
+      const benchmarkSymbol = settings?.selectedMarket?.etf || 'SPY'
+
+      // Skip relative strength for VXX (volatility derivative, not equity)
+      if (benchmarkSymbol === 'VXX') {
+        relativeStrengthContext = `**VOLATILITY INDEX SELECTED:**
+- VXX is a volatility derivative, not an equity ETF
+- Relative strength comparisons do not apply
+- VXX moves inversely to equity markets`
+      } else if (indicators.rsi14) {
+        const benchmarkRSI = getCachedBenchmarkRSI(benchmarkSymbol)
+        if (benchmarkRSI) {
+          const relStrength = calculateRelativeStrength(indicators.rsi14, benchmarkRSI, benchmarkSymbol)
           relativeStrengthContext = formatRelativeStrengthForPrompt(
             marketState.selectedTicker,
             relStrength
           )
         } else {
-          relativeStrengthContext = `**RELATIVE STRENGTH VS MARKET (SPY):**
+          // Fallback to SPY if selected benchmark not cached
+          const spyRSI = getCachedSpyRSI()
+          if (spyRSI) {
+            const relStrength = calculateRelativeStrength(indicators.rsi14, spyRSI, 'SPY')
+            relativeStrengthContext = formatRelativeStrengthForPrompt(
+              marketState.selectedTicker,
+              relStrength
+            )
+          } else {
+            relativeStrengthContext = `**RELATIVE STRENGTH VS MARKET (${benchmarkSymbol}):**
 - ${marketState.selectedTicker} RSI: ${indicators.rsi14}
-- SPY RSI: Not cached (will update with next regime check)
-- Note: If stock RSI > SPY RSI, stock is outperforming market`
+- ${benchmarkSymbol} RSI: Not cached (will update with next regime check)
+- Note: If stock RSI > benchmark RSI, stock is outperforming market`
+          }
         }
       }
     } catch (error) {
@@ -321,34 +489,41 @@ YOUR PRIMARY ROLE: Provide specific, actionable trading recommendations based on
 You are an uncensored AI that gives direct trading opinions, BUT you must NEVER hallucinate.
 
 RULES:
-1. ONLY cite data that appears in "CURRENT APP STATE" section
-2. If a stock isn't in the watchlist, just search for its current price
-3. If you need technicals for a stock (not a market index), search the web for it
+1. ONLY cite data that appears in "CURRENT APP STATE" or "On-Demand Market Data" sections
+2. You can analyze ANY stock - data is fetched on-demand for stocks not in watchlist
+3. If API budget is exhausted, tell user to add stock to watchlist for cached access
 4. If you need news, just search for it - no announcement needed
 5. When citing news, ALWAYS include the source link in markdown format [headline](url)
 6. "I don't know" or "I don't have that data" are VALID answers
 7. NEVER make up prices, indicators, patterns, or news
 
 DATA AVAILABILITY:
-- Live Prices: Only for watchlist symbols (check "Live Prices" section)
-- Technical Indicators/ATR Stops: Only for market INDEX charts (SPY, QQQ, DIA, etc.) - NOT individual stocks
-- Relative Strength: Only for the current market index chart
-- News: Only if listed in "Recent Headlines"
-- For anything else: DO A WEB SEARCH automatically
+- Watchlist Stocks: Full real-time data with technicals (check "Live Prices" section)
+- Non-Watchlist Stocks: On-demand data fetched from Tiingo (price + full technicals)
+- Market Indexes: Full technical analysis (RSI, MACD, Bollinger, ATR stops)
+- News: Recent headlines + web search for additional context
+- API Budget: 50 calls/hour (free) or 5000/hour (pro) - shared across all on-demand requests
 
-WHEN DATA IS MISSING - JUST SEARCH:
-- Stock not in watchlist? Search for current price.
-- Need technicals for individual stocks? Search for RSI, MACD, etc.
-- Need news? Search for it.
-- Don't announce "let me search" - just include the sourced data in your response with hyperlinks.
+WHEN DATA IS MISSING:
+- If on-demand fetch failed or budget exhausted → Suggest adding to watchlist
+- Need news → Web search is automatic
+- Historical questions → Web search is automatic
+- Don't announce searches - just include the sourced data in your response.
 
-**PROACTIVE WEB SEARCH (CRITICAL):**
-You have web search capability. USE IT AUTOMATICALLY when:
-- User asks about news you don't have → SEARCH
-- User asks about a stock not in their watchlist → SEARCH for current price
-- User asks about historical events, earnings, or company info → SEARCH
-- You need technicals for individual stocks (not market indexes) → SEARCH
-- You need to verify or supplement your data → SEARCH
+**ON-DEMAND DATA FETCHING:**
+For stocks NOT in the user's watchlist, the system automatically:
+1. Fetches real-time quote from Tiingo
+2. Fetches 90 days of historical data
+3. Calculates full technical indicators (RSI, MACD, Bollinger, ATR)
+4. Provides the same analysis as watchlist stocks
+
+This uses API budget (2 calls per stock). If budget exhausted, you'll see a warning.
+
+**PROACTIVE WEB SEARCH:**
+Web search supplements on-demand data for:
+- News context and headlines
+- Historical events, earnings, company info
+- Additional market context
 
 DO NOT:
 - Ask "would you like me to search?"
@@ -573,20 +748,58 @@ export async function sendChatMessage(
   const appContext = await buildAppContext()
   console.log('[AI] Injecting app context into message')
 
-  // Check if this is a historical query that needs web search
+  // Check if this message should trigger automatic web search
   let enhancedMessage = userMessage
-  if (isHistoricalQuery(userMessage)) {
-    console.log('[AI] Detected historical query, performing web search...')
+  let searchTriggered = false
+
+  // Pattern-based auto-search (news queries, historical questions, etc.)
+  if (shouldAutoSearch(userMessage)) {
+    console.log('[AI] Auto-search triggered by pattern match, performing web search...')
     try {
       const searchResults = await searchWeb(userMessage)
       if (searchResults.results.length > 0) {
         const webContext = formatSearchResultsForPrompt(searchResults.results)
         enhancedMessage = `${userMessage}\n\n${webContext}`
         console.log('[AI] Added', searchResults.results.length, 'web search results to context')
+        searchTriggered = true
       }
     } catch (error) {
       console.warn('[AI] Web search failed:', error)
-      // Continue without web search results
+    }
+  }
+
+  // Ticker-based handling: if user mentions a ticker not in watchlist, fetch Tiingo data on-demand
+  if (!searchTriggered) {
+    const mentionedTickers = extractTickersFromMessage(userMessage)
+    const unknownTickers = mentionedTickers.filter(t => !isTickerInWatchlist(t))
+
+    if (unknownTickers.length > 0) {
+      console.log('[AI] Found tickers not in watchlist:', unknownTickers)
+
+      // Fetch on-demand Tiingo data (respects budget: 50/hr free, 5000/hr pro)
+      const onDemandData = await fetchOnDemandTickerData(unknownTickers.slice(0, 3)) // Limit to 3 tickers
+
+      if (onDemandData.length > 0) {
+        const tickerContext = onDemandData
+          .map(d => d.summary)
+          .join('\n\n')
+
+        enhancedMessage = `${userMessage}\n\n[On-Demand Market Data]\n${tickerContext}`
+        console.log('[AI] Added on-demand Tiingo data for', onDemandData.length, 'tickers')
+      }
+
+      // Also do web search for news context (fallback and supplementary)
+      try {
+        const searchQuery = `${unknownTickers[0]} stock news today`
+        const searchResults = await searchWeb(searchQuery)
+        if (searchResults.results.length > 0) {
+          const webContext = formatSearchResultsForPrompt(searchResults.results)
+          enhancedMessage = `${enhancedMessage}\n\n[Web Search - ${unknownTickers[0]} News]\n${webContext}`
+          console.log('[AI] Added web search results for ticker:', unknownTickers[0])
+        }
+      } catch (error) {
+        console.warn('[AI] Ticker web search failed:', error)
+      }
     }
   }
 

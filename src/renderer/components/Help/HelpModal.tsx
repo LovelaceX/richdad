@@ -675,8 +675,26 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
 
           {/* Feature List */}
           <div className="space-y-6">
-            {/* v7.0.0 */}
+            {/* v8.1.0 */}
             <div className="bg-terminal-bg border border-green-500/30 rounded-lg p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded">v8.1.0</span>
+                <h3 className="text-white font-semibold">On-Demand AI Analysis</h3>
+              </div>
+              <p className="text-gray-300 text-sm mb-3">
+                AI can now analyze any stock, not just your watchlist. Full technical analysis on demand.
+              </p>
+              <ul className="text-gray-400 text-sm space-y-1">
+                <li>• <span className="text-terminal-up">New</span> Analyze any ticker - Tiingo data fetched on-demand</li>
+                <li>• <span className="text-terminal-up">New</span> Full technicals for non-watchlist stocks (RSI, MACD, Bollinger, ATR)</li>
+                <li>• <span className="text-terminal-up">New</span> Budget-aware - respects API limits (50/hr free, 5K/hr pro)</li>
+                <li>• <span className="text-terminal-up">New</span> Dynamic benchmark - relative strength uses your selected market index</li>
+                <li>• <span className="text-blue-400">Improved</span> Historical queries use free web search (not API budget)</li>
+              </ul>
+            </div>
+
+            {/* v7.0.0 */}
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
               <div className="flex items-center gap-2 mb-3">
                 <span className="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 rounded">v7.0.0</span>
                 <h3 className="text-white font-semibold">Local-First AI</h3>
@@ -814,7 +832,6 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               </p>
               <ul className="text-gray-400 text-sm space-y-1">
                 <li>• <span className="text-blue-400">MACD</span> - Momentum and trend direction</li>
-                <li>• <span className="text-green-400">Stochastic RSI</span> - Overbought/oversold signals</li>
                 <li>• Synchronized crosshair with main chart</li>
                 <li>• Toggle visibility via chart header</li>
               </ul>
@@ -1724,6 +1741,30 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             </div>
           </div>
 
+          {/* Analyzing Any Stock */}
+          <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-5">
+            <h3 className="text-green-400 font-semibold mb-3">Analyzing Any Stock</h3>
+            <p className="text-gray-300 text-sm mb-3">
+              The AI can analyze <span className="text-terminal-amber font-medium">any stock</span>, not just your watchlist.
+              When you ask about a stock not in your watchlist:
+            </p>
+            <ol className="text-gray-300 text-sm space-y-1 list-decimal list-inside">
+              <li>Real-time quote fetched from Tiingo</li>
+              <li>90 days of historical data retrieved</li>
+              <li>Full technical analysis calculated (RSI, MACD, Bollinger, ATR)</li>
+              <li>Same quality analysis as watchlist stocks</li>
+            </ol>
+            <div className="mt-3 pt-3 border-t border-green-500/20">
+              <p className="text-gray-400 text-xs">
+                <span className="text-green-400">Budget:</span> Uses 2 API calls per stock lookup.
+                Free tier: 50 calls/hour (~20 lookups). Pro tier: 5,000 calls/hour.
+              </p>
+              <p className="text-gray-400 text-xs mt-1">
+                <span className="text-green-400">Tip:</span> For stocks you check frequently, add them to your watchlist for cached access.
+              </p>
+            </div>
+          </div>
+
           {/* Options-Aware AI */}
           <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-5">
             <h3 className="text-purple-400 font-semibold mb-3">Options-Aware Mode</h3>
@@ -1763,10 +1804,11 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 <p className="text-gray-400 text-xs">VIX level, SPY trend, overall market direction</p>
               </div>
               <div className="bg-terminal-bg/50 rounded p-3">
-                <p className="text-white font-medium mb-1">Relative Strength vs SPY</p>
+                <p className="text-white font-medium mb-1">Relative Strength vs Benchmark</p>
                 <p className="text-gray-400 text-xs">
-                  Compares the stock's RSI to SPY's RSI. Labels as "outperforming" (+10 differential),
-                  "underperforming" (-10), or "neutral" to identify stocks stronger than the market.
+                  Compares the stock's RSI to your selected market index (SPY, QQQ, DIA, etc.).
+                  Labels as "outperforming" (+10 differential), "underperforming" (-10), or "neutral"
+                  to identify stocks stronger than your chosen benchmark.
                 </p>
               </div>
               <div className="bg-terminal-bg/50 rounded p-3">
@@ -2958,6 +3000,25 @@ When market data is rate limited:
 6. Generating Recommendation (AI synthesis)
 
 Each step shows a result preview (e.g., "RSI 65", "2 patterns found").`
+            },
+            {
+              q: 'Can the AI analyze stocks not in my watchlist?',
+              a: `Yes! The AI can analyze any stock you ask about. When you mention a ticker not in your watchlist:
+
+1. Real-time quote is fetched from Tiingo
+2. 90 days of historical data is retrieved
+3. Full technical analysis is calculated (RSI, MACD, Bollinger, ATR)
+4. You get the same quality analysis as watchlist stocks
+
+Each lookup uses 2 API calls from your hourly budget (50/hr free, 5,000/hr pro). For stocks you check frequently, add them to your watchlist for cached access.`
+            },
+            {
+              q: 'What happens when I ask about historical prices?',
+              a: `Historical questions (e.g., "What was AAPL price in 2022?") are answered via web search, which is FREE and doesn't use your API budget.
+
+The AI detects historical patterns in your question and automatically searches DuckDuckGo. Results include sourced links so you can verify the information.
+
+This works the same for both Free and Pro tiers - no API calls are used for historical lookups.`
             },
             {
               q: 'How does the AI get news for analysis?',

@@ -7,13 +7,11 @@ import { MorningBriefingButton } from './MorningBriefingButton'
 import { IntelPanel } from '../Intel'
 import { ErrorBoundary } from '../ErrorBoundary'
 import { useAIStore } from '../../stores/aiStore'
-import { useMarketStore } from '../../stores/marketStore'
 import { useIntelStore } from '../../stores/intelStore'
 
 export function AIPanel() {
   const messages = useAIStore(state => state.messages)
   const clearMessages = useAIStore(state => state.clearMessages)
-  const selectedTicker = useMarketStore(state => state.selectedTicker)
   const intelPanelEnabled = useIntelStore(state => state.intelPanelEnabled)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -38,12 +36,6 @@ export function AIPanel() {
         </div>
 
         <div className="flex items-center gap-2">
-          {selectedTicker && (
-            <span className="text-terminal-amber text-[10px] font-mono">
-              {selectedTicker}
-            </span>
-          )}
-
           {/* Clear Chat Button */}
           {messages.length > 0 && (
             <button

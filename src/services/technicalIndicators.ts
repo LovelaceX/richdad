@@ -72,13 +72,14 @@ export interface ATRSeriesResult {
 }
 
 /**
- * Relative Strength vs Market (SPY)
- * Compares stock's RSI momentum to the broader market
+ * Relative Strength vs Market Benchmark
+ * Compares stock's RSI momentum to the user's selected market index
  */
 export interface RelativeStrength {
   stockRSI: number
-  spyRSI: number
-  differential: number  // stockRSI - spyRSI
+  benchmarkRSI: number        // RSI of the benchmark (SPY, QQQ, etc.)
+  benchmarkSymbol: string     // Which benchmark was used
+  differential: number        // stockRSI - benchmarkRSI
   interpretation: 'outperforming' | 'underperforming' | 'neutral'
 }
 
@@ -812,43 +813,61 @@ export function calculateATRStopLoss(
 }
 
 // ============================================
-// Relative Strength vs SPY
+// Relative Strength vs Market Benchmark
 // ============================================
 
-// Cache for SPY RSI to avoid redundant API calls
-let cachedSpyRSI: { value: number; timestamp: number } | null = null
-const SPY_RSI_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+// Cache for benchmark RSI values (supports multiple benchmarks: SPY, QQQ, etc.)
+const cachedBenchmarkRSI: Map<string, { value: number; timestamp: number }> = new Map()
+const BENCHMARK_RSI_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
 /**
- * Get cached SPY RSI or null if cache is stale
+ * Get cached benchmark RSI or null if cache is stale
+ * Supports any benchmark symbol (SPY, QQQ, DIA, IWM, VTI, SMH)
  */
-export function getCachedSpyRSI(): number | null {
-  if (cachedSpyRSI && (Date.now() - cachedSpyRSI.timestamp) < SPY_RSI_CACHE_TTL) {
-    return cachedSpyRSI.value
+export function getCachedBenchmarkRSI(symbol: string): number | null {
+  const cached = cachedBenchmarkRSI.get(symbol.toUpperCase())
+  if (cached && (Date.now() - cached.timestamp) < BENCHMARK_RSI_CACHE_TTL) {
+    return cached.value
   }
   return null
 }
 
 /**
- * Set SPY RSI cache
+ * Set benchmark RSI cache for any symbol
  */
-export function setSpyRSICache(rsi: number): void {
-  cachedSpyRSI = { value: rsi, timestamp: Date.now() }
+export function setBenchmarkRSICache(symbol: string, rsi: number): void {
+  cachedBenchmarkRSI.set(symbol.toUpperCase(), { value: rsi, timestamp: Date.now() })
 }
 
 /**
- * Calculate Relative Strength vs SPY (market benchmark)
- * Compares stock's RSI momentum to the broader market
+ * Get cached SPY RSI (backward compatibility wrapper)
+ */
+export function getCachedSpyRSI(): number | null {
+  return getCachedBenchmarkRSI('SPY')
+}
+
+/**
+ * Set SPY RSI cache (backward compatibility wrapper)
+ */
+export function setSpyRSICache(rsi: number): void {
+  setBenchmarkRSICache('SPY', rsi)
+}
+
+/**
+ * Calculate Relative Strength vs a market benchmark
+ * Compares stock's RSI momentum to the user's selected market index
  *
  * @param stockRSI - The stock's 14-period RSI
- * @param spyRSI - SPY's 14-period RSI (from cache or fresh calculation)
+ * @param benchmarkRSI - Benchmark's 14-period RSI (from cache or fresh calculation)
+ * @param benchmarkSymbol - Which benchmark was used (e.g., 'SPY', 'QQQ')
  * @returns RelativeStrength object with interpretation
  */
 export function calculateRelativeStrength(
   stockRSI: number,
-  spyRSI: number
+  benchmarkRSI: number,
+  benchmarkSymbol: string = 'SPY'
 ): RelativeStrength {
-  const differential = Math.round((stockRSI - spyRSI) * 100) / 100
+  const differential = Math.round((stockRSI - benchmarkRSI) * 100) / 100
 
   // Determine interpretation based on differential
   let interpretation: 'outperforming' | 'underperforming' | 'neutral'
@@ -862,7 +881,8 @@ export function calculateRelativeStrength(
 
   return {
     stockRSI: Math.round(stockRSI * 100) / 100,
-    spyRSI: Math.round(spyRSI * 100) / 100,
+    benchmarkRSI: Math.round(benchmarkRSI * 100) / 100,
+    benchmarkSymbol: benchmarkSymbol.toUpperCase(),
     differential,
     interpretation
   }
@@ -876,15 +896,16 @@ export function formatRelativeStrengthForPrompt(
   relativeStrength: RelativeStrength
 ): string {
   const direction = relativeStrength.differential > 0 ? '+' : ''
+  const benchmark = relativeStrength.benchmarkSymbol || 'SPY'
   const interpretationText = relativeStrength.interpretation === 'outperforming'
-    ? `${symbol} is OUTPERFORMING the market`
+    ? `${symbol} is OUTPERFORMING the market (${benchmark})`
     : relativeStrength.interpretation === 'underperforming'
-      ? `${symbol} is UNDERPERFORMING the market`
-      : `${symbol} is tracking WITH the market`
+      ? `${symbol} is UNDERPERFORMING the market (${benchmark})`
+      : `${symbol} is tracking WITH the market (${benchmark})`
 
-  return `**RELATIVE STRENGTH VS MARKET (SPY):**
+  return `**RELATIVE STRENGTH VS MARKET (${benchmark}):**
 - ${symbol} RSI: ${relativeStrength.stockRSI}
-- SPY RSI: ${relativeStrength.spyRSI}
+- ${benchmark} RSI: ${relativeStrength.benchmarkRSI}
 - Differential: ${direction}${relativeStrength.differential}
 - Interpretation: ${interpretationText}`
 }

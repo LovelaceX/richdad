@@ -363,7 +363,8 @@ export function DisplaySection() {
             Control the scrolling speed of the News ticker ({Math.round(tickerSpeed / 60)} min).
           </p>
 
-          {/* Slider - 60-600 seconds (1-10 minutes) */}
+          {/* Slider - inverted: LEFT=slow (600s), RIGHT=fast (60s) */}
+          {/* Snail (slow) on LEFT, Rabbit (fast) on RIGHT */}
           <div className="flex items-center gap-3">
             <Snail size={20} className="text-gray-400 flex-shrink-0" />
 
@@ -372,8 +373,8 @@ export function DisplaySection() {
               min="60"
               max="600"
               step="60"
-              value={tickerSpeed < 60 ? 60 : tickerSpeed}
-              onChange={(e) => setTickerSpeed(Number(e.target.value))}
+              value={660 - (tickerSpeed < 60 ? 60 : tickerSpeed > 600 ? 600 : tickerSpeed)}
+              onChange={(e) => setTickerSpeed(660 - Number(e.target.value))}
               className="flex-1 h-2 bg-terminal-border rounded-lg appearance-none cursor-pointer accent-terminal-amber"
             />
 

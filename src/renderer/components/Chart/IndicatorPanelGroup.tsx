@@ -5,7 +5,6 @@
 
 import { useIndicatorStore } from '../../stores/indicatorStore'
 import { MACDIndicator } from './MACDIndicator'
-import { StochRSIIndicator } from './StochRSIIndicator'
 
 export function IndicatorPanelGroup() {
   const indicators = useIndicatorStore(state => state.indicators)
@@ -18,14 +17,10 @@ export function IndicatorPanelGroup() {
   return (
     <div className="flex flex-col">
       {visibleIndicators.map(config => {
-        switch (config.type) {
-          case 'macd':
-            return <MACDIndicator key={config.id} config={config} />
-          case 'stochRsi':
-            return <StochRSIIndicator key={config.id} config={config} />
-          default:
-            return null
+        if (config.type === 'macd') {
+          return <MACDIndicator key={config.id} config={config} />
         }
+        return null
       })}
     </div>
   )

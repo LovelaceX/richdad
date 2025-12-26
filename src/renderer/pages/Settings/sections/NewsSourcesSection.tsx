@@ -70,6 +70,13 @@ export function NewsSourcesSection() {
   }, [loadTraders])
 
   const handleAddFeed = (feed: RSSFeed) => {
+    // Check limit for free users
+    if (!canAddMore) {
+      alert('Free plan is limited to 3 active news sources. Upgrade to Pro for unlimited.')
+      setShowFeedDropdown(false)
+      return
+    }
+
     // Assign next priority (after existing sources)
     const nextPriority = traders.length + 1
     addTrader({
@@ -124,6 +131,12 @@ export function NewsSourcesSection() {
   }
 
   const handleAddManualFeed = async () => {
+    // Check limit for free users
+    if (!canAddMore) {
+      alert('Free plan is limited to 3 active news sources. Upgrade to Pro for unlimited.')
+      return
+    }
+
     // Reset previous errors
     setUrlError(null)
 
@@ -306,6 +319,43 @@ export function NewsSourcesSection() {
           Clear all news headlines at 4 PM ET (market close) to start each trading day with a clean slate.
         </p>
       </div>
+
+      {/* Tiingo News API (Pro Only) */}
+      {isPro && (
+        <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Crown className="w-4 h-4 text-terminal-amber" />
+              <h3 className="text-white text-sm font-medium">Tiingo News API</h3>
+              <span className="text-xs px-2 py-0.5 rounded bg-terminal-amber/20 text-terminal-amber">Pro</span>
+              <HelpTooltip content="Use Tiingo's curated financial news API instead of RSS feeds. Requires Tiingo Power tier ($10/mo). Falls back to RSS if unavailable." />
+            </div>
+            <button
+              onClick={() => saveSettings({ useTiingoNews: !(settings.useTiingoNews ?? false) })}
+              className={`w-10 h-5 rounded-full transition-colors ${
+                (settings.useTiingoNews ?? false) ? 'bg-terminal-amber' : 'bg-terminal-border'
+              }`}
+            >
+              <div
+                className={`w-4 h-4 rounded-full transition-transform ${
+                  (settings.useTiingoNews ?? false) ? 'translate-x-5 bg-yellow-900' : 'translate-x-0.5 bg-white'
+                }`}
+              />
+            </button>
+          </div>
+          <p className="text-gray-500 text-xs mt-2">
+            Get ticker-specific news from Tiingo's curated sources. Requires Tiingo Power tier.
+          </p>
+          {(settings.useTiingoNews ?? false) && (
+            <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded text-xs text-blue-300">
+              <p className="font-medium mb-1">Tiingo News enabled</p>
+              <p className="text-blue-200/70">
+                News will be fetched from Tiingo API. If your tier doesn't include News API, it will automatically fall back to RSS feeds.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Sentiment Analysis (Ollama-powered) */}
       <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">

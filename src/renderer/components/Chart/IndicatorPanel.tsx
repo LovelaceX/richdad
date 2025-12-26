@@ -17,8 +17,7 @@ interface IndicatorPanelProps {
 }
 
 const INDICATOR_LABELS: Record<string, string> = {
-  macd: 'MACD (12, 26, 9)',
-  stochRsi: 'Stoch RSI (14, 14, 3, 3)'
+  macd: 'MACD (12, 26, 9)'
 }
 
 export function IndicatorPanel({ config, onClose, children }: IndicatorPanelProps) {

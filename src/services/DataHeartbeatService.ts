@@ -1,6 +1,7 @@
 import { fetchLivePrices, getCacheStatus } from './marketData'
 import { getTiingoBudgetStatus } from './apiBudgetTracker'
 import { fetchNews } from './newsService'
+import { filterNewsByRelevance } from './newsFilterService'
 import { analyzeSentiment, initializeSentimentAnalysis } from './sentimentService'
 import { generateRecommendation, isMarketOpen } from './aiRecommendationEngine'
 import { outcomeTracker } from './outcomeTracker'
@@ -410,15 +411,23 @@ class DataHeartbeatService {
   async updateNews(): Promise<NewsItem[]> {
     try {
       const newsResponse = await fetchNews()
+      let articles = newsResponse.articles
+
+      // Apply AI news filtering if enabled in settings
+      const settings = await getSettings()
+      if (settings.aiNewsFiltering) {
+        articles = await filterNewsByRelevance(articles, { enforceLimit: true })
+        console.log(`[Heartbeat] Filtered to ${articles.length} relevant headlines`)
+      }
 
       // Limit cached news to prevent unbounded memory growth
-      this.cachedNews = newsResponse.articles.slice(0, MAX_CACHED_NEWS)
+      this.cachedNews = articles.slice(0, MAX_CACHED_NEWS)
 
       console.log(`[Heartbeat] News fetched from ${newsResponse.source} (hasSentiment: ${newsResponse.hasSentiment})`)
 
       this.notifyCallbacks({
         type: 'news',
-        payload: newsResponse.articles
+        payload: articles
       })
 
       // Run news intel analysis after news update
@@ -430,7 +439,7 @@ class DataHeartbeatService {
       this.lastNewsUpdate = Date.now()
       reportServiceHealth.success('news')
 
-      return newsResponse.articles
+      return articles
 
     } catch (error) {
       console.error('[Heartbeat] News update failed:', error)

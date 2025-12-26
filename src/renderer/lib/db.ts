@@ -89,6 +89,7 @@ export interface UserSettings {
   headlineLimit?: number           // Max headlines per hour (default: 20)
   aiNewsFiltering?: boolean        // Enable AI-based news filtering by watchlist/market relevance
   autoClearNews?: boolean          // Auto-clear headlines at 4 PM ET (default: true for new installs)
+  useTiingoNews?: boolean          // Use Tiingo News API (Pro plan + Power tier only, falls back to RSS)
 
   // Web Search is now free via DuckDuckGo - no API key needed!
 
@@ -506,7 +507,7 @@ export const db = new DadAppDatabase()
 
 // Default settings
 export const DEFAULT_SETTINGS: UserSettings = {
-  persona: 'jax',  // Default AI persona (Jax = direct, no-nonsense veteran trader)
+  persona: 'sterling',  // Default AI persona (Sterling = sophisticated quant)
   tone: 'professional', // Deprecated: kept for migration
   dailyBudget: 1000,
   dailyLossLimit: 2,

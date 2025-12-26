@@ -56,7 +56,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
   const [setupPath, setSetupPath] = useState<SetupPath>('free')
   const [tiingoKey, setTiingoKey] = useState('')
   const [copied, setCopied] = useState(false)
-  const [selectedPersona, setSelectedPersona] = useState<PersonaType>('jax')
+  const [selectedPersona, setSelectedPersona] = useState<PersonaType>('sterling')
 
   // Platform detection for download links
   const platform = getPlatform()

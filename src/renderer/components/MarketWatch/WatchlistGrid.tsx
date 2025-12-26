@@ -7,17 +7,15 @@ export function WatchlistGrid() {
   const setSelectedTicker = useMarketStore(state => state.setSelectedTicker)
 
   return (
-    <div className="text-xs min-w-[280px]">
+    <div className="text-xs">
       {/* Header - matches WatchlistItem flex layout */}
-      <div className="flex items-center px-3 py-2 border-b border-terminal-border text-gray-500 font-semibold sticky top-0 bg-terminal-panel">
-        <span className="w-12 flex-shrink-0">Symbol</span>
-        <span className="text-right w-14 flex-shrink-0">Price</span>
-        <span className="text-right w-12 flex-shrink-0">Chg</span>
-        <span className="text-right w-12 flex-shrink-0">%</span>
-        {/* Spacer for badge column */}
-        <span className="w-12 flex-shrink-0" />
+      <div className="flex items-center px-2 py-2 border-b border-terminal-border text-gray-500 font-semibold sticky top-0 bg-terminal-panel">
+        <span className="w-11 flex-shrink-0">Symbol</span>
+        <span className="text-right w-12 flex-shrink-0">Price</span>
+        <span className="text-right w-11 flex-shrink-0">Chg</span>
+        <span className="text-right w-11 flex-shrink-0">%</span>
         {/* Spacer for delete column */}
-        <span className="w-5 flex-shrink-0" />
+        <span className="w-6 flex-shrink-0" />
       </div>
 
       {/* Watchlist Items */}

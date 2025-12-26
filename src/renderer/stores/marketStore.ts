@@ -64,10 +64,8 @@ interface MarketState {
   setWatchlistLimit: (limit: number) => void
 }
 
-// Default watchlist - start with SPY
-const defaultWatchlist: WatchlistItem[] = [
-  { symbol: 'SPY', name: 'SPDR S&P 500 ETF', sector: 'Index' }
-]
+// Default watchlist - empty on fresh install (user adds their own symbols)
+const defaultWatchlist: WatchlistItem[] = []
 
 export const useMarketStore = create<MarketState>((set, get) => ({
   watchlist: defaultWatchlist,

@@ -34,6 +34,7 @@ export interface NewsItem {
   id: string
   headline: string
   source: string
+  sourcePriority?: number  // Lower = higher priority (for tie-breaking in sort)
   url?: string
   timestamp: number
   ticker?: string

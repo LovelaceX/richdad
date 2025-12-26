@@ -16,8 +16,8 @@ import {
   calculateRSI,
   calculateRelativeStrength,
   formatRelativeStrengthForPrompt,
-  getCachedSpyRSI,
-  setSpyRSICache,
+  getCachedBenchmarkRSI,
+  setBenchmarkRSICache,
   type TechnicalIndicators,
   type RelativeStrength,
   type CandleData
@@ -297,8 +297,11 @@ export async function generateRecommendation(
   try {
     console.log(`[AI Engine] Starting analysis for ${symbol}`)
 
-    // 1. Check if AI is configured
-    const aiSettings = await getAISettings()
+    // 1. Check if AI is configured and get user settings
+    const [aiSettings, userSettings] = await Promise.all([
+      getAISettings(),
+      getSettings()
+    ])
     if (!aiSettings.apiKey) {
       console.warn('[AI Engine] No AI API key configured, skipping analysis')
       // Dispatch event so UI can show helpful message
@@ -353,31 +356,36 @@ export async function generateRecommendation(
     const rsiLabel = indicators.rsi14 ? `RSI ${indicators.rsi14}` : 'Calculating...'
     updatePhase('technicals', 'complete', rsiLabel)
 
-    // Calculate relative strength vs SPY (skip for SPY itself)
+    // Calculate relative strength vs user's selected market benchmark
+    // Use settings.selectedMarket.etf (defaults to SPY if not set)
+    const benchmarkSymbol = userSettings?.selectedMarket?.etf || 'SPY'
     let relativeStrength: RelativeStrength | null = null
-    if (symbol.toUpperCase() !== 'SPY' && indicators.rsi14) {
-      try {
-        // Check SPY RSI cache first
-        let spyRSI = getCachedSpyRSI()
 
-        if (spyRSI === null) {
-          // Fetch SPY data and calculate RSI
-          console.log('[AI Engine] Fetching SPY data for relative strength...')
-          const spyHistory = await fetchHistoricalData('SPY', 'daily')
-          if (spyHistory.candles.length >= 15) {
-            spyRSI = calculateRSI(spyHistory.candles)
-            if (spyRSI !== null) {
-              setSpyRSICache(spyRSI)
-              console.log(`[AI Engine] Cached SPY RSI: ${spyRSI}`)
+    // Skip relative strength for VXX (volatility derivative, not equity)
+    // Also skip if comparing stock to itself
+    if (benchmarkSymbol !== 'VXX' && symbol.toUpperCase() !== benchmarkSymbol && indicators.rsi14) {
+      try {
+        // Check benchmark RSI cache first
+        let benchmarkRSI = getCachedBenchmarkRSI(benchmarkSymbol)
+
+        if (benchmarkRSI === null) {
+          // Fetch benchmark data and calculate RSI
+          console.log(`[AI Engine] Fetching ${benchmarkSymbol} data for relative strength...`)
+          const benchmarkHistory = await fetchHistoricalData(benchmarkSymbol, 'daily')
+          if (benchmarkHistory.candles.length >= 15) {
+            benchmarkRSI = calculateRSI(benchmarkHistory.candles)
+            if (benchmarkRSI !== null) {
+              setBenchmarkRSICache(benchmarkSymbol, benchmarkRSI)
+              console.log(`[AI Engine] Cached ${benchmarkSymbol} RSI: ${benchmarkRSI}`)
             }
           }
         } else {
-          console.log(`[AI Engine] Using cached SPY RSI: ${spyRSI}`)
+          console.log(`[AI Engine] Using cached ${benchmarkSymbol} RSI: ${benchmarkRSI}`)
         }
 
-        if (spyRSI !== null) {
-          relativeStrength = calculateRelativeStrength(indicators.rsi14, spyRSI)
-          console.log(`[AI Engine] Relative strength: ${relativeStrength.interpretation} (diff: ${relativeStrength.differential})`)
+        if (benchmarkRSI !== null) {
+          relativeStrength = calculateRelativeStrength(indicators.rsi14, benchmarkRSI, benchmarkSymbol)
+          console.log(`[AI Engine] Relative strength vs ${benchmarkSymbol}: ${relativeStrength.interpretation} (diff: ${relativeStrength.differential})`)
         }
       } catch (error) {
         console.warn('[AI Engine] Failed to calculate relative strength:', error)
@@ -429,8 +437,7 @@ export async function generateRecommendation(
     const includeOptionsLanguage = aiSettings.includeOptionsLanguage ?? false
     const recommendationFormat = aiSettings.recommendationFormat ?? 'standard'
 
-    // Get user's settings for persona and risk parameters
-    const userSettings = await getSettings()
+    // Use userSettings fetched at start of function
     const persona = userSettings.persona || 'sterling'
 
     // Extract risk settings for position sizing

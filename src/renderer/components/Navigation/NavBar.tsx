@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import { LayoutDashboard, Newspaper, FlaskConical, Settings } from 'lucide-react'
 import { useNavigationStore } from '../../stores/navigationStore'
+import { useNewsPanelStore } from '../../stores/newsPanelStore'
 import type { PageId } from '../../types'
 import { NotificationBell } from './NotificationBell'
 
@@ -9,20 +10,29 @@ interface NavItemProps {
   icon: React.ReactNode
   label: string
   shortcut: string
+  onClick?: () => void  // Optional custom click handler
 }
 
 /**
  * NavItem - Memoized since props (id, icon, label, shortcut) are static
  * Only re-renders when currentPage changes for THIS item
  */
-const NavItem = memo(function NavItem({ id, icon, label, shortcut }: NavItemProps) {
+const NavItem = memo(function NavItem({ id, icon, label, shortcut, onClick }: NavItemProps) {
   const currentPage = useNavigationStore(state => state.currentPage)
   const setPage = useNavigationStore(state => state.setPage)
   const isActive = currentPage === id
 
+  const handleClick = () => {
+    if (onClick) {
+      onClick()
+    } else {
+      setPage(id)
+    }
+  }
+
   return (
     <button
-      onClick={() => setPage(id)}
+      onClick={handleClick}
       className={`
         relative flex items-center justify-center w-8 h-8 rounded transition-all
         group no-drag
@@ -57,6 +67,8 @@ const NavItem = memo(function NavItem({ id, icon, label, shortcut }: NavItemProp
  * Child NavItems handle their own state subscriptions
  */
 export const NavBar = memo(function NavBar() {
+  const openNewsPanel = useNewsPanelStore(state => state.openPanel)
+
   return (
     <div className="flex items-center gap-1 px-2 no-drag">
       <NavItem
@@ -70,6 +82,7 @@ export const NavBar = memo(function NavBar() {
         icon={<Newspaper size={18} />}
         label="News"
         shortcut="⌘2"
+        onClick={openNewsPanel}
       />
       <NavItem
         id="backtest"
