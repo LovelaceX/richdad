@@ -4,24 +4,16 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Release tag (e.g., v4.3.0)'
-        required: true
-        type: string
-
-permissions:
-  contents: write
 
 jobs:
   build-macos:
     runs-on: macos-latest
-    strategy:
-      matrix:
-        target: [aarch64-apple-darwin, x86_64-apple-darwin]
+    permissions:
+      contents: write
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -30,9 +22,7 @@ jobs:
           cache: 'npm'
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
+        uses: dtolnay/rust-action@stable
 
       - name: Install dependencies
         run: npm ci
@@ -42,47 +32,21 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.event.inputs.tag || github.ref_name }}
-          releaseName: 'RichDad ${{ github.event.inputs.tag || github.ref_name }}'
+          tagName: ${{ github.ref_name }}
+          releaseName: 'RichDad ${{ github.ref_name }}'
           releaseBody: |
-            ## RichDad ${{ github.event.inputs.tag || github.ref_name }}
+            ## RichDad ${{ github.ref_name }}
 
-            Bloomberg Terminal-style AI-powered trading copilot for retail investors.
+            ### Download
+            - **macOS**: Download the .dmg file below
 
-            ### Downloads
-            - **macOS Apple Silicon**: `RichDad_aarch64.dmg`
-            - **macOS Intel**: `RichDad_x64.dmg`
-            - **Windows**: `RichDad_x64_en-US.msi` or `RichDad_x64-setup.exe`
+            ### Installation
+            1. Download the DMG file
+            2. Open the DMG and drag RichDad to Applications
+            3. First launch: Right-click then Open (to bypass Gatekeeper)
 
-            See [CHANGELOG](https://github.com/LovelaceX/richdad#changelog) for details.
+            ### Requirements
+            - macOS 11.0 or later
+            - Ollama for AI features (https://ollama.com)
           releaseDraft: false
           prerelease: false
-          args: --target ${{ matrix.target }}
-
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Tauri app
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tagName: ${{ github.event.inputs.tag || github.ref_name }}
-          releaseName: 'RichDad ${{ github.event.inputs.tag || github.ref_name }}'
-          releaseDraft: false
-          prerelease: false
-
