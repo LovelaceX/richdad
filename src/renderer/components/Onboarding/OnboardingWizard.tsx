@@ -26,6 +26,7 @@ import { WelcomeStep } from './WelcomeStep'
 import { TermsStep } from './TermsStep'
 import { WizardStep } from './WizardStep'
 import { updateSettings, updateAISettings, getTierLimitsFromPlan } from '../../lib/db'
+import { useAIStore } from '../../stores/aiStore'
 import { updateTierSettings } from '../../../services/apiBudgetTracker'
 
 interface OnboardingWizardProps {
@@ -116,6 +117,8 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
         persona: selectedPersona,
         hasCompletedOnboarding: true
       })
+      // Send intro message from the selected persona
+      useAIStore.getState().sendPersonaIntroduction(selectedPersona)
       onClose()
     }
   }
