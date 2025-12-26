@@ -1,14 +1,13 @@
 /**
  * useAPIKeyManager Hook
  *
- * Manages API key state, validation testing, and auto-saving for any provider.
- * Supports: Finnhub, Polygon, TwelveData
+ * Manages API key state, validation testing, and auto-saving for Tiingo.
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { UserSettings } from '../../../lib/db'
 
-export type APIProvider = 'finnhub' | 'polygon' | 'twelvedata'
+export type APIProvider = 'tiingo'
 
 export type ConnectionStatus = 'idle' | 'valid' | 'invalid'
 
@@ -44,46 +43,21 @@ export interface UseAPIKeyManagerReturn {
  * Provider-specific validation functions
  * Each returns { valid: boolean; message: string }
  */
-async function validateFinnhub(apiKey: string): Promise<{ valid: boolean; message: string }> {
-  const { testFinnhubKey } = await import('../../../../services/finnhubValidator')
-  return testFinnhubKey(apiKey)
-}
-
-async function validatePolygon(apiKey: string): Promise<{ valid: boolean; message: string }> {
-  try {
-    const response = await fetch(
-      `https://api.polygon.io/v2/aggs/ticker/SPY/prev?adjusted=true&apiKey=${apiKey}`
-    )
-    const data = await response.json()
-
-    if (response.ok && data.status === 'OK') {
-      return { valid: true, message: 'Connection successful - API key verified' }
-    }
-    return { valid: false, message: data.message || 'Invalid API key' }
-  } catch {
-    return { valid: false, message: 'Connection test failed' }
-  }
-}
-
-async function validateTwelveData(apiKey: string): Promise<{ valid: boolean; message: string }> {
-  const { testTwelveDataConnection } = await import('../../../../services/twelveDataService')
-  const result = await testTwelveDataConnection(apiKey)
+async function validateTiingo(apiKey: string): Promise<{ valid: boolean; message: string }> {
+  const { testTiingoConnection } = await import('../../../../services/tiingoService')
+  const result = await testTiingoConnection(apiKey)
   return { valid: result.success, message: result.message }
 }
 
 const VALIDATORS: Record<APIProvider, (key: string) => Promise<{ valid: boolean; message: string }>> = {
-  finnhub: validateFinnhub,
-  polygon: validatePolygon,
-  twelvedata: validateTwelveData,
+  tiingo: validateTiingo,
 }
 
 /**
  * Settings key mapping for each provider
  */
 export const PROVIDER_SETTINGS_KEY: Record<APIProvider, keyof UserSettings> = {
-  finnhub: 'finnhubApiKey',
-  polygon: 'polygonApiKey',
-  twelvedata: 'twelvedataApiKey',
+  tiingo: 'tiingoApiKey',
 }
 
 /**

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { Eye, Plus, X, Search, Crown } from 'lucide-react'
+import { Plus, X, Search, Crown } from 'lucide-react'
 import { WatchlistGrid } from './WatchlistGrid'
 import { useMarketStore } from '../../stores/marketStore'
 import { useSettingsStore } from '../../stores/settingsStore'
@@ -103,7 +103,6 @@ export function MarketWatch() {
   return (
     <div className="panel h-full flex flex-col">
       <div className="panel-header flex items-center gap-2">
-        <Eye size={14} />
         <span>Watchlist</span>
         <span className="text-gray-500 text-xs">
           {watchlistStatus.current}/{watchlistStatus.limit}

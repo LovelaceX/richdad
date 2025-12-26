@@ -61,15 +61,13 @@ export interface UserSettings {
   soundCooldown: number            // Milliseconds between sounds (0 = no cooldown)
   lastSoundPlayed: number          // Timestamp of last sound
 
-  // Data Sources (simplified: TwelveData for free, Polygon for paid)
-  marketDataProvider: 'polygon' | 'twelvedata'
-  polygonApiKey?: string
-  finnhubApiKey?: string  // Optional: enables ticker-specific news for AI analysis
-  twelvedataApiKey?: string  // TwelveData.com - 800 calls/day free, real-time (default)
+  // Data Source - Tiingo (simplified to single provider)
+  marketDataProvider: 'tiingo'
+  tiingoApiKey?: string  // Tiingo.com - 50 tickers/hr free, 5000/hr on Power ($10/mo)
 
   // Simplified plan selection: Free or Pro
-  // Free: TwelveData (800/day), Local AI (Ollama), RSS news
-  // Pro: Polygon (unlimited), Local AI (Ollama), all news sources
+  // Free: Tiingo (50 tickers/hr), Local AI (Ollama), RSS news
+  // Pro: Tiingo Power (5000 tickers/hr), Local AI (Ollama), all news sources
   plan?: 'free' | 'pro'
 
   // Onboarding
@@ -90,6 +88,7 @@ export interface UserSettings {
   // News Sources Settings
   headlineLimit?: number           // Max headlines per hour (default: 20)
   aiNewsFiltering?: boolean        // Enable AI-based news filtering by watchlist/market relevance
+  autoClearNews?: boolean          // Auto-clear headlines at 4 PM ET (default: true for new installs)
 
   // Web Search is now free via DuckDuckGo - no API key needed!
 
@@ -142,6 +141,7 @@ export interface ProTrader {
   feedUrl?: string
   enabled: boolean
   addedAt: number
+  priority?: number  // 1 = highest priority, 2, 3... lower (for news source ordering)
 }
 
 export interface PriceAlert {
@@ -535,11 +535,9 @@ export const DEFAULT_SETTINGS: UserSettings = {
   soundCooldown: 0,           // No cooldown by default
   lastSoundPlayed: 0,
 
-  // Data Sources (simplified: TwelveData for free, Polygon for paid)
-  marketDataProvider: 'twelvedata',  // TwelveData recommended: 800 calls/day free tier
-  polygonApiKey: undefined,
-  finnhubApiKey: undefined,  // Optional: enables ticker-specific news for AI analysis
-  twelvedataApiKey: undefined,
+  // Data Source - Tiingo
+  marketDataProvider: 'tiingo',  // Tiingo: 50 tickers/hr free, 5000/hr Power ($10/mo)
+  tiingoApiKey: undefined,
 
   // Plan Selection (defaults to free)
   plan: 'free',
@@ -552,6 +550,9 @@ export const DEFAULT_SETTINGS: UserSettings = {
 
   // News Ticker
   tickerSpeed: 'normal',
+
+  // News Auto-Clear (enabled by default for fresh reading each day)
+  autoClearNews: true,
 
   // Market View Selection (default to S&P 500)
   selectedMarket: {
@@ -670,9 +671,7 @@ export async function initializeDatabase() {
 
 // API key field names for encryption/decryption
 const API_KEY_FIELDS: (keyof UserSettings)[] = [
-  'polygonApiKey',
-  'finnhubApiKey',
-  'twelvedataApiKey'
+  'tiingoApiKey'
 ]
 
 /**
@@ -948,27 +947,21 @@ export async function getPlan(): Promise<'free' | 'pro'> {
 
 /**
  * Provider tier limits derived from user's plan selection
- * Free plan: Conservative limits (TwelveData 800/day, Polygon 5/min, Finnhub 60/min)
- * Pro plan: Unlimited/high limits (Polygon unlimited, TwelveData unlimited, Finnhub 300/min)
+ * Free plan: Tiingo Starter (50 tickers/hr)
+ * Pro plan: Tiingo Power (5000 tickers/hr)
  */
 export type PlanTierLimits = {
-  polygon: 'free' | 'starter' | 'developer' | 'advanced'
-  twelveData: 'free' | 'basic' | 'pro'
-  finnhub: 'free' | 'premium'
+  tiingo: 'starter' | 'power'
 }
 
 export function getTierLimitsFromPlan(plan: 'free' | 'pro'): PlanTierLimits {
   if (plan === 'pro') {
     return {
-      polygon: 'advanced',      // Unlimited
-      twelveData: 'pro',        // Unlimited
-      finnhub: 'premium'        // 300/min
+      tiingo: 'power'  // 5000 tickers/hr
     }
   }
   return {
-    polygon: 'free',            // 5/min (don't recommend for free users)
-    twelveData: 'free',         // 800/day, 8/min
-    finnhub: 'free'             // 60/min
+    tiingo: 'starter'  // 50 tickers/hr
   }
 }
 

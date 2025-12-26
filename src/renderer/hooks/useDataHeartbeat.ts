@@ -48,10 +48,94 @@ export function useDataHeartbeat() {
   const updateWebSocketStatus = useServiceHealthStore(state => state.updateWebSocketStatus)
 
   // Subscribe to data updates (always active)
+  // Note: handleDataUpdate defined inside useEffect to ensure fresh references
   useEffect(() => {
+    const handleDataUpdate: DataUpdateCallback = ({ type, payload }) => {
+      switch (type) {
+        case 'market':
+          if (payload.quotes) {
+            setQuotes(payload.quotes)
+          }
+          if (payload.cacheStatus) {
+            setCacheStatus(payload.cacheStatus)
+          }
+          break
+
+        case 'news':
+          // Only update news if payload has content - preserves existing data on empty payload
+          if (Array.isArray(payload) && payload.length > 0) {
+            setNews(payload)
+          }
+          setLoading(false)
+          break
+
+        case 'sentiment':
+          // News with updated sentiment - only update if payload has content
+          if (Array.isArray(payload) && payload.length > 0) {
+            setNews(payload)
+          }
+          break
+
+        case 'ai_recommendation':
+          // New AI-generated recommendation
+          console.log('[useDataHeartbeat] Received AI recommendation:', payload)
+          setRecommendation(payload)
+          incrementAIUnread()  // Show notification badge on AI Copilot button
+          break
+
+        case 'ai_analysis_start':
+          // AI analysis starting - show progress animation
+          console.log('[useDataHeartbeat] AI analysis starting:', payload.ticker)
+          startAnalysis(payload.ticker)
+          break
+
+        case 'ai_phase_update':
+          // Update specific phase in progress animation
+          updatePhase(payload.phaseId, payload.status, payload.result)
+          break
+
+        case 'ai_analysis_end':
+          // AI analysis complete - clear progress after short delay
+          console.log('[useDataHeartbeat] AI analysis complete:', payload)
+          // Keep the progress visible briefly so user sees the final state
+          setTimeout(() => {
+            clearAnalysisProgress()
+          }, 1500)
+          break
+
+        case 'news_intel': {
+          // News intelligence report generated
+          const report = payload as NewsIntelReport
+          console.log('[useDataHeartbeat] News intel report received:', report)
+
+          // Check for new breaking alerts and play sound
+          const newAlertCount = report.breakingAlerts.length
+          if (newAlertCount > prevAlertCountRef.current && newAlertCount > 0) {
+            console.log(`[useDataHeartbeat] New breaking alerts detected: ${newAlertCount - prevAlertCountRef.current}`)
+            playSound('breakingNews').catch(console.error)
+          }
+          prevAlertCountRef.current = newAlertCount
+
+          setNewsIntel(report)
+          break
+        }
+
+        case 'pattern_scan': {
+          // Pattern scan report generated
+          const report = payload as PatternScanReport
+          setPatternScan(report)
+          break
+        }
+      }
+    }
+
     const unsubscribe = dataHeartbeat.subscribe(handleDataUpdate)
     return () => unsubscribe()
-  }, [])
+  }, [
+    setQuotes, setCacheStatus, setNews, setLoading, setRecommendation,
+    startAnalysis, updatePhase, clearAnalysisProgress, incrementAIUnread,
+    setNewsIntel, setPatternScan
+  ])
 
   // Start/stop heartbeat based on isLiveDataEnabled
   useEffect(() => {
@@ -109,85 +193,6 @@ export function useDataHeartbeat() {
 
     return unsubscribe
   }, [updateWebSocketStatus])
-
-  const handleDataUpdate: DataUpdateCallback = ({ type, payload }) => {
-    switch (type) {
-      case 'market':
-        if (payload.quotes) {
-          setQuotes(payload.quotes)
-        }
-        if (payload.cacheStatus) {
-          setCacheStatus(payload.cacheStatus)
-        }
-        break
-
-      case 'news':
-        // Only update news if payload has content - preserves existing data on empty payload
-        if (Array.isArray(payload) && payload.length > 0) {
-          setNews(payload)
-        }
-        setLoading(false)
-        break
-
-      case 'sentiment':
-        // News with updated sentiment - only update if payload has content
-        if (Array.isArray(payload) && payload.length > 0) {
-          setNews(payload)
-        }
-        break
-
-      case 'ai_recommendation':
-        // New AI-generated recommendation
-        console.log('[useDataHeartbeat] Received AI recommendation:', payload)
-        setRecommendation(payload)
-        incrementAIUnread()  // Show notification badge on AI Copilot button
-        break
-
-      case 'ai_analysis_start':
-        // AI analysis starting - show progress animation
-        console.log('[useDataHeartbeat] AI analysis starting:', payload.ticker)
-        startAnalysis(payload.ticker)
-        break
-
-      case 'ai_phase_update':
-        // Update specific phase in progress animation
-        updatePhase(payload.phaseId, payload.status, payload.result)
-        break
-
-      case 'ai_analysis_end':
-        // AI analysis complete - clear progress after short delay
-        console.log('[useDataHeartbeat] AI analysis complete:', payload)
-        // Keep the progress visible briefly so user sees the final state
-        setTimeout(() => {
-          clearAnalysisProgress()
-        }, 1500)
-        break
-
-      case 'news_intel': {
-        // News intelligence report generated
-        const report = payload as NewsIntelReport
-        console.log('[useDataHeartbeat] News intel report received:', report)
-
-        // Check for new breaking alerts and play sound
-        const newAlertCount = report.breakingAlerts.length
-        if (newAlertCount > prevAlertCountRef.current && newAlertCount > 0) {
-          console.log(`[useDataHeartbeat] New breaking alerts detected: ${newAlertCount - prevAlertCountRef.current}`)
-          playSound('breakingNews').catch(console.error)
-        }
-        prevAlertCountRef.current = newAlertCount
-
-        setNewsIntel(report)
-        break
-      }
-
-      case 'pattern_scan': {
-        // Pattern scan report generated
-        const report = payload as PatternScanReport
-        setPatternScan(report)
-        break
-      }
-    }
-  }
 
   // Return error state so consumers can display warning if heartbeat failed
   return { heartbeatError }

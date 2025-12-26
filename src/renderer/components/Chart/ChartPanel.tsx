@@ -26,7 +26,6 @@ export function ChartPanel() {
   const setSelectedDate = useMarketStore(state => state.setSelectedDate)
   const isChartExpanded = useMarketStore(state => state.isChartExpanded)
   const toggleChartExpanded = useMarketStore(state => state.toggleChartExpanded)
-  const cacheStatus = useMarketStore(state => state.cacheStatus)
   const dataSource = useMarketStore(state => state.dataSource)
   const loadChartData = useMarketStore(state => state.loadChartData)
   const currentRecommendation = useAIStore(state => state.currentRecommendation)
@@ -274,20 +273,12 @@ export function ChartPanel() {
           <div className="flex items-center gap-1.5 border-l border-terminal-border pl-3 group relative">
             {/* Provider Badge */}
             <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded uppercase ${
-              dataSource?.provider === 'polygon' ? 'bg-purple-500/20 text-purple-400' :
-              dataSource?.provider === 'twelvedata' ? 'bg-blue-500/20 text-blue-400' :
+              dataSource?.provider === 'tiingo' ? 'bg-blue-500/20 text-blue-400' :
               dataSource?.provider === 'mock' ? 'bg-gray-500/20 text-gray-400' :
               'bg-gray-500/20 text-gray-400'
             }`}>
               {dataSource?.provider || 'Loading'}
-              {dataSource?.isDelayed && ' (15m)'}
             </span>
-
-            {/* Freshness dot */}
-            <div
-              className={`w-2 h-2 rounded-full ${cacheStatus?.isFresh ? 'bg-green-400' : 'bg-amber-400'}`}
-              title={cacheStatus?.isFresh ? 'Data is fresh' : 'Data may be stale'}
-            />
 
             {/* Last updated time */}
             <span className="text-gray-500 text-[10px] tabular-nums">
@@ -316,12 +307,11 @@ export function ChartPanel() {
             {/* Tooltip on hover */}
             <div className="absolute top-full left-0 mt-1 px-2 py-1.5 bg-terminal-bg border border-terminal-border rounded text-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
               <div className="text-gray-400">
-                <span className="text-gray-500">Provider:</span> {dataSource?.provider === 'polygon' ? 'Polygon.io' :
-                  dataSource?.provider === 'twelvedata' ? 'TwelveData' :
+                <span className="text-gray-500">Provider:</span> {dataSource?.provider === 'tiingo' ? 'Tiingo' :
                   dataSource?.provider === 'mock' ? 'Mock Data' : 'Unknown'}
               </div>
               <div className="text-gray-400">
-                <span className="text-gray-500">Data Type:</span> {dataSource?.isDelayed ? '15-min delayed' : 'Real-time'}
+                <span className="text-gray-500">Data Type:</span> IEX Real-time
               </div>
               {dataSource?.lastUpdated && (
                 <div className="text-gray-400">

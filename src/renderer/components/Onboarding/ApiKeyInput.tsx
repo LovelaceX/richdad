@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { Loader2, CheckCircle2, XCircle, Wifi } from 'lucide-react'
-import { testPolygonKey } from '../../../services/polygonValidator'
-import { testTwelveDataConnection } from '../../../services/twelveDataService'
+import { testTiingoConnection } from '../../../services/tiingoService'
 
 interface ApiKeyInputProps {
-  provider: 'twelvedata' | 'polygon'
+  provider: 'tiingo'
   value: string
   onChange: (value: string) => void
   placeholder?: string
@@ -13,7 +12,6 @@ interface ApiKeyInputProps {
 type ValidationStatus = 'idle' | 'testing' | 'valid' | 'invalid'
 
 export function ApiKeyInput({
-  provider,
   value,
   onChange,
   placeholder = 'Paste your API key here',
@@ -32,17 +30,9 @@ export function ApiKeyInput({
     setErrorMessage('')
 
     try {
-      let result: { valid?: boolean; success?: boolean; message: string }
+      const result = await testTiingoConnection(value)
 
-      if (provider === 'polygon') {
-        result = await testPolygonKey(value)
-      } else {
-        // TwelveData returns { success, message } instead of { valid, message }
-        const twelveResult = await testTwelveDataConnection(value)
-        result = { valid: twelveResult.success, message: twelveResult.message }
-      }
-
-      if (result.valid) {
+      if (result.success) {
         setStatus('valid')
       } else {
         setStatus('invalid')

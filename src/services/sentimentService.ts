@@ -20,29 +20,64 @@ export type SentimentMethod = 'ollama' | 'keywords'
 let lastMethodUsed: SentimentMethod = 'keywords'
 
 // Keyword-based sentiment analysis fallback
+// Expanded patterns to catch both financial and general news sentiment
 const POSITIVE_PATTERNS = [
+  // Financial/market patterns
   /\b(surge[sd]?|soar[sed]?|jump[sed]?|rally|rallies|boom|skyrocket|gain[sed]?)\b/i,
   /\b(beat[s]?|exceed[sed]?|outperform|strong|bullish|upgrade[d]?|record[- ]high)\b/i,
   /\b(profit|profitable|earnings beat|revenue growth|positive|optimistic)\b/i,
-  /\b(breakthrough|success|win[s]?|approve[d]?|launch|expand)\b/i,
   /\b(buy rating|overweight|accumulate|target raised)\b/i,
-  /\b(up\s+\d+%|rise[sd]?|rising|climb[sed]?|grow|growth|higher)\b/i,
+  /\b(up\s+\d+%|rise[sd]?|rising|climb[sed]?|higher)\b/i,
   /\b(upbeat|confident|momentum|recover|recovery|rebound)\b/i,
   /\b(all[- ]time[- ]high|new high|52[- ]week high)\b/i,
-  /\b(acquisition|partnership|deal|contract|awarded)\b/i
+  /\b(acquisition|partnership|deal|contract|awarded)\b/i,
+  // General positive sentiment
+  /\b(success(ful)?|achieve[d]?|accomplish(ed)?|milestone|breakthrough)\b/i,
+  /\b(boost[sed]?|improve[d]?|improvement|better|best)\b/i,
+  /\b(grow(th|ing|s)?|expand(s|ing|ed)?|increase[sd]?)\b/i,
+  /\b(innovation|innovative|revolutionar(y|ize)|transform(ative)?)\b/i,
+  /\b(opportunity|opportunities|potential|promising)\b/i,
+  /\b(record[- ]?(sales|profit|revenue|quarter))\b/i,
+  /\b(surpass(es|ed)?|outpace[sd]?|exceed(s|ed)?)\b/i,
+  /\b(alliance|collaborat(e|ion)|agreement)\b/i,
+  /\b(launch(es|ed)?|unveil[sed]?|introduce[sd]?|debut[sed]?)\b/i,
+  /\b(approv(e[sd]?|al)|clear(ed|ance)?|green[- ]light)\b/i,
+  /\b(win[s]?|winning|won|victory|triumph)\b/i,
+  /\b(lead(s|ing)?|leader|dominat(e|ing)|top[s]?)\b/i,
+  /\b(demand|popular|favorite|preferred)\b/i,
+  /\b(tripled?|doubled?|soaring)\b/i
 ]
 
 const NEGATIVE_PATTERNS = [
+  // Financial/market patterns
   /\b(crash|plunge[sd]?|tumble[sd]?|sink[s]?|dive[sd]?|collapse[d]?|tank[sed]?)\b/i,
-  /\b(miss|missed|disappoints?|weak|bearish|downgrade[d]?|cut[s]?|slash)\b/i,
-  /\b(loss|losses|layoff[s]?|bankrupt|fraud|scandal|crisis|warn)\b/i,
+  /\b(miss|missed|disappoints?|weak|bearish|downgrade[d]?)\b/i,
+  /\b(loss|losses|layoff[s]?|bankrupt|fraud|scandal)\b/i,
   /\b(decline[sd]?|drop[s]?|fall[s]?|fell|slump|recession|default)\b/i,
   /\b(sell rating|underweight|reduce|target cut|underperform)\b/i,
-  /\b(concern|risk|threat|fear|uncertain|volatile)\b/i,
+  /\b(concern|threat|fear|uncertain|volatile)\b/i,
   /\b(down\s+\d+%|lower|slide[sd]?|sliding|retreats?)\b/i,
   /\b(investigation|lawsuit|sue[sd]?|fine[sd]?|penalty)\b/i,
   /\b(52[- ]week low|new low|all[- ]time[- ]low)\b/i,
-  /\b(halt[sed]?|suspend|suspend[ed]?|recall|shutdown)\b/i
+  /\b(halt[sed]?|suspend[ed]?|recall|shutdown)\b/i,
+  // General negative sentiment
+  /\b(fail(s|ed|ure|ing)?|disappoint(s|ed|ing|ment)?)\b/i,
+  /\b(struggle[sd]?|struggling|difficult(y|ies)?)\b/i,
+  /\b(delay[sed]?|postpone[d]?|cancel[led]?|pause[sd]?)\b/i,
+  /\b(cut[s]?|slash(es|ed)?|reduc(e[sd]?|tion|ing))\b/i,
+  /\b(warn(s|ed|ing)?|caution|alert|worried|worry)\b/i,
+  /\b(crisis|emergency|disaster|catastroph(e|ic))\b/i,
+  /\b(litigation|legal action|settlement)\b/i,
+  /\b(probe|inquiry|scandal)\b/i,
+  /\b(resign[sed]?|fire[sd]?|restructur(e|ing))\b/i,
+  /\b(ban[ned]?|block[sed]?|restrict(s|ed|ion)?|prohibit)\b/i,
+  /\b(reject[sed]?|denial|denied|oppose[sd]?|opposition)\b/i,
+  /\b(risk[sy]?|danger(ous)?|vulnerable|exposure)\b/i,
+  /\b(problem[s]?|issue[s]?|trouble[sd]?|setback)\b/i,
+  /\b(shut(ting)?[- ]?down|clos(e[sd]?|ing|ure))\b/i,
+  /\b(flee|exit|abandon|pullback|pull[- ]?back)\b/i,
+  /\b(tariff[s]?|sanction[s]?|embargo)\b/i,
+  /\b(expensive|overpriced|costly|pricey)\b/i
 ]
 
 /**

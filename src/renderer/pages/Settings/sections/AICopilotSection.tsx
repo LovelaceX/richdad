@@ -251,7 +251,7 @@ export function AICopilotSection({
           {settings.autoPatternScan && (
             <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-400">
               <strong>⚠️ Warning:</strong> This uses ~15 API calls every 15 minutes (1 per symbol).
-              Only enable if you have Polygon Starter+ or TwelveData Pro+ tier.
+              Only enable if you have Tiingo Power tier (5,000 tickers/hour).
             </div>
           )}
         </div>

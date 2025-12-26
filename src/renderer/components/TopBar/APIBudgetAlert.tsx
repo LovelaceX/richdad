@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { X, AlertTriangle } from 'lucide-react'
-import { getTwelveDataBudgetStatus, getPolygonBudgetStatus } from '../../../services/apiBudgetTracker'
+import { getTiingoBudgetStatus } from '../../../services/apiBudgetTracker'
 import { getSettings } from '../../lib/db'
 
 interface ProviderStatus {
@@ -19,30 +19,15 @@ export function APIBudgetAlert() {
       const statuses: ProviderStatus[] = []
       const settings = await getSettings()
 
-      // TwelveData (check if configured)
-      if (settings?.twelvedataApiKey) {
-        const tdStatus = getTwelveDataBudgetStatus()
-        if (!tdStatus.isDailyUnlimited) {
-          statuses.push({
-            provider: 'TwelveData',
-            used: tdStatus.dailyUsed,
-            limit: tdStatus.dailyLimit,
-            percentage: (tdStatus.dailyUsed / tdStatus.dailyLimit) * 100
-          })
-        }
-      }
-
-      // Polygon (check if configured)
-      if (settings?.polygonApiKey) {
-        const polygonStatus = getPolygonBudgetStatus()
-        if (!polygonStatus.isUnlimited) {
-          statuses.push({
-            provider: 'Polygon',
-            used: polygonStatus.used,
-            limit: polygonStatus.limit,
-            percentage: (polygonStatus.used / polygonStatus.limit) * 100
-          })
-        }
+      // Tiingo (check if configured)
+      if (settings?.tiingoApiKey) {
+        const tiingoStatus = getTiingoBudgetStatus()
+        statuses.push({
+          provider: 'Tiingo',
+          used: tiingoStatus.used,
+          limit: tiingoStatus.limit,
+          percentage: tiingoStatus.percentUsed
+        })
       }
 
       setProviderStatuses(statuses)
@@ -84,9 +69,9 @@ export function APIBudgetAlert() {
                   {status.provider}:
                 </span>
                 <span className="text-xs text-gray-400">
-                  {status.used}/{status.limit} calls
+                  {status.used}/{status.limit} tickers/hr
                   {isExhausted
-                    ? ' (exhausted - using fallback)'
+                    ? ' (exhausted - using cache)'
                     : ` (${Math.round(status.percentage)}%)`
                   }
                 </span>

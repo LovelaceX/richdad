@@ -2,7 +2,6 @@ import { Panel, PanelGroup } from 'react-resizable-panels'
 import { MarketWatch } from '../components/MarketWatch'
 import { ChartPanel } from '../components/Chart'
 import { NewsTicker } from '../components/NewsTicker'
-import { MarketOverview } from '../components/MarketOverview'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { useSettingsStore } from '../stores/settingsStore'
 
@@ -12,11 +11,6 @@ export function Dashboard() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Market Overview Bar */}
-      <ErrorBoundary fallbackTitle="Market Overview Error">
-        <MarketOverview />
-      </ErrorBoundary>
-
       {/* Main Content - Resizable Panels */}
       <div className="flex-1 overflow-hidden">
         <PanelGroup direction="vertical">

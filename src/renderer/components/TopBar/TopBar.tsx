@@ -4,7 +4,7 @@ import { NavBar } from '../Navigation/NavBar'
 import { APIBudgetAlert } from './APIBudgetAlert'
 import { AIBudgetAlert } from './AIBudgetAlert'
 import { AICopilotButton } from './AICopilotButton'
-import { OllamaStatusIndicator } from './OllamaStatusIndicator'
+import { MarketStatusIndicator } from '../Chart/MarketStatusIndicator'
 import { useSettingsStore } from '../../stores/settingsStore'
 import { useNetworkStatus } from '../../hooks/useNetworkStatus'
 
@@ -61,10 +61,10 @@ export function TopBar() {
           <CommandInput />
         </div>
 
-        {/* Right: Ollama Status + AI Copilot + Zoom Controls */}
-        <div className="flex justify-end items-center gap-2 no-drag" style={{ width: '280px' }}>
-          <OllamaStatusIndicator />
+        {/* Right: AI Copilot + Market Status + Zoom Controls */}
+        <div className="flex justify-end items-center gap-2 no-drag" style={{ width: '380px' }}>
           <AICopilotButton />
+          <MarketStatusIndicator />
           <ZoomControls />
         </div>
       </div>

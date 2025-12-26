@@ -68,7 +68,7 @@ const SECTIONS = [
   { id: 'display' as const, label: 'Display', icon: Monitor, keywords: ['theme', 'dark', 'light', 'color', 'zoom', 'ticker', 'speed', 'chart', 'appearance'] },
   { id: 'risk' as const, label: 'Risk Management', icon: Shield, keywords: ['stop loss', 'position', 'size', 'risk', 'kelly', 'percentage'] },
   { id: 'ai-copilot' as const, label: 'AI Copilot', icon: Brain, keywords: ['ai', 'openai', 'claude', 'groq', 'copilot', 'pattern', 'scan', 'confidence', 'budget'] },
-  { id: 'data-sources' as const, label: 'Market Data', icon: BarChart3, keywords: ['api', 'key', 'polygon', 'twelvedata', 'alpha vantage', 'finnhub', 'provider', 'free', 'data', 'market'] },
+  { id: 'data-sources' as const, label: 'Market Data', icon: BarChart3, keywords: ['api', 'key', 'tiingo', 'provider', 'free', 'data', 'market', 'iex'] },
   { id: 'news-sources' as const, label: 'News Sources', icon: Newspaper, keywords: ['news', 'rss', 'feed', 'headlines', 'sentiment', 'filter', 'hugging face'] },
   { id: 'error-log' as const, label: 'Activity Log', icon: AlertCircle, keywords: ['activity', 'log', 'history', 'events', 'debug', 'issue', 'troubleshoot'] },
   { id: 'sounds' as const, label: 'Notifications', icon: Volume2, keywords: ['sound', 'audio', 'notification', 'alert', 'beep', 'volume'] },

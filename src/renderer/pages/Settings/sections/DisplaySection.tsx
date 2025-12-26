@@ -365,7 +365,7 @@ export function DisplaySection() {
 
           {/* Slider - 60-600 seconds (1-10 minutes) */}
           <div className="flex items-center gap-3">
-            <Rabbit size={20} className="text-gray-400 flex-shrink-0" />
+            <Snail size={20} className="text-gray-400 flex-shrink-0" />
 
             <input
               type="range"
@@ -377,7 +377,7 @@ export function DisplaySection() {
               className="flex-1 h-2 bg-terminal-border rounded-lg appearance-none cursor-pointer accent-terminal-amber"
             />
 
-            <Snail size={20} className="text-gray-400 flex-shrink-0" />
+            <Rabbit size={20} className="text-gray-400 flex-shrink-0" />
           </div>
         </div>
 

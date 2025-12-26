@@ -3,13 +3,14 @@ import type { Quote } from '../renderer/types'
 import type { DataProvider, DataSource } from '../renderer/stores/marketStore'
 import type { CandleData } from './technicalIndicators'
 import {
-  canUsePolygon,
-  recordPolygonCall,
-  canUseTwelveData,
-  recordTwelveDataCall
+  canUseTiingo,
+  recordTiingoCall
 } from './apiBudgetTracker'
-import { fetchPolygonQuotes, fetchPolygonHistorical, fetchPolygonHistoricalRange } from './polygonService'
-import { fetchTwelveDataBatchQuotes, fetchTwelveDataCandles } from './twelveDataService'
+import {
+  fetchTiingoQuotes,
+  fetchTiingoHistorical,
+  fetchTiingoHistoricalRange
+} from './tiingoService'
 
 // ==========================================
 // RETRY LOGIC WITH EXPONENTIAL BACKOFF
@@ -237,8 +238,8 @@ function addCacheMetadata(
 // Historical data cache (for candlestick charts)
 // Limited to prevent unbounded memory growth
 const MAX_HISTORICAL_CACHE_ENTRIES = 50
-let cachedHistoricalData: Map<string, CandleData[]> = new Map()
-let historicalCacheTimestamps: Map<string, number> = new Map()
+const cachedHistoricalData: Map<string, CandleData[]> = new Map()
+const historicalCacheTimestamps: Map<string, number> = new Map()
 let historicalCacheLRU: string[] = [] // Track access order for LRU eviction
 
 /**
@@ -262,9 +263,8 @@ function trackHistoricalCacheAccess(cacheKey: string): void {
 }
 
 /**
- * Fetch live prices from configured provider (Polygon or Alpha Vantage)
+ * Fetch live prices from Tiingo
  * Uses caching to minimize API calls
- * Falls back to mock data on error
  *
  * DEDUPLICATION: If an identical request is already in flight, returns the same promise
  */
@@ -295,135 +295,56 @@ export async function fetchLivePrices(symbols: string[]): Promise<Quote[]> {
  */
 async function fetchLivePricesInternal(symbols: string[]): Promise<Quote[]> {
   const settings = await getSettings()
-  const provider = settings.marketDataProvider || 'polygon'
+  const tiingoKey = settings.tiingoApiKey
 
-  // Route to Polygon if configured
-  if (provider === 'polygon') {
-    const polygonKey = settings.polygonApiKey
-    if (!polygonKey) {
-      console.warn('[Market Data] No Polygon API key configured')
-      return [] // No data available - UI will show setup prompt
-    }
+  if (!tiingoKey) {
+    console.warn('[Market Data] No Tiingo API key configured')
+    return [] // No data available - UI will show setup prompt
+  }
 
-    // Check budget before making API call
-    if (!canUsePolygon()) {
-      console.warn('[Market Data] Polygon rate limit reached, using cached/mock data')
-      // Emit event for UI to show toast notification
-      window.dispatchEvent(new CustomEvent('api-budget-exhausted', {
-        detail: { provider: 'polygon', type: 'quotes' }
-      }))
-      // Try to return cached data if available
-      const age = Date.now() - cacheTimestamp
-      if (cachedQuotes.length > 0 && age < CACHE_DURATION_MS * 2) {
-        const filtered = cachedQuotes.filter(q => symbols.includes(q.symbol))
-        return addCacheMetadata(filtered, age > CACHE_DURATION_MS ? 'stale' : 'cache', age)
-      }
-      return [] // Rate limited, no cache - UI will show error state
+  // Check budget before making API call
+  if (!canUseTiingo()) {
+    console.warn('[Market Data] Tiingo rate limit reached, using cached data')
+    // Emit event for UI to show toast notification
+    window.dispatchEvent(new CustomEvent('api-budget-exhausted', {
+      detail: { provider: 'tiingo', type: 'quotes' }
+    }))
+    // Try to return cached data if available
+    const age = Date.now() - cacheTimestamp
+    if (cachedQuotes.length > 0 && age < CACHE_DURATION_MS * 2) {
+      const filtered = cachedQuotes.filter(q => symbols.includes(q.symbol))
+      return addCacheMetadata(filtered, age > CACHE_DURATION_MS ? 'stale' : 'cache', age)
     }
+    return [] // Rate limited, no cache - UI will show error state
+  }
 
-    // Skip API call if no symbols requested (prevents phantom budget usage)
-    if (symbols.length === 0) {
-      console.log('[Market Data] No symbols requested, skipping Polygon quote fetch')
-      return []
-    }
-
-    try {
-      const quotes = await withRetry(() => fetchPolygonQuotes(symbols, polygonKey))
-      if (quotes.length > 0) {
-        // Record call AFTER successful response (not before)
-        recordPolygonCall()
-        // Update cache
-        cachedQuotes = quotes
-        cacheTimestamp = Date.now()
-        return addCacheMetadata(quotes, 'api', 0)
-      }
-    } catch (error) {
-      console.error('[Market Data] Polygon fetch failed after retries:', error)
-      // Try cache on error - don't consume budget for failed calls
-      const age = Date.now() - cacheTimestamp
-      if (cachedQuotes.length > 0) {
-        const filtered = cachedQuotes.filter(q => symbols.includes(q.symbol))
-        return addCacheMetadata(filtered, 'stale', age)
-      }
-    }
-    // No data available
+  // Skip API call if no symbols requested (prevents phantom budget usage)
+  if (symbols.length === 0) {
+    console.log('[Market Data] No symbols requested, skipping quote fetch')
     return []
   }
 
-  // Route to TwelveData if configured
-  if (provider === 'twelvedata') {
-    const twelveDataKey = settings.twelvedataApiKey
-    if (!twelveDataKey) {
-      console.warn('[Market Data] No TwelveData API key configured')
-      return [] // No data available - UI will show setup prompt
-    }
-
-    // Check budget before making API call
-    if (!canUseTwelveData()) {
-      console.warn('[Market Data] TwelveData rate limit reached, using cached data')
-      // Emit event for UI to show toast notification
-      window.dispatchEvent(new CustomEvent('api-budget-exhausted', {
-        detail: { provider: 'twelvedata', type: 'quotes' }
-      }))
-      const age = Date.now() - cacheTimestamp
-      if (cachedQuotes.length > 0 && age < CACHE_DURATION_MS * 2) {
-        const filtered = cachedQuotes.filter(q => symbols.includes(q.symbol))
-        return addCacheMetadata(filtered, age > CACHE_DURATION_MS ? 'stale' : 'cache', age)
-      }
-      return [] // Rate limited, no cache - UI will show error state
-    }
-
-    // Skip API call if no symbols requested (prevents phantom budget usage)
-    if (symbols.length === 0) {
-      console.log('[Market Data] No symbols requested, skipping TwelveData quote fetch')
-      return []
-    }
-
-    try {
-      const quotesMap = await withRetry(() => fetchTwelveDataBatchQuotes(symbols, twelveDataKey))
-      const quotes: Quote[] = symbols
-        .map(symbol => {
-          const data = quotesMap.get(symbol)
-          if (data) {
-            return {
-              symbol,
-              price: data.price,
-              change: data.change,
-              changePercent: data.changePercent,
-              volume: data.volume,
-              high: data.price * 1.01, // Approximate if not available
-              low: data.price * 0.99,
-              open: data.price - data.change,
-              previousClose: data.price - data.change,
-              timestamp: Date.now()
-            }
-          }
-          return null // No data for this symbol
-        })
-        .filter((q): q is Quote => q !== null) // Filter out nulls
+  try {
+    const quotes = await withRetry(() => fetchTiingoQuotes(symbols, tiingoKey))
+    if (quotes.length > 0) {
       // Record call AFTER successful response (not before)
-      if (quotes.length > 0) {
-        recordTwelveDataCall()
-      }
+      recordTiingoCall()
       // Update cache
       cachedQuotes = quotes
       cacheTimestamp = Date.now()
       return addCacheMetadata(quotes, 'api', 0)
-    } catch (error) {
-      console.error('[Market Data] TwelveData fetch failed after retries:', error)
-      // Try cache on error - don't consume budget for failed calls
-      const age = Date.now() - cacheTimestamp
-      if (cachedQuotes.length > 0) {
-        const filtered = cachedQuotes.filter(q => symbols.includes(q.symbol))
-        return addCacheMetadata(filtered, 'stale', age)
-      }
     }
-    // No data available
-    return []
+  } catch (error) {
+    console.error('[Market Data] Tiingo fetch failed after retries:', error)
+    // Try cache on error - don't consume budget for failed calls
+    const age = Date.now() - cacheTimestamp
+    if (cachedQuotes.length > 0) {
+      const filtered = cachedQuotes.filter(q => symbols.includes(q.symbol))
+      return addCacheMetadata(filtered, 'stale', age)
+    }
   }
 
-  // Unknown provider - return empty (shouldn't happen with valid settings)
-  console.warn(`[Market Data] Unknown provider: ${provider}, no data available`)
+  // No data available
   return []
 }
 
@@ -510,125 +431,62 @@ async function fetchHistoricalDataInternal(
       throw new DOMException('Request was aborted', 'AbortError')
     }
   }
+
   const settings = await getSettings()
-  const provider = settings.marketDataProvider || 'polygon'
+  const tiingoKey = settings.tiingoApiKey
 
-  // Route to Polygon if configured
-  if (provider === 'polygon') {
-    const polygonKey = settings.polygonApiKey
-    if (!polygonKey) {
-      console.warn('[Market Data] No Polygon API key configured')
-      return {
-        candles: [], // No data - UI will show setup prompt
-        source: createDataSource(null, false, 0)
-      }
-    }
-
-    // Check budget before making API call
-    if (!canUsePolygon()) {
-      console.warn('[Market Data] Polygon rate limit reached, checking cache')
-      // Emit event for UI to show toast notification
-      window.dispatchEvent(new CustomEvent('api-budget-exhausted', {
-        detail: { provider: 'polygon', type: 'historical' }
-      }))
-      // Try to return cached historical data
-      const cacheKey = `${symbol}_${interval}`
-      if (cachedHistoricalData.has(cacheKey)) {
-        const cacheAge = Date.now() - (historicalCacheTimestamps.get(cacheKey) || 0)
-        return {
-          candles: cachedHistoricalData.get(cacheKey)!,
-          source: createDataSource('polygon', true, cacheAge)
-        }
-      }
-      return {
-        candles: [], // Rate limited, no cache - UI will show error state
-        source: createDataSource(null, false, 0)
-      }
-    }
-
-    try {
-      checkAborted() // Check before API call
-      const candles = await withRetry(() => fetchPolygonHistorical(symbol, interval, polygonKey))
-      if (candles.length > 0) {
-        // Record call AFTER successful response (not before)
-        recordPolygonCall()
-        // Cache the results
-        const cacheKey = `${symbol}_${interval}`
-        cachedHistoricalData.set(cacheKey, candles)
-        historicalCacheTimestamps.set(cacheKey, Date.now())
-        trackHistoricalCacheAccess(cacheKey) // LRU tracking
-        return {
-          candles,
-          source: createDataSource('polygon', true, 0) // Polygon free tier is 15-min delayed
-        }
-      }
-    } catch (error) {
-      console.error('[Market Data] Polygon historical fetch failed after retries:', error)
-      // Don't consume budget for failed calls
-    }
-    // No data available
+  if (!tiingoKey) {
+    console.warn('[Market Data] No Tiingo API key configured')
     return {
-      candles: [],
+      candles: [], // No data - UI will show setup prompt
       source: createDataSource(null, false, 0)
     }
   }
 
-  // Route to TwelveData if configured
-  if (provider === 'twelvedata') {
-    const twelveDataKey = settings.twelvedataApiKey
-    if (!twelveDataKey) {
-      console.warn('[Market Data] No TwelveData API key configured')
+  // Check budget before making API call
+  if (!canUseTiingo()) {
+    console.warn('[Market Data] Tiingo rate limit reached, checking cache')
+    // Emit event for UI to show toast notification
+    window.dispatchEvent(new CustomEvent('api-budget-exhausted', {
+      detail: { provider: 'tiingo', type: 'historical' }
+    }))
+    // Try to return cached historical data
+    const cacheKey = `${symbol}_${interval}`
+    if (cachedHistoricalData.has(cacheKey)) {
+      const cacheAge = Date.now() - (historicalCacheTimestamps.get(cacheKey) || 0)
       return {
-        candles: [], // No data - UI will show setup prompt
-        source: createDataSource(null, false, 0)
+        candles: cachedHistoricalData.get(cacheKey)!,
+        source: createDataSource('tiingo', false, cacheAge)
       }
     }
-
-    // Check budget before making API call
-    if (!canUseTwelveData()) {
-      console.warn('[Market Data] TwelveData rate limit reached, checking cache')
-      // Emit event for UI to show toast notification
-      window.dispatchEvent(new CustomEvent('api-budget-exhausted', {
-        detail: { provider: 'twelvedata', type: 'historical' }
-      }))
-      const cacheKey = `${symbol}_${interval}`
-      if (cachedHistoricalData.has(cacheKey)) {
-        const cacheAge = Date.now() - (historicalCacheTimestamps.get(cacheKey) || 0)
-        return {
-          candles: cachedHistoricalData.get(cacheKey)!,
-          source: createDataSource('twelvedata', false, cacheAge)
-        }
-      }
-      return {
-        candles: [], // Rate limited, no cache - UI will show error state
-        source: createDataSource(null, false, 0)
-      }
-    }
-
-    try {
-      checkAborted() // Check before API call
-      const candles = await withRetry(() => fetchTwelveDataCandles(symbol, interval, twelveDataKey))
-      if (candles.length > 0) {
-        // Record call AFTER successful response (not before)
-        recordTwelveDataCall()
-        return {
-          candles,
-          source: createDataSource('twelvedata', false, 0) // TwelveData is real-time
-        }
-      }
-    } catch (error) {
-      console.error('[Market Data] TwelveData historical fetch failed after retries:', error)
-      // Don't consume budget for failed calls
-    }
-    // No data available
     return {
-      candles: [],
+      candles: [], // Rate limited, no cache - UI will show error state
       source: createDataSource(null, false, 0)
     }
   }
 
-  // Unknown provider - return empty (shouldn't happen with valid settings)
-  console.warn(`[Market Data] Unknown provider: ${provider}, no chart data available`)
+  try {
+    checkAborted() // Check before API call
+    const candles = await withRetry(() => fetchTiingoHistorical(symbol, interval, tiingoKey))
+    if (candles.length > 0) {
+      // Record call AFTER successful response (not before)
+      recordTiingoCall()
+      // Cache the results
+      const cacheKey = `${symbol}_${interval}`
+      cachedHistoricalData.set(cacheKey, candles)
+      historicalCacheTimestamps.set(cacheKey, Date.now())
+      trackHistoricalCacheAccess(cacheKey) // LRU tracking
+      return {
+        candles,
+        source: createDataSource('tiingo', false, 0) // Tiingo IEX is real-time
+      }
+    }
+  } catch (error) {
+    console.error('[Market Data] Tiingo historical fetch failed after retries:', error)
+    // Don't consume budget for failed calls
+  }
+
+  // No data available
   return {
     candles: [],
     source: createDataSource(null, false, 0)
@@ -653,6 +511,12 @@ export async function fetchHistoricalDataRange(
   includeIndicatorLookback: number = 200
 ): Promise<CandleData[]> {
   const settings = await getSettings()
+  const tiingoKey = settings.tiingoApiKey
+
+  if (!tiingoKey) {
+    console.warn('[Market Data] No Tiingo API key for backtest data')
+    return [] // Return empty - UI should show error state
+  }
 
   // Calculate adjusted start date to include lookback for indicators
   // For daily timeframe, we need 200 extra trading days (~280 calendar days)
@@ -675,20 +539,13 @@ export async function fetchHistoricalDataRange(
 
   console.log(`[Market Data] Fetching range for ${symbol}: ${new Date(adjustedStartDate).toISOString().split('T')[0]} to ${new Date(endDate).toISOString().split('T')[0]} (${timeframe})`)
 
-  // Only Polygon supports date range queries well
-  const polygonKey = settings.polygonApiKey
-  if (!polygonKey) {
-    console.warn('[Market Data] No Polygon API key for backtest data')
-    return [] // Return empty - UI should show error state
-  }
-
   try {
-    const candles = await withRetry(() => fetchPolygonHistoricalRange(
+    const candles = await withRetry(() => fetchTiingoHistoricalRange(
       symbol,
       adjustedStartDate,
       endDate,
       timeframe,
-      polygonKey
+      tiingoKey
     ))
 
     if (candles.length > 0) {

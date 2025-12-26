@@ -9,12 +9,94 @@
  * Limits headlines to configurable amount per hour to avoid overload.
  */
 
-import { getSettings } from '../renderer/lib/db'
+import { getSettings, type ProTrader } from '../renderer/lib/db'
+import { db } from '../renderer/lib/db'
 import type { NewsItem } from '../renderer/types'
 
 // Track headlines shown in the last hour to enforce limit
 let recentHeadlines: { id: string; timestamp: number }[] = []
 const ONE_HOUR_MS = 60 * 60 * 1000
+
+/**
+ * Get news sources with their priorities
+ */
+async function getSourcesWithPriority(): Promise<Map<string, number>> {
+  const sources = await db.proTraders.toArray()
+  const priorityMap = new Map<string, number>()
+
+  for (const source of sources) {
+    if (source.enabled) {
+      // Map source name to priority (lower number = higher priority)
+      priorityMap.set(source.name, source.priority || 99)
+    }
+  }
+
+  return priorityMap
+}
+
+/**
+ * Smart blend algorithm - balances priority with recency
+ * - 40% guaranteed from Priority 1 sources
+ * - Remaining fills by most recent across all sources
+ */
+function smartBlend(
+  headlines: NewsItem[],
+  sourcePriorities: Map<string, number>,
+  limit: number
+): NewsItem[] {
+  if (headlines.length === 0 || limit === 0) return []
+
+  // Group headlines by source priority
+  const byPriority: Map<number, NewsItem[]> = new Map()
+
+  for (const headline of headlines) {
+    const sourceName = headline.source || 'Unknown'
+    const priority = sourcePriorities.get(sourceName) || 99
+
+    if (!byPriority.has(priority)) {
+      byPriority.set(priority, [])
+    }
+    byPriority.get(priority)!.push(headline)
+  }
+
+  // Sort each priority group by timestamp (newest first)
+  for (const group of byPriority.values()) {
+    group.sort((a, b) => b.datetime - a.datetime)
+  }
+
+  const result: NewsItem[] = []
+
+  // Step 1: Guarantee 40% from Priority 1 sources
+  const prio1 = byPriority.get(1) || []
+  const minPrio1 = Math.min(Math.ceil(limit * 0.4), prio1.length)
+  result.push(...prio1.slice(0, minPrio1))
+
+  // Step 2: Merge remaining headlines by timestamp
+  const remaining: NewsItem[] = []
+
+  // Add unused Priority 1 headlines
+  remaining.push(...prio1.slice(minPrio1))
+
+  // Add all other priority headlines
+  for (const [priority, group] of byPriority.entries()) {
+    if (priority !== 1) {
+      remaining.push(...group)
+    }
+  }
+
+  // Sort remaining by timestamp (newest first)
+  remaining.sort((a, b) => b.datetime - a.datetime)
+
+  // Step 3: Fill up to limit
+  const spotsRemaining = limit - result.length
+  result.push(...remaining.slice(0, spotsRemaining))
+
+  console.log(
+    `[NewsFilter] Smart blend: ${minPrio1} from Prio1, ${Math.min(spotsRemaining, remaining.length)} from others (total: ${result.length})`
+  )
+
+  return result
+}
 
 /**
  * Get the user's current focus symbols from various sources
@@ -159,34 +241,42 @@ export async function filterNewsByRelevance(
   const aiFilteringEnabled = settings.aiNewsFiltering ?? false
   const hourlyLimit = options.limitOverride ?? settings.headlineLimit ?? 20
 
-  // If AI filtering is disabled, just return headlines with basic deduplication
-  if (!aiFilteringEnabled) {
-    cleanupRecentHeadlines()
-    const seenIds = new Set(recentHeadlines.map(h => h.id))
-    const newHeadlines = headlines.filter(h => !seenIds.has(h.id))
+  // Get source priorities for smart blend
+  const sourcePriorities = await getSourcesWithPriority()
 
+  // Clean up old tracking data
+  cleanupRecentHeadlines()
+
+  // Filter out already-shown headlines first
+  const seenIds = new Set(recentHeadlines.map(h => h.id))
+  const unseenHeadlines = headlines.filter(h => !seenIds.has(h.id))
+
+  // If AI filtering is disabled, use smart blend with source priorities
+  if (!aiFilteringEnabled) {
     // Apply limit if enabled
     if (options.enforceLimit !== false) {
       const remaining = Math.max(0, hourlyLimit - recentHeadlines.length)
-      const limited = newHeadlines.slice(0, remaining)
+
+      // Use smart blend to pick headlines respecting source priority
+      const blended = smartBlend(unseenHeadlines, sourcePriorities, remaining)
 
       // Track these headlines
-      for (const h of limited) {
+      for (const h of blended) {
         recentHeadlines.push({ id: h.id, timestamp: Date.now() })
       }
 
-      return limited
+      return blended
     }
 
-    return newHeadlines
+    return unseenHeadlines
   }
 
-  // Get user's focus symbols for filtering
+  // AI filtering is enabled - score by relevance to user's interests
   const focusSymbols = await getUserFocusSymbols()
   console.log(`[NewsFilter] Filtering against ${focusSymbols.size} focus symbols`)
 
   // Score and rank headlines
-  const scoredHeadlines = headlines.map(headline => ({
+  const scoredHeadlines = unseenHeadlines.map(headline => ({
     headline,
     score: calculateRelevanceScore(headline, focusSymbols)
   }))
@@ -194,30 +284,26 @@ export async function filterNewsByRelevance(
   // Sort by score (highest first)
   scoredHeadlines.sort((a, b) => b.score - a.score)
 
-  // Clean up old tracking data
-  cleanupRecentHeadlines()
-
-  // Filter out already-shown headlines
-  const seenIds = new Set(recentHeadlines.map(h => h.id))
-  const newHeadlines = scoredHeadlines
-    .filter(s => !seenIds.has(s.headline.id))
-    .map(s => s.headline)
+  // Extract sorted headlines
+  const rankedHeadlines = scoredHeadlines.map(s => s.headline)
 
   // Apply hourly limit if enforcing
   if (options.enforceLimit !== false) {
     const remaining = Math.max(0, hourlyLimit - recentHeadlines.length)
-    const limited = newHeadlines.slice(0, remaining)
+
+    // Use smart blend on the ranked headlines (preserves relevance order but ensures source diversity)
+    const blended = smartBlend(rankedHeadlines.slice(0, remaining * 2), sourcePriorities, remaining)
 
     // Track these headlines
-    for (const h of limited) {
+    for (const h of blended) {
       recentHeadlines.push({ id: h.id, timestamp: Date.now() })
     }
 
-    console.log(`[NewsFilter] Returning ${limited.length} headlines (${remaining} remaining in hour limit)`)
-    return limited
+    console.log(`[NewsFilter] Returning ${blended.length} headlines (${remaining} remaining in hour limit)`)
+    return blended
   }
 
-  return newHeadlines
+  return rankedHeadlines
 }
 
 /**

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Newspaper, Filter, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { useShallow } from 'zustand/shallow'
@@ -16,11 +16,17 @@ type FilterType = 'all' | 'watchlist' | 'positive' | 'negative' | 'neutral'
 
 export function News() {
   const [filter, setFilter] = useState<FilterType>('all')
+  const [displayLimit, setDisplayLimit] = useState(20)
   const headlines = useNewsStore(state => state.headlines)
   // Use shallow comparison to prevent re-renders when array contents haven't changed
   const watchlistSymbols = useMarketStore(useShallow(state =>
     state.watchlist.map(w => w.symbol)
   ))
+
+  // Reset display limit when filter changes
+  useEffect(() => {
+    setDisplayLimit(20)
+  }, [filter])
 
   const filteredNews = useMemo(() => {
     return headlines.filter((item: NewsItem) => {
@@ -34,6 +40,13 @@ export function News() {
       return true
     })
   }, [headlines, filter, watchlistSymbols])
+
+  // Paginate: only show up to displayLimit headlines
+  const visibleNews = useMemo(() => {
+    return filteredNews.slice(0, displayLimit)
+  }, [filteredNews, displayLimit])
+
+  const hasMoreNews = filteredNews.length > displayLimit
 
   const getSentimentIcon = (sentiment?: 'positive' | 'negative' | 'neutral') => {
     switch (sentiment) {
@@ -111,7 +124,7 @@ export function News() {
           </div>
         ) : (
           <div className="divide-y divide-terminal-border">
-            {filteredNews.map((item: NewsItem) => (
+            {visibleNews.map((item: NewsItem) => (
               <div
                 key={item.id}
                 onClick={() => item.url && handleNewsClick(item)}
@@ -146,6 +159,16 @@ export function News() {
                 </div>
               </div>
             ))}
+            {hasMoreNews && (
+              <div className="p-4 text-center">
+                <button
+                  onClick={() => setDisplayLimit(prev => prev + 20)}
+                  className="text-terminal-amber hover:underline text-sm"
+                >
+                  Load More ({filteredNews.length - displayLimit} remaining)
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

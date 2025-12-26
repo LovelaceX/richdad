@@ -1,7 +1,7 @@
 /**
  * Backtest Page
  * Main page for running and viewing AI Copilot backtests
- * Requires Pro plan (Polygon API key) to access
+ * Requires Pro plan (Tiingo Power tier) to access
  */
 
 import { useState, useMemo, useEffect } from 'react'
@@ -119,7 +119,7 @@ export function Backtest() {
 
           {/* Description */}
           <p className="text-gray-400 text-sm mb-6 max-w-md mx-auto leading-relaxed">
-            Backtesting uses <span className="text-terminal-amber">Polygon.io</span> historical market data API
+            Backtesting uses <span className="text-terminal-amber">Tiingo</span> historical market data API
             to simulate AI trading recommendations against past price movements.
           </p>
 
@@ -132,15 +132,15 @@ export function Backtest() {
             <ol className="text-gray-400 text-sm space-y-2">
               <li className="flex items-start gap-2">
                 <span className="text-terminal-amber font-mono">1.</span>
-                <span>Get a Polygon.io API key (paid subscription required for historical data)</span>
+                <span>Get a Tiingo API key (free signup at tiingo.com)</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-terminal-amber font-mono">2.</span>
-                <span>Go to Settings → Market Data and enter your Polygon API key</span>
+                <span>Go to Settings → Market Data and enter your Tiingo API key</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-terminal-amber font-mono">3.</span>
-                <span>Switch your plan from Free to Pro</span>
+                <span>Switch your plan from Free to Pro for higher rate limits</span>
               </li>
             </ol>
           </div>
@@ -156,8 +156,8 @@ export function Backtest() {
 
           {/* Footer Note */}
           <p className="text-gray-500 text-xs mt-8 max-w-sm mx-auto">
-            Polygon.io offers market data subscriptions starting at $29/month.
-            Free tier has limited historical data access.
+            Tiingo offers free Starter tier (50 tickers/hour) and Power tier ($10/month)
+            for 5,000 tickers/hour with 30+ years of historical data.
           </p>
         </div>
       </div>

@@ -1,8 +1,8 @@
 /**
  * APIKeysSection
  *
- * Settings section for configuring market data API providers.
- * Simplified architecture: TwelveData (free) or Polygon (paid)
+ * Settings section for configuring Tiingo market data API.
+ * Single provider architecture for simplicity.
  */
 
 import { useState } from 'react'
@@ -20,27 +20,10 @@ interface APIKeysSectionProps {
   onSave: (updates: Partial<UserSettings>) => Promise<void>
 }
 
-// Map settings key to provider value for auto-default
-const KEY_TO_PROVIDER: Record<string, 'polygon' | 'twelvedata'> = {
-  polygonApiKey: 'polygon',
-  twelvedataApiKey: 'twelvedata',
-}
-
 export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
   const [showOnboardingWizard, setShowOnboardingWizard] = useState(false)
   const [showProConfirmModal, setShowProConfirmModal] = useState(false)
   const currentPlan = settings.plan || 'free'
-
-  // Get list of configured API keys
-  const getConfiguredProviders = (overrides: Partial<UserSettings> = {}) => {
-    const merged = { ...settings, ...overrides }
-    const configured: Array<'polygon' | 'twelvedata'> = []
-
-    if (merged.polygonApiKey) configured.push('polygon')
-    if (merged.twelvedataApiKey) configured.push('twelvedata')
-
-    return configured
-  }
 
   // Handler when user clicks a plan button
   const handlePlanClick = (plan: 'free' | 'pro') => {
@@ -67,34 +50,15 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
     // Get derived tier limits and sync with budget tracker
     const limits = getTierLimitsFromPlan(plan)
     updateTierSettings({
-      polygon: limits.polygon,
-      twelveData: limits.twelveData,
-      finnhub: limits.finnhub,
+      tiingo: limits.tiingo,
     })
-
-    // If switching to free, recommend TwelveData
-    if (plan === 'free' && settings.marketDataProvider === 'polygon') {
-      await onSave({ plan, marketDataProvider: 'twelvedata' })
-    }
 
     console.log(`[APIKeys] Plan changed to ${plan}, tier limits updated:`, limits)
   }
 
-  // Handler for API key changes with auto-save and auto-default
-  const handleKeyChange = (key: keyof UserSettings) => async (value: string) => {
-    const updates: Partial<UserSettings> = { [key]: value }
-
-    // Check if this is the only configured API key - if so, auto-set as default
-    const configuredAfter = getConfiguredProviders(updates)
-    const provider = KEY_TO_PROVIDER[key]
-
-    if (configuredAfter.length === 1 && provider && value) {
-      // Only one provider configured, auto-select it as default
-      updates.marketDataProvider = provider
-      console.log(`[APIKeys] Auto-selecting ${provider} as default (only configured provider)`)
-    }
-
-    await onSave(updates)
+  // Handler for API key changes with auto-save
+  const handleKeyChange = async (value: string) => {
+    await onSave({ tiingoApiKey: value })
     // Notify heartbeat service to refresh data immediately
     window.dispatchEvent(new Event('api-settings-updated'))
   }
@@ -102,18 +66,18 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
   return (
     <div>
       <h2 className="text-white text-lg font-medium mb-1">Market Data</h2>
-      <p className="text-gray-500 text-sm mb-6">Configure market data providers for quotes and charts</p>
+      <p className="text-gray-500 text-sm mb-6">Configure Tiingo API for real-time quotes and charts</p>
 
       {/* Plan Toggle - Free / Pro */}
       <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4 mb-6">
         <div className="flex items-center gap-2 mb-3">
           <Crown className="w-4 h-4 text-terminal-amber" />
           <span className="text-white text-sm font-medium">Your Plan</span>
-          <HelpTooltip content="Free uses conservative API limits to stay within free tiers. Pro unlocks higher rate limits for paid API subscriptions." />
+          <HelpTooltip content="Free uses Tiingo Starter tier (50 tickers/hour). Pro unlocks Power tier (5,000 tickers/hour) for active traders." />
         </div>
 
         <p className="text-gray-400 text-xs mb-4">
-          Select your plan to optimize rate limits. Free uses conservative limits, Pro unlocks unlimited API calls.
+          Select your plan to optimize rate limits. Free uses Tiingo Starter limits, Pro uses Power tier limits.
         </p>
 
         <div className="flex bg-terminal-bg rounded-lg p-1">
@@ -145,11 +109,11 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
         <div className="mt-4 text-xs">
           {currentPlan === 'free' ? (
             <div className="text-gray-400">
-              <span className="text-terminal-amber font-medium">Free Plan:</span> TwelveData (800 calls/day), Local AI (Ollama), RSS News
+              <span className="text-terminal-amber font-medium">Free Plan:</span> Tiingo Starter (50/hour), Local AI (Ollama), RSS News
             </div>
           ) : (
             <div className="text-gray-400">
-              <span className="text-terminal-amber font-medium">Pro Plan:</span> Polygon (unlimited), Local AI (Ollama), All news sources
+              <span className="text-terminal-amber font-medium">Pro Plan:</span> Tiingo Power (5,000/hour), Local AI (Ollama), All news sources
             </div>
           )}
         </div>
@@ -170,74 +134,34 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
 
         <div className="border-t border-terminal-border" />
 
-        {/* Default Market Data Provider */}
-        <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <TrendingUp className="w-4 h-4 text-terminal-amber" />
-            <span className="text-white text-sm font-medium">Default Market Data Provider</span>
-            <HelpTooltip content="Primary source for stock quotes and charts. TwelveData is free (800/day), Polygon requires paid subscription but offers real-time WebSocket." />
-          </div>
-
-          <p className="text-gray-400 text-xs mb-4">
-            Choose which provider to use for market data. TwelveData is recommended for Free plan users.
-          </p>
-
-          <select
-            value={settings.marketDataProvider || 'twelvedata'}
-            onChange={(e) =>
-              onSave({
-                marketDataProvider: e.target.value as 'polygon' | 'twelvedata',
-              })
-            }
-            className="w-full bg-terminal-bg border border-terminal-border rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-terminal-amber/50"
-          >
-            <option value="twelvedata">TwelveData (800/day free - Recommended for Free plan)</option>
-            <option value="polygon">Polygon (Unlimited - Recommended for Pro plan)</option>
-          </select>
-        </div>
-
-        <div className="border-t border-terminal-border" />
-
-        {/* TwelveData - Recommended for free users */}
+        {/* Tiingo API Key */}
         <APIKeyProvider
-          provider="twelvedata"
-          label="TwelveData"
+          provider="tiingo"
+          label="Tiingo"
           icon={TrendingUp}
-          description="Real-time data, all US markets. Best free tier for retail traders."
-          currentKey={settings.twelvedataApiKey}
-          onKeyChange={handleKeyChange('twelvedataApiKey')}
-          signupUrl="https://twelvedata.com/register"
-          signupText="Get free TwelveData API key"
-          badge={currentPlan === 'free' ? { text: 'Recommended', color: 'amber' } : undefined}
-          placeholder="Your TwelveData API key"
-          rateLimitInfo={currentPlan === 'free' ? 'Free: 800 calls/day, 8/min' : 'Pro: Unlimited calls'}
+          description="Real-time IEX data, 30+ years historical. Best value for retail traders."
+          currentKey={settings.tiingoApiKey}
+          onKeyChange={handleKeyChange}
+          signupUrl="https://www.tiingo.com"
+          signupText="Sign up for free Tiingo account"
+          badge={{ text: 'Recommended', color: 'amber' }}
+          placeholder="Your Tiingo API key"
+          rateLimitInfo={currentPlan === 'free' ? 'Starter: 50 tickers/hour' : 'Power: 5,000 tickers/hour ($10/mo)'}
           noKeyMessage="No API key configured"
+          signupInstructions={[
+            'Go to <a href="https://www.tiingo.com" target="_blank" class="text-terminal-amber hover:underline">tiingo.com</a> and click "Sign Up"',
+            'Fill in your details and confirm your email',
+            'Once logged in, click your username (top-right) → select "Token"',
+            'Copy your API token and paste below',
+          ]}
         />
 
-        <div className="border-t border-terminal-border" />
-
-        {/* Polygon - For paid users */}
-        <APIKeyProvider
-          provider="polygon"
-          label="Polygon.io"
-          icon={BarChart3}
-          description="Unlimited calls with paid subscription. Best for active traders."
-          currentKey={settings.polygonApiKey}
-          onKeyChange={handleKeyChange('polygonApiKey')}
-          signupUrl="https://polygon.io/dashboard/signup"
-          signupText="Get Polygon API key"
-          badge={currentPlan === 'pro' ? { text: 'Recommended', color: 'amber' } : { text: 'Paid', color: 'purple' }}
-          placeholder="Your Polygon API key"
-          rateLimitInfo={currentPlan === 'free' ? 'Free: 5/min (limited)' : 'Pro: Unlimited • Real-time WebSocket'}
-          noKeyMessage="No API key configured"
-        />
-
-        {/* Info about Finnhub */}
+        {/* Pro plan info */}
         <div className="bg-terminal-bg/50 border border-terminal-border/50 rounded-lg p-4">
           <p className="text-gray-400 text-xs">
-            <span className="text-terminal-amber font-medium">Looking for Ticker-Specific News?</span>
+            <span className="text-terminal-amber font-medium">Pro Plan Benefits</span>
             <br />
-            Configure your Finnhub API key in Settings → News Sources to enable ticker-specific news for AI analysis.
+            Tiingo Power tier ($10/mo) gives you 5,000 unique tickers per hour, perfect for active traders and AI backtesting with 30+ years of dividend-adjusted historical data.
           </p>
         </div>
       </div>
@@ -276,15 +200,19 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
                 <span className="text-terminal-amber">•</span>
                 <span>Backtests: 5/day → <span className="text-white">Unlimited</span></span>
               </li>
+              <li className="flex items-center gap-2">
+                <span className="text-terminal-amber">•</span>
+                <span>API Limit: 50/hr → <span className="text-white">5,000/hr</span></span>
+              </li>
             </ul>
 
             <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-6">
               <p className="text-red-400 text-xs font-medium mb-1">
-                Important: Paid API keys required
+                Important: Tiingo Power subscription recommended
               </p>
               <p className="text-gray-400 text-xs">
-                Make sure you have paid API subscriptions (TwelveData Pro, Polygon, etc.).
-                Free-tier API keys will hit rate limits and cause errors.
+                Pro plan works best with Tiingo Power tier ($10/mo) to avoid rate limits.
+                Free tier will be rate-limited at 50 tickers/hour.
               </p>
             </div>
 
@@ -299,7 +227,7 @@ export function APIKeysSection({ settings, onSave }: APIKeysSectionProps) {
                 onClick={() => confirmPlanChange('pro')}
                 className="flex-1 px-4 py-2 bg-terminal-amber text-black text-sm font-medium rounded-lg hover:bg-yellow-500 transition-colors"
               >
-                I have paid API keys
+                Switch to Pro
               </button>
             </div>
           </div>

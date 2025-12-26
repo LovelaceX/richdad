@@ -7,11 +7,11 @@ import type { Ticker } from '../types'
 
 /**
  * Watchlist limits by plan
- * Free: 5 symbols max
+ * Free: 10 symbols max (Tiingo free tier supports 50 tickers/hour)
  * Pro: 20 symbols max
  */
 export const WATCHLIST_LIMITS = {
-  free: 5,
+  free: 10,
   pro: 20
 } as const
 
@@ -27,11 +27,11 @@ export const POLLING_INTERVALS = {
 
 /**
  * Backtesting limits by plan
- * Free: 5 symbols per day
+ * Free: 10 symbols per day (Tiingo free tier has 30+ years data)
  * Pro: Unlimited
  */
 export const BACKTEST_LIMITS = {
-  free: 5,
+  free: 10,
   pro: Infinity
 } as const
 

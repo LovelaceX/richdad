@@ -4,6 +4,16 @@ import {
   getOllamaStatus,
   type OllamaStatus
 } from '../lib/ollamaService'
+import { useAIStore } from './aiStore'
+import { getSettings } from '../lib/db'
+import type { PersonaType } from '../types'
+
+// Welcome messages per persona (in their unique style)
+const WELCOME_MESSAGES: Record<PersonaType, string> = {
+  sterling: "Good morning. I'm Sterling, your AI analyst. Systems are online and ready for market analysis. How may I assist you today?",
+  jax: "Hey there. Jax here, ready to rock. What are we looking at today?",
+  cipher: "Hey! Cipher online and all systems green! Ready to hunt some patterns. What's our first target?"
+}
 
 interface OllamaStore {
   status: OllamaStatus
@@ -11,6 +21,7 @@ interface OllamaStore {
   hasRequiredModel: boolean
   error?: string
   isInitialized: boolean
+  hasWelcomed: boolean
 
   // Actions
   initialize: () => Promise<void>
@@ -18,12 +29,26 @@ interface OllamaStore {
   attemptAutoStart: () => Promise<boolean>
 }
 
-export const useOllamaStore = create<OllamaStore>((set) => ({
+// Send welcome message in persona's style
+async function sendWelcomeMessage() {
+  const settings = await getSettings()
+  const persona = (settings.persona || 'sterling') as PersonaType
+  const welcomeMsg = WELCOME_MESSAGES[persona]
+
+  useAIStore.getState().addMessage({
+    type: 'info',
+    role: 'assistant',
+    content: welcomeMsg
+  })
+}
+
+export const useOllamaStore = create<OllamaStore>((set, get) => ({
   status: 'checking',
   models: [],
   hasRequiredModel: false,
   error: undefined,
   isInitialized: false,
+  hasWelcomed: false,
 
   initialize: async () => {
     set({ status: 'checking' })
@@ -38,6 +63,12 @@ export const useOllamaStore = create<OllamaStore>((set) => ({
         hasRequiredModel: state.hasRequiredModel,
         isInitialized: true
       })
+
+      // Send welcome message if ready and not already welcomed
+      if (state.hasRequiredModel && !get().hasWelcomed) {
+        sendWelcomeMessage()
+        set({ hasWelcomed: true })
+      }
       return
     }
 
@@ -54,6 +85,12 @@ export const useOllamaStore = create<OllamaStore>((set) => ({
         hasRequiredModel: newState.hasRequiredModel,
         isInitialized: true
       })
+
+      // Send welcome message if ready and not already welcomed
+      if (newState.hasRequiredModel && !get().hasWelcomed) {
+        sendWelcomeMessage()
+        set({ hasWelcomed: true })
+      }
     } else {
       set({
         status: 'start_failed',
@@ -83,6 +120,12 @@ export const useOllamaStore = create<OllamaStore>((set) => ({
         models: state.models,
         hasRequiredModel: state.hasRequiredModel
       })
+
+      // Send welcome message if ready and not already welcomed
+      if (state.hasRequiredModel && !get().hasWelcomed) {
+        sendWelcomeMessage()
+        set({ hasWelcomed: true })
+      }
       return true
     } else {
       set({ status: 'start_failed', error: result.error })

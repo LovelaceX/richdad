@@ -50,7 +50,7 @@ export const useSettingsStore = create<SettingsState>()(
       showVolume: true,
       refreshInterval: POLLING_INTERVALS.free,  // Default to free tier (60s)
       zoomLevel: 100,
-      tickerSpeed: 300,  // Default slow speed (5 minutes - comfortable reading pace)
+      tickerSpeed: 600,  // Default slowest speed (10 minutes - easy reading pace)
       theme: getSavedTheme(),
       isLiveDataEnabled: true,  // Auto-enabled - data flows on app launch
       panelSizes: {

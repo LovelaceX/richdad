@@ -1,5 +1,5 @@
 import { fetchLivePrices, getCacheStatus } from './marketData'
-import { getTwelveDataBudgetStatus } from './apiBudgetTracker'
+import { getTiingoBudgetStatus } from './apiBudgetTracker'
 import { fetchNews } from './newsService'
 import { analyzeSentiment, initializeSentimentAnalysis } from './sentimentService'
 import { generateRecommendation, isMarketOpen } from './aiRecommendationEngine'
@@ -102,6 +102,7 @@ class DataHeartbeatService {
   private aiAnalysisInterval: NodeJS.Timeout | null = null
   private patternScanInterval: NodeJS.Timeout | null = null
   private cleanupInterval: NodeJS.Timeout | null = null
+  private autoClearNewsTimeout: NodeJS.Timeout | null = null
   private callbacks: Set<DataUpdateCallback> = new Set()
   private isRunning = false
   private cachedNews: NewsItem[] = []
@@ -121,6 +122,7 @@ class DataHeartbeatService {
   // Bound event handlers (stored as class properties to allow proper cleanup)
   // IMPORTANT: .bind() creates new references, so we store them for removeEventListener
   private boundHandleWebSocketFallback = this.handleWebSocketFallback.bind(this)
+  private patternScanHandler: (() => void) | null = null
 
   // Intervals (configurable)
   // Note: MARKET_UPDATE_INTERVAL is now dynamic based on plan and market session
@@ -144,8 +146,7 @@ class DataHeartbeatService {
     console.log('[Heartbeat] Starting data heartbeat service...')
     this.isRunning = true
 
-    // Load settings
-    const settings = await getSettings()
+    // Load AI settings
     const { getAISettings } = await import('../renderer/lib/db')
     const aiSettings = await getAISettings()
     this.AI_ANALYSIS_INTERVAL = (aiSettings.recommendationInterval ?? 15) * 60000
@@ -156,10 +157,8 @@ class DataHeartbeatService {
     // Start outcome tracker (for AI performance monitoring)
     outcomeTracker.start().catch(console.error)
 
-    // Try to connect WebSocket if enabled and API key is available
-    if (settings.enableWebsocket && settings.polygonApiKey) {
-      await this.initializeWebSocket(settings.polygonApiKey)
-    }
+    // WebSocket not used with Tiingo - Tiingo uses REST API polling
+    // (Keeping websocket infrastructure for potential future use)
 
     // Start periodic updates
     this.startMarketUpdates()
@@ -168,6 +167,7 @@ class DataHeartbeatService {
     this.startAIAnalysis()
     this.startPatternScanning()
     this.startCleanupRoutine()
+    this.scheduleAutoClearNews()
 
     // Listen for WebSocket fallback event (using stored bound reference for proper cleanup)
     window.addEventListener('websocket-fallback', this.boundHandleWebSocketFallback)
@@ -190,6 +190,7 @@ class DataHeartbeatService {
     if (this.aiAnalysisInterval) clearInterval(this.aiAnalysisInterval)
     if (this.patternScanInterval) clearInterval(this.patternScanInterval)
     if (this.cleanupInterval) clearInterval(this.cleanupInterval)
+    if (this.autoClearNewsTimeout) clearTimeout(this.autoClearNewsTimeout)
 
     this.marketInterval = null
     this.newsInterval = null
@@ -197,6 +198,7 @@ class DataHeartbeatService {
     this.aiAnalysisInterval = null
     this.patternScanInterval = null
     this.cleanupInterval = null
+    this.autoClearNewsTimeout = null
 
     // Disconnect WebSocket
     if (this.websocketUnsubscribe) {
@@ -206,8 +208,12 @@ class DataHeartbeatService {
     websocketService.disconnect()
     this.websocketEnabled = false
 
-    // Remove event listener (using stored bound reference for proper cleanup)
+    // Remove event listeners (using stored bound references for proper cleanup)
     window.removeEventListener('websocket-fallback', this.boundHandleWebSocketFallback)
+    if (this.patternScanHandler) {
+      window.removeEventListener('trigger-pattern-scan', this.patternScanHandler)
+      this.patternScanHandler = null
+    }
 
     // Stop outcome tracker
     outcomeTracker.stop()
@@ -237,14 +243,7 @@ class DataHeartbeatService {
    * Called when user saves new API keys in Settings
    */
   async refreshOnApiKeyChange(): Promise<void> {
-    const settings = await getSettings()
-
     console.log('[Heartbeat] API key changed, triggering immediate data refresh...')
-
-    // Re-initialize WebSocket if Polygon key is now available
-    if (settings.enableWebsocket && settings.polygonApiKey && !this.websocketEnabled) {
-      await this.initializeWebSocket(settings.polygonApiKey)
-    }
 
     // Trigger immediate market data refresh
     await this.updateMarketData([])
@@ -721,8 +720,8 @@ class DataHeartbeatService {
 
     // Budget-aware throttling for Free plan
     if (plan === 'free') {
-      const status = getTwelveDataBudgetStatus()
-      const usagePercent = (status.dailyUsed / status.dailyLimit) * 100
+      const status = getTiingoBudgetStatus()
+      const usagePercent = (status.used / status.limit) * 100
 
       // If at 90%+ daily usage, switch to minimum polling (10 min)
       if (usagePercent >= 90) {
@@ -758,46 +757,86 @@ class DataHeartbeatService {
 
   private startNewsUpdates(): void {
     // Initial update with jitter
-    setTimeout(() => {
-      this.updateNews()
+    setTimeout(async () => {
+      try {
+        await this.updateNews()
+      } catch (error) {
+        console.error('[Heartbeat] Initial news update error:', error)
+      }
     }, addJitter(2000))
 
     // Periodic updates with jitter
-    this.newsInterval = setInterval(() => {
-      this.updateNews()
+    this.newsInterval = setInterval(async () => {
+      try {
+        await this.updateNews()
+      } catch (error) {
+        console.error('[Heartbeat] Periodic news update error:', error)
+      }
     }, addJitter(this.NEWS_UPDATE_INTERVAL))
   }
 
   private startSentimentUpdates(): void {
     // Initial sentiment analysis (after first news fetch) with jitter
-    setTimeout(() => {
-      this.updateSentiment()
+    setTimeout(async () => {
+      try {
+        await this.updateSentiment()
+      } catch (error) {
+        console.error('[Heartbeat] Initial sentiment update error:', error)
+      }
     }, addJitter(5000))
 
     // Periodic updates with jitter
-    this.sentimentInterval = setInterval(() => {
-      this.updateSentiment()
+    this.sentimentInterval = setInterval(async () => {
+      try {
+        await this.updateSentiment()
+      } catch (error) {
+        console.error('[Heartbeat] Periodic sentiment update error:', error)
+      }
     }, addJitter(this.SENTIMENT_UPDATE_INTERVAL))
   }
 
   private startAIAnalysis(): void {
+    // Helper to get the currently selected ticker (falls back to SPY)
+    const getSelectedTicker = async (): Promise<string> => {
+      const { useMarketStore } = await import('../renderer/stores/marketStore')
+      return useMarketStore.getState().selectedTicker || 'SPY'
+    }
+
     // Initial AI analysis (after first market data fetch) with jitter
-    setTimeout(() => {
-      this.updateAIAnalysis('SPY')
+    setTimeout(async () => {
+      try {
+        const ticker = await getSelectedTicker()
+        await this.updateAIAnalysis(ticker)
+      } catch (error) {
+        console.error('[Heartbeat] Initial AI analysis error:', error)
+      }
     }, addJitter(10000))
 
-    // Periodic updates with jitter
-    this.aiAnalysisInterval = setInterval(() => {
-      this.updateAIAnalysis('SPY')
+    // Periodic updates with jitter - analyzes currently selected ticker
+    this.aiAnalysisInterval = setInterval(async () => {
+      try {
+        const ticker = await getSelectedTicker()
+        await this.updateAIAnalysis(ticker)
+      } catch (error) {
+        console.error('[Heartbeat] Periodic AI analysis error:', error)
+      }
     }, addJitter(this.AI_ANALYSIS_INTERVAL))
   }
 
   private async startPatternScanning(): Promise<void> {
-    // Always listen for manual scan trigger from UI
-    window.addEventListener('trigger-pattern-scan', () => {
+    // Remove existing listener if any (prevent memory leak on restart)
+    if (this.patternScanHandler) {
+      window.removeEventListener('trigger-pattern-scan', this.patternScanHandler)
+    }
+
+    // Create and store handler for proper cleanup
+    this.patternScanHandler = () => {
       console.log('[Heartbeat] Manual pattern scan triggered')
       this.updatePatternScan()
-    })
+    }
+
+    // Listen for manual scan trigger from UI
+    window.addEventListener('trigger-pattern-scan', this.patternScanHandler)
 
     // Check if automatic pattern scanning is enabled in settings
     // Disabled by default - too expensive for free tier (1 API call per symbol)
@@ -811,13 +850,21 @@ class DataHeartbeatService {
     console.log('[Heartbeat] Automatic pattern scanning ENABLED - scanning every 15 minutes')
 
     // Initial scan after 2 minutes (give time for other services to stabilize)
-    setTimeout(() => {
-      this.updatePatternScan()
+    setTimeout(async () => {
+      try {
+        await this.updatePatternScan()
+      } catch (error) {
+        console.error('[Heartbeat] Initial pattern scan error:', error)
+      }
     }, addJitter(120000))
 
     // Periodic scans
-    this.patternScanInterval = setInterval(() => {
-      this.updatePatternScan()
+    this.patternScanInterval = setInterval(async () => {
+      try {
+        await this.updatePatternScan()
+      } catch (error) {
+        console.error('[Heartbeat] Periodic pattern scan error:', error)
+      }
     }, addJitter(this.PATTERN_SCAN_INTERVAL))
   }
 
@@ -829,6 +876,72 @@ class DataHeartbeatService {
         console.error('[Heartbeat] Callback error:', error)
       }
     })
+  }
+
+  /**
+   * Schedule automatic news clearing at 4 PM ET (market close)
+   * Helps users start fresh each trading day
+   */
+  private async scheduleAutoClearNews(): Promise<void> {
+    // Check if auto-clear is enabled in settings
+    const settings = await getSettings()
+    if (!settings.autoClearNews) {
+      console.log('[Heartbeat] News auto-clear disabled')
+      return
+    }
+
+    // Calculate milliseconds until 4 PM ET
+    const now = new Date()
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    })
+
+    const etParts = formatter.formatToParts(now)
+    const etHour = parseInt(etParts.find(p => p.type === 'hour')?.value || '0')
+    const etMinute = parseInt(etParts.find(p => p.type === 'minute')?.value || '0')
+    const currentMinutes = etHour * 60 + etMinute
+    const targetMinutes = 16 * 60 // 4 PM = 960 minutes
+
+    let msUntilClear: number
+    if (currentMinutes >= targetMinutes) {
+      // Already past 4 PM today, schedule for tomorrow 4 PM
+      const minutesUntilMidnight = 24 * 60 - currentMinutes
+      const minutesToTarget = minutesUntilMidnight + targetMinutes
+      msUntilClear = minutesToTarget * 60 * 1000
+    } else {
+      // Before 4 PM today
+      msUntilClear = (targetMinutes - currentMinutes) * 60 * 1000
+    }
+
+    console.log(`[Heartbeat] News auto-clear scheduled in ${Math.round(msUntilClear / 60000)} minutes (4 PM ET)`)
+
+    this.autoClearNewsTimeout = setTimeout(async () => {
+      console.log('[Heartbeat] Auto-clearing news at 4 PM ET')
+
+      // Clear the cached news
+      this.cachedNews = []
+
+      // Notify stores to clear their headlines
+      const { useNewsStore } = await import('../renderer/stores/newsStore')
+      useNewsStore.setState({ headlines: [], lastUpdated: null })
+
+      // Notify callbacks
+      this.notifyCallbacks({
+        type: 'news',
+        payload: []
+      })
+
+      console.log('[Heartbeat] News auto-cleared successfully')
+
+      // Reschedule for tomorrow
+      this.scheduleAutoClearNews()
+    }, msUntilClear) as unknown as NodeJS.Timeout
   }
 
   /**

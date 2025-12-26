@@ -727,29 +727,11 @@ function parseAIResponse(response: string, _symbol: string, currentPrice: number
 
 /**
  * Get recent news headlines for a symbol
- * Uses Finnhub for ticker-specific news when available, falls back to RSS store
+ * Uses RSS-based news from the news store (neither TwelveData nor Polygon include news)
  */
 async function getRecentNews(symbol: string): Promise<string[]> {
   try {
-    // First, try Finnhub for ticker-specific news (best quality)
-    try {
-      const { getSettings } = await import('../renderer/lib/db')
-      const settings = await getSettings()
-
-      if (settings.finnhubApiKey) {
-        const { fetchNewsFromFinnhub } = await import('./newsService')
-        const finnhubNews = await fetchNewsFromFinnhub(symbol)
-
-        if (finnhubNews.length > 0) {
-          console.log(`[AI Engine] Using ${finnhubNews.length} Finnhub headlines for ${symbol}`)
-          return finnhubNews.slice(0, 5).map(news => news.headline)
-        }
-      }
-    } catch (finnhubError) {
-      console.warn('[AI Engine] Finnhub news fetch failed, falling back to RSS:', finnhubError)
-    }
-
-    // Fallback: Try to get news from news store (RSS-based)
+    // Get news from news store (RSS-based)
     const { useNewsStore } = await import('../renderer/stores/newsStore')
     const store = useNewsStore.getState()
     const headlines = store.headlines

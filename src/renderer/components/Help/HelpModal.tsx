@@ -43,7 +43,7 @@ type Section =
 const sectionContent: Record<Section, { title: string; searchableText: string }> = {
   'get-started': {
     title: 'Get Started',
-    searchableText: 'setup api key configure begin first install openai claude gemini grok deepseek llama groq settings dashboard news watchlist price alerts chart controls keyboard shortcuts api limits troubleshooting quick links step by step guide free account paste copy polygon twelvedata'
+    searchableText: 'setup api key configure begin first install openai claude gemini grok deepseek llama groq settings dashboard news watchlist price alerts chart controls keyboard shortcuts api limits troubleshooting quick links step by step guide free account paste copy tiingo'
   },
   'verify-setup': {
     title: 'Verify Your Setup',
@@ -51,11 +51,11 @@ const sectionContent: Record<Section, { title: string; searchableText: string }>
   },
   'whats-new': {
     title: "What's New",
-    searchableText: 'new features update release latest backtest macd stochastic indicators v7.0.0 v6.1.0 v6.0.0 v5.5.2 v5.5.1 v5.5.0 v5.2.0 v5.1.0 v5.0.0 local-first ai ollama sentiment keywords privacy huggingface removed cloud ai removed simplified architecture stability fixes ai copilot crash react error 185 ticker speed websocket status polygon service health rate limit overhaul error log api key encryption watchlist news lru cache websocket reconnect jitter data freshness badges hover tooltips request cancellation loading state error state empty state race condition vti smh vxx market indices type safe event system crash isolation ai copilot backtesting historical data win rate profit factor sharpe ratio csv export technical indicator panels momentum trend direction rsi oscillator volume profile'
+    searchableText: 'new features update release latest backtest macd stochastic indicators v7.0.0 v6.1.0 v6.0.0 v5.5.2 v5.5.1 v5.5.0 v5.2.0 v5.1.0 v5.0.0 local-first ai ollama sentiment keywords privacy huggingface removed cloud ai removed simplified architecture stability fixes ai copilot crash react error 185 ticker speed websocket status tiingo service health rate limit overhaul error log api key encryption watchlist news lru cache websocket reconnect jitter data freshness badges hover tooltips request cancellation loading state error state empty state race condition vti smh vxx market indices type safe event system crash isolation ai copilot backtesting historical data win rate profit factor sharpe ratio csv export technical indicator panels momentum trend direction rsi oscillator volume profile'
   },
   'tiers': {
     title: 'Pricing Tiers',
-    searchableText: 'tier tiers free pro pricing cost plan subscription upgrade downgrade polygon twelvedata groq openai claude anthropic intraday data market history real-time rss finnhub news sources ai provider llama gpt-4 budget calls per day historical backtest'
+    searchableText: 'tier tiers free pro pricing cost plan subscription upgrade downgrade tiingo groq openai claude anthropic intraday data market history real-time rss news sources ai provider llama gpt-4 budget calls per hour historical backtest'
   },
   'dashboard': {
     title: 'Dashboard',
@@ -67,11 +67,11 @@ const sectionContent: Record<Section, { title: string; searchableText: string }>
   },
   'news': {
     title: 'Market News',
-    searchableText: 'headlines feed sentiment filter rss sources finnhub breaking news articles positive negative neutral bullish bearish market sentiment analysis ticker relevance ollama ai keywords fallback headline limit news sources'
+    searchableText: 'headlines feed sentiment filter rss sources breaking news articles positive negative neutral bullish bearish market sentiment analysis ticker relevance ollama ai keywords fallback headline limit news sources'
   },
   'intel-panel': {
     title: 'Intelligence Panel',
-    searchableText: 'intel pattern scanner news sentiment breaking alerts bullish bearish setup engulfing doji hammer shooting star morning star evening star three white soldiers technical patterns candlestick patterns chart patterns automatic pattern scan auto scan manual scan api calls per symbol watchlist scan 15 minutes free tier paid tier polygon starter twelvedata pro'
+    searchableText: 'intel pattern scanner news sentiment breaking alerts bullish bearish setup engulfing doji hammer shooting star morning star evening star three white soldiers technical patterns candlestick patterns chart patterns automatic pattern scan auto scan manual scan api calls per symbol watchlist scan 15 minutes free tier paid tier tiingo starter power'
   },
   'price-alerts': {
     title: 'Price Alerts',
@@ -87,15 +87,15 @@ const sectionContent: Record<Section, { title: string; searchableText: string }>
   },
   'ai-copilot': {
     title: 'AI Copilot',
-    searchableText: 'ollama local ai recommendation chat provider thinking animation phases finnhub news buy sell hold confidence technical analysis sentiment market regime risk management position size stop loss take profit price target rationale explanation ai analysis automatic manual trigger chat interface conversation history performance tracking win rate accuracy batting average outcome win loss neutral executed skipped 30 days monitoring persona personality sterling analyst jax veteran trader cipher tech wiz formal professional direct pragmatic energetic nerdy calm philosophical patient communication style voice character traits'
+    searchableText: 'ollama local ai recommendation chat provider thinking animation phases rss news buy sell hold confidence technical analysis sentiment market regime risk management position size stop loss take profit price target rationale explanation ai analysis automatic manual trigger chat interface conversation history performance tracking win rate accuracy batting average outcome win loss neutral executed skipped 30 days monitoring persona personality sterling analyst jax veteran trader cipher tech wiz formal professional direct pragmatic energetic nerdy calm philosophical patient communication style voice character traits'
   },
   'ollama-setup': {
     title: 'Ollama Setup Guide',
-    searchableText: 'ollama local ai install download setup configure run free private offline model llama mistral codellama phi neural chat localhost port 11434 pull serve terminal command line homebrew macos windows linux docker no api key unlimited requests privacy on device machine learning inference'
+    searchableText: 'ollama local ai install download setup configure run free private offline model llama mistral codellama phi neural chat localhost port 11434 pull serve terminal command line homebrew macos windows docker no api key unlimited requests privacy on device machine learning inference'
   },
   'api-limits': {
     title: 'API Limits & Usage',
-    searchableText: 'rate limit quota calls daily budget polygon twelvedata finnhub fallback free tier pro 5 calls per minute 800 calls per day usage tracking budget warning exceeded throttle'
+    searchableText: 'rate limit quota calls hourly budget tiingo fallback free tier pro 50 tickers per hour 5000 tickers per hour usage tracking budget warning exceeded throttle'
   },
   'shortcuts': {
     title: 'Keyboard Shortcuts',
@@ -441,7 +441,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                   <Leaf size={16} />
                   Free Path ($0/month)
                 </p>
-                <Step><span className="text-white">TwelveData</span> - 800 calls/day free tier</Step>
+                <Step><span className="text-white">Tiingo Starter</span> - 50 tickers/hour free tier</Step>
                 <Step><span className="text-white">Ollama (Local AI)</span> - Free, runs on your computer</Step>
                 <Step>RSS news feeds included</Step>
               </div>
@@ -451,9 +451,9 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                   <Crown size={16} />
                   Pro Path (More Data)
                 </p>
-                <Step><span className="text-white">Polygon.io</span> - Unlimited market data (paid)</Step>
+                <Step><span className="text-white">Tiingo Power</span> - 5,000 tickers/hour ($10/mo)</Step>
                 <Step><span className="text-white">Same Ollama AI</span> - No API costs for AI</Step>
-                <Step>Finnhub Calendar + All news sources</Step>
+                <Step>All RSS news sources</Step>
               </div>
             </div>
           </div>
@@ -580,7 +580,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 id="dataSourceVisible"
                 sectionKey="marketData"
                 title="Data source visible"
-                hint="Look for 'Polygon' or 'TwelveData' badge near chart"
+                hint="Look for 'Tiingo' badge near chart"
                 checked={checklist.marketData.dataSourceVisible}
               />
             </div>
@@ -710,7 +710,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 <li>• <span className="text-terminal-amber">Fixed</span> Ticker speed defaults now readable (60s)</li>
                 <li>• <span className="text-terminal-amber">Fixed</span> Filter logic bug in news watchlist filtering</li>
                 <li>• <span className="text-blue-400">Improved</span> Service Health indicators</li>
-                <li>• WebSocket status hidden for non-Polygon users</li>
+                <li>• Simplified data provider architecture</li>
               </ul>
             </div>
 
@@ -829,7 +829,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 See exactly where your chart data comes from with the new provider indicator.
               </p>
               <ul className="text-gray-400 text-sm space-y-1">
-                <li>• Provider badge shows data source (Polygon, TwelveData, etc.)</li>
+                <li>• Provider badge shows data source (Tiingo)</li>
                 <li>• Timestamp shows when data was last refreshed</li>
                 <li>• Delay indicator for free tier data (15-min)</li>
                 <li>• Hover for detailed source info</li>
@@ -862,7 +862,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               </p>
               <ul className="text-gray-400 text-sm space-y-1">
                 <li>• Select your tier (Free/Paid) for each provider in Settings</li>
-                <li>• Budget meter shows usage for Polygon, TwelveData, and Finnhub</li>
+                <li>• Budget meter shows hourly usage for Tiingo</li>
                 <li>• Toast notifications when limits are reached</li>
                 <li>• Automatic fallback to cached or mock data</li>
               </ul>
@@ -1048,8 +1048,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           <div>
             <h3 className="text-white text-lg font-semibold mb-4">News Sources</h3>
             <div className="space-y-1">
-              <Step><span className="text-white font-medium">RSS Feeds</span> - Free, unlimited (CNBC, MarketWatch, etc.)</Step>
-              <Step><span className="text-white font-medium">Finnhub News</span> - Ticker-specific news (Pro plan)</Step>
+              <Step><span className="text-white font-medium">RSS Feeds</span> - Free, unlimited (CNBC, MarketWatch, Bloomberg, etc.)</Step>
             </div>
           </div>
 
@@ -1121,9 +1120,6 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               <Step><span className="text-white font-medium">AI Filtering</span> - Only show news for your watchlist</Step>
               <Step><span className="text-white font-medium">RSS Feeds</span> - Select sources (Bloomberg, CNBC, etc.)</Step>
             </div>
-            <p className="text-gray-500 text-xs mt-3">
-              Note: Pro plan users get Finnhub ticker-specific news in addition to RSS feeds.
-            </p>
           </div>
         </div>
       )
@@ -1187,7 +1183,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 </div>
               </div>
               <p className="text-gray-500 text-xs mt-2">
-                Free tier limits: Polygon 5/min, TwelveData 8/min. Enable auto-scan in Settings → AI Copilot only with paid tier.
+                Free tier limit: Tiingo Starter 50/hour. Enable auto-scan in Settings → AI Copilot only with Power tier.
               </p>
             </div>
           </div>
@@ -1323,7 +1319,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             <h3 className="text-white text-lg font-semibold mb-4">Data Availability</h3>
             <div className="space-y-1">
               <Step><span className="text-white font-medium">Intraday (1M-1H)</span> - Last ~8 hours of trading</Step>
-              <Step><span className="text-white font-medium">Daily</span> - Last 90 days of history</Step>
+              <Step><span className="text-white font-medium">Daily</span> - Up to 2 years of history (Pro plan)</Step>
               <Step>Data is cached for 24 hours to save API calls</Step>
             </div>
           </div>
@@ -1369,16 +1365,16 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             </h3>
             <div className="space-y-2 text-sm">
               <div className="flex gap-3">
-                <span className="text-terminal-amber w-32 flex-shrink-0">Display Name</span>
-                <span className="text-gray-400">Your name shown in the app (for personalization)</span>
+                <span className="text-terminal-amber w-32 flex-shrink-0">Performance</span>
+                <span className="text-gray-400">View your AI trading stats: batting average, win/loss record, and total trades executed.</span>
               </div>
               <div className="flex gap-3">
-                <span className="text-terminal-amber w-32 flex-shrink-0">Trading Style</span>
-                <span className="text-gray-400">Day Trader, Swing Trader, Position Trader, or Investor. Affects AI analysis context.</span>
+                <span className="text-terminal-amber w-32 flex-shrink-0">Export Trades</span>
+                <span className="text-gray-400">Export your trade decisions to CSV or TXT. Filter by date range before exporting.</span>
               </div>
               <div className="flex gap-3">
-                <span className="text-terminal-amber w-32 flex-shrink-0">Experience Level</span>
-                <span className="text-gray-400">Beginner, Intermediate, or Advanced. Unlocks achievement badges.</span>
+                <span className="text-terminal-amber w-32 flex-shrink-0">Date Filters</span>
+                <span className="text-gray-400">Select a time period to preview matching trades before export.</span>
               </div>
             </div>
           </div>
@@ -1507,16 +1503,12 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
                 <span className="text-gray-400">Guided setup to get API keys from free providers.</span>
               </div>
               <div className="flex gap-3">
-                <span className="text-terminal-amber w-32 flex-shrink-0">Provider Keys</span>
-                <span className="text-gray-400">Enter API keys for Polygon, TwelveData, Alpha Vantage, Finnhub.</span>
+                <span className="text-terminal-amber w-32 flex-shrink-0">Tiingo Key</span>
+                <span className="text-gray-400">Enter your Tiingo API token (signup → confirm email → click username → Token).</span>
               </div>
               <div className="flex gap-3">
-                <span className="text-terminal-amber w-32 flex-shrink-0">Tier Selection</span>
-                <span className="text-gray-400">Select Free or Paid tier for each provider. Affects rate limits.</span>
-              </div>
-              <div className="flex gap-3">
-                <span className="text-terminal-amber w-32 flex-shrink-0">Fallback Order</span>
-                <span className="text-gray-400">Drag to reorder providers. If one fails, next provider is tried.</span>
+                <span className="text-terminal-amber w-32 flex-shrink-0">Plan Selection</span>
+                <span className="text-gray-400">Select Free (Starter) or Pro (Power) tier. Affects rate limits.</span>
               </div>
             </div>
           </div>
@@ -1605,15 +1597,40 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             </h3>
             <div className="space-y-2 text-sm">
               <div className="flex gap-3">
-                <span className="text-red-400 w-32 flex-shrink-0">Clear API Cache</span>
-                <span className="text-gray-400">Forces fresh data fetch. Use when data seems stale or stuck.</span>
+                <span className="text-red-400 w-36 flex-shrink-0">Clear API Budget</span>
+                <span className="text-gray-400">Resets API call counters. Preserves all settings and API keys.</span>
               </div>
               <div className="flex gap-3">
-                <span className="text-red-400 w-32 flex-shrink-0">Reset All Data</span>
-                <span className="text-gray-400">Factory reset. Deletes all settings, watchlist, and history. Use as last resort.</span>
+                <span className="text-red-400 w-36 flex-shrink-0">Clear AI History</span>
+                <span className="text-gray-400">Deletes all trade decisions and AI recommendations.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-red-400 w-36 flex-shrink-0">Clear P&L History</span>
+                <span className="text-gray-400">Deletes profit/loss tracking entries.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-red-400 w-36 flex-shrink-0">Clear Price Alerts</span>
+                <span className="text-gray-400">Deletes all price alerts.</span>
+              </div>
+              <div className="flex gap-3">
+                <span className="text-red-400 w-36 flex-shrink-0">Factory Reset</span>
+                <span className="text-gray-400">Deletes everything. App restarts as if newly installed.</span>
               </div>
             </div>
-            <p className="text-red-400/70 text-xs mt-3">These actions cannot be undone.</p>
+            <div className="mt-4 pt-3 border-t border-terminal-border">
+              <p className="text-white text-sm font-medium mb-2">Backup & Restore</p>
+              <div className="space-y-2 text-sm">
+                <div className="flex gap-3">
+                  <span className="text-terminal-amber w-36 flex-shrink-0">Create Backup</span>
+                  <span className="text-gray-400">Export all data (settings, trades, holdings, alerts) to JSON.</span>
+                </div>
+                <div className="flex gap-3">
+                  <span className="text-terminal-amber w-36 flex-shrink-0">Restore Backup</span>
+                  <span className="text-gray-400">Import a previously exported backup file.</span>
+                </div>
+              </div>
+            </div>
+            <p className="text-red-400/70 text-xs mt-3">Clear actions cannot be undone. Always create a backup first.</p>
           </div>
         </div>
       )
@@ -1685,7 +1702,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           <div>
             <h3 className="text-white text-lg font-semibold mb-4">Automatic Recommendations</h3>
             <div className="space-y-1">
-              <Step>AI analyzes SPY every 15 minutes during market hours</Step>
+              <Step>AI analyzes your selected ticker every 15 minutes during market hours</Step>
               <Step>Only shows recommendations above your confidence threshold</Step>
               <Step>Includes: Action (BUY/SELL/HOLD), confidence %, rationale</Step>
             </div>
@@ -1702,25 +1719,9 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               <Step><span className="text-white">Fetching Price Data</span> - Current quote</Step>
               <Step><span className="text-white">Calculating Indicators</span> - RSI, MACD, MAs</Step>
               <Step><span className="text-white">Detecting Patterns</span> - Candlesticks</Step>
-              <Step><span className="text-white">Gathering News</span> - Ticker-specific (Finnhub)</Step>
+              <Step><span className="text-white">Gathering News</span> - RSS headlines</Step>
               <Step><span className="text-white">Generating Recommendation</span> - AI synthesis</Step>
             </div>
-          </div>
-
-          {/* NEW: Ticker-Specific News */}
-          <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
-            <h3 className="text-white font-semibold mb-3">Ticker-Specific News (Finnhub)</h3>
-            <p className="text-gray-300 text-sm mb-3">
-              With a Finnhub API key, AI gets news specifically about the ticker:
-            </p>
-            <div className="space-y-1">
-              <Step>Company-specific news from the last 7 days</Step>
-              <Step>Much better than generic RSS keyword matching</Step>
-              <Step>Falls back to RSS if Finnhub unavailable</Step>
-            </div>
-            <p className="text-gray-500 text-xs mt-3">
-              Get a free key at finnhub.io (60 calls/min)
-            </p>
           </div>
 
           {/* Options-Aware AI */}
@@ -2151,7 +2152,6 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             {/* macOS */}
             <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5 mb-4">
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-2xl">🍎</span>
                 <span className="text-white font-medium">macOS</span>
               </div>
               <div className="space-y-3">
@@ -2171,24 +2171,12 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             </div>
 
             {/* Windows */}
-            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5 mb-4">
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-2xl">🪟</span>
                 <span className="text-white font-medium">Windows</span>
               </div>
               <div className="bg-terminal-panel rounded p-3">
                 <p className="text-gray-300 text-sm">Visit <span className="text-terminal-amber">ollama.com</span> → Download for Windows</p>
-              </div>
-            </div>
-
-            {/* Linux */}
-            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-2xl">🐧</span>
-                <span className="text-white font-medium">Linux</span>
-              </div>
-              <div className="bg-terminal-panel rounded p-3">
-                <code className="text-terminal-amber text-sm">curl -fsSL https://ollama.com/install.sh | sh</code>
               </div>
             </div>
           </div>
@@ -2199,7 +2187,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           <div>
             <h3 className="text-white text-lg font-semibold mb-4">Download the AI Model</h3>
             <p className="text-gray-300 text-sm mb-4">
-              After installing Ollama, open Terminal (Mac/Linux) or Command Prompt (Windows) and run:
+              After installing Ollama, open Terminal (Mac) or Command Prompt (Windows) and run:
             </p>
             <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4 mb-4">
               <code className="text-terminal-amber text-lg">ollama pull dolphin-llama3:8b</code>
@@ -2221,22 +2209,10 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           {/* Running Ollama */}
           <div>
             <h3 className="text-white text-lg font-semibold mb-4">Running Ollama</h3>
-            <div className="space-y-4">
-              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
-                <p className="text-white font-medium mb-3">macOS / Windows</p>
-                <p className="text-gray-300 text-sm">
-                  Ollama runs automatically as a background service after installation. Look for the llama icon in your menu bar (Mac) or system tray (Windows).
-                </p>
-              </div>
-              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
-                <p className="text-white font-medium mb-3">Linux / Manual Start</p>
-                <div className="bg-terminal-panel rounded p-3 mb-2">
-                  <code className="text-terminal-amber text-sm">ollama serve</code>
-                </div>
-                <p className="text-gray-400 text-sm">
-                  Keep this terminal window open while using RichDad
-                </p>
-              </div>
+            <div className="bg-terminal-bg border border-terminal-border rounded-lg p-5">
+              <p className="text-gray-300 text-sm">
+                Ollama runs automatically as a background service after installation. Look for the llama icon in your menu bar (Mac) or system tray (Windows).
+              </p>
             </div>
           </div>
 
@@ -2331,40 +2307,87 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               <h3 className="text-white text-lg font-semibold">Market Data Providers</h3>
             </div>
             <div className="space-y-3">
-              {/* TwelveData */}
+              {/* Tiingo */}
               <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-white font-medium">TwelveData</span>
+                  <span className="text-white font-medium">Tiingo</span>
                   <span className="text-terminal-amber text-xs px-2 py-0.5 bg-terminal-amber/20 rounded">Recommended</span>
                 </div>
                 <div className="text-gray-400 text-sm space-y-1">
-                  <p>800 API calls/day • Real-time data • All US markets</p>
-                  <p className="text-gray-500">Best for: Most users - generous free tier handles RichDad's needs</p>
+                  <p className="mb-2">IEX real-time data • 30+ years of dividend-adjusted history</p>
+                  <div className="flex gap-4 text-xs">
+                    <span><span className="text-green-400">Starter (Free):</span> 50 tickers/hour</span>
+                    <span><span className="text-terminal-amber">Power ($10/mo):</span> 5,000 tickers/hour</span>
+                  </div>
+                  <p className="text-gray-500 mt-2">Best for: All users - best value for retail traders and AI backtesting</p>
+                </div>
+                {/* Tiingo Signup Steps */}
+                <div className="mt-3 bg-terminal-panel rounded p-3">
+                  <p className="text-white text-xs font-medium mb-2">How to get your API token:</p>
+                  <ol className="text-gray-400 text-xs space-y-1 list-decimal list-inside">
+                    <li>Go to <span className="text-terminal-amber">tiingo.com</span> and click "Sign Up"</li>
+                    <li>Fill in your details and confirm your email</li>
+                    <li>Once logged in, click your username (top-right)</li>
+                    <li>Select "Token" from the dropdown</li>
+                    <li>Copy your API token</li>
+                  </ol>
                 </div>
               </div>
 
-              {/* Polygon.io */}
-              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-white font-medium">Massive.com (Polygon.io)</span>
-                  <span className="text-purple-400 text-xs px-2 py-0.5 bg-purple-400/20 rounded">Paid Tier Only</span>
-                </div>
-                <div className="text-gray-400 text-sm space-y-1">
-                  <p>Free: 5 calls/min (too low) • Paid: unlimited • 2 years history</p>
-                  <p className="text-gray-500">Best for: Power users with paid subscription</p>
-                </div>
-              </div>
+            </div>
 
-              {/* Finnhub - Optional Enhancement */}
-              <div className="bg-terminal-bg border border-terminal-border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-white font-medium">Finnhub (Optional)</span>
-                  <span className="text-xs text-gray-500">Pro plan</span>
-                </div>
-                <div className="text-gray-400 text-sm space-y-1">
-                  <p>60 API calls/minute • Ticker-Specific News</p>
-                  <p className="text-gray-500">Best for: Ticker-specific news in AI analysis</p>
-                </div>
+            {/* Why Tiingo Comparison */}
+            <div className="mt-6 bg-terminal-bg border border-terminal-border rounded-lg p-4">
+              <h4 className="text-white text-sm font-medium mb-3">Why Tiingo over other providers?</h4>
+
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-gray-400 border-b border-terminal-border">
+                    <th className="pb-2">Provider</th>
+                    <th className="pb-2">Free Tier</th>
+                    <th className="pb-2">Historical</th>
+                    <th className="pb-2">Best For</th>
+                  </tr>
+                </thead>
+                <tbody className="text-gray-300">
+                  <tr className="border-b border-terminal-border/50">
+                    <td className="py-2 text-terminal-amber font-medium">Tiingo</td>
+                    <td className="py-2">50/hour</td>
+                    <td className="py-2">30+ years</td>
+                    <td className="py-2">AI backtesting, retail traders</td>
+                  </tr>
+                  <tr className="border-b border-terminal-border/50">
+                    <td className="py-2">Polygon</td>
+                    <td className="py-2">5/min</td>
+                    <td className="py-2">2 years</td>
+                    <td className="py-2">Real-time focus</td>
+                  </tr>
+                  <tr className="border-b border-terminal-border/50">
+                    <td className="py-2">Alpha Vantage</td>
+                    <td className="py-2">25/day</td>
+                    <td className="py-2">20 years</td>
+                    <td className="py-2">Basic research</td>
+                  </tr>
+                  <tr className="border-b border-terminal-border/50">
+                    <td className="py-2">Finnhub</td>
+                    <td className="py-2">60/min</td>
+                    <td className="py-2">Limited</td>
+                    <td className="py-2">News & fundamentals</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2">Yahoo Finance</td>
+                    <td className="py-2">Unofficial</td>
+                    <td className="py-2">Full</td>
+                    <td className="py-2">Hobby projects (unreliable)</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              <div className="mt-3 text-gray-400 text-xs space-y-1">
+                <p><span className="text-terminal-amber">Best historical data:</span> 30+ years dividend-adjusted for AI backtesting</p>
+                <p><span className="text-terminal-amber">Best value:</span> $10/mo Power tier vs $200+/mo competitors</p>
+                <p><span className="text-terminal-amber">Reliable API:</span> Stable, well-documented, consistent uptime</p>
+                <p><span className="text-terminal-amber">IEX real-time:</span> Free real-time quotes via IEX exchange</p>
               </div>
             </div>
           </div>
@@ -2434,7 +2457,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
 
             <div className="mt-4 pt-4 border-t border-terminal-border">
               <p className="text-gray-500 text-xs">
-                <span className="text-terminal-amber">Free tier:</span> TwelveData provides real-time data (800 calls/day). <span className="text-terminal-amber">Pro tier:</span> Polygon offers unlimited calls.
+                <span className="text-terminal-amber">Free tier:</span> Tiingo Starter (50 tickers/hour). <span className="text-terminal-amber">Pro tier:</span> Tiingo Power (5,000 tickers/hour, $10/mo).
               </p>
             </div>
           </div>
@@ -2446,26 +2469,21 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               Automatic Fallback System
             </h3>
             <p className="text-gray-300 text-sm mb-4">
-              When your primary provider is exhausted or unavailable, RichDad automatically falls back:
+              When your API limit is reached or Tiingo is unavailable, RichDad automatically falls back:
             </p>
             <div className="space-y-2 text-sm">
               <div className="flex items-center gap-2">
                 <span className="text-terminal-amber">1.</span>
-                <span className="text-gray-300">Tries the next configured provider in priority order</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-terminal-amber">2.</span>
                 <span className="text-gray-300">Uses cached data (quotes: 1 hour, charts: 24 hours)</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-terminal-amber">3.</span>
-                <span className="text-gray-300">Falls back to mock data if all else fails</span>
+                <span className="text-terminal-amber">2.</span>
+                <span className="text-gray-300">Shows empty state if no cached data available</span>
               </div>
             </div>
             <div className="mt-4 pt-4 border-t border-terminal-amber/30">
               <p className="text-gray-400 text-xs">
-                <span className="text-terminal-amber">Tip:</span> Configure multiple providers in Settings → API Keys for best reliability.
-                You'll see subtle alerts when approaching limits (80%+) and when fallback kicks in.
+                <span className="text-terminal-amber">Tip:</span> You'll see subtle alerts when approaching limits (80%+) and when fallback kicks in.
               </p>
             </div>
           </div>
@@ -2474,24 +2492,16 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           <div className="bg-terminal-bg border border-terminal-border rounded-lg p-6">
             <h3 className="text-white text-lg font-bold mb-4">API Tier Selection</h3>
             <p className="text-gray-300 text-sm mb-4">
-              Select your subscription tier for each provider in Settings → API Keys. This adjusts rate limits accordingly.
+              Select your plan in Settings → API Keys. This adjusts rate limits accordingly.
             </p>
             <div className="space-y-3 text-sm">
               <div className="flex gap-4">
-                <span className="text-terminal-amber w-28 flex-shrink-0">Polygon</span>
-                <span className="text-gray-400">Free (5/min) • Starter (100/min) • Developer (1K/min) • Advanced (∞)</span>
-              </div>
-              <div className="flex gap-4">
-                <span className="text-terminal-amber w-28 flex-shrink-0">TwelveData</span>
-                <span className="text-gray-400">Free (800/day) • Basic (5K/day) • Pro (unlimited)</span>
-              </div>
-              <div className="flex gap-4">
-                <span className="text-terminal-amber w-28 flex-shrink-0">Finnhub</span>
-                <span className="text-gray-400">Free (60/min) • Premium (300/min)</span>
+                <span className="text-terminal-amber w-28 flex-shrink-0">Tiingo</span>
+                <span className="text-gray-400">Starter (50/hour free) • Power (5,000/hour for $10/mo)</span>
               </div>
             </div>
             <p className="text-gray-500 text-xs mt-4">
-              The API Budget Meter in Settings shows real-time usage across all providers.
+              The API Budget Meter in Settings shows real-time hourly usage.
             </p>
           </div>
 
@@ -2537,18 +2547,11 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               <h3 className="text-white text-lg font-semibold">News Sources</h3>
             </div>
             <div className="space-y-3">
-              <div className="flex justify-between py-2 border-b border-terminal-border">
+              <div className="flex justify-between py-2">
                 <span className="text-gray-400">RSS Feeds</span>
                 <span className="text-terminal-up font-medium">Unlimited (Free)</span>
               </div>
-              <div className="flex justify-between py-2">
-                <span className="text-gray-400">Finnhub News</span>
-                <span className="text-white">60 calls/min • Ticker-specific (Pro)</span>
-              </div>
             </div>
-            <p className="text-gray-500 text-xs mt-3">
-              Pro plan users get Finnhub ticker-specific news for AI analysis. Get a free key at finnhub.io.
-            </p>
           </div>
 
           {/* Usage Tips */}
@@ -2651,7 +2654,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-white font-medium mb-1">News not loading?</p>
-                <p className="text-gray-400">Check Settings → News Sources. Enable RSS or add Finnhub key.</p>
+                <p className="text-gray-400">Check Settings → News Sources. Enable RSS feeds.</p>
               </div>
               <div>
                 <p className="text-white font-medium mb-1">AI not responding?</p>
@@ -2757,7 +2760,7 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
               Data badges indicate how fresh your market data is:
             </p>
             <div className="space-y-1 text-gray-300">
-              <Step><span className="text-terminal-up font-medium">Live</span> - Real-time from WebSocket (Pro plan with Polygon)</Step>
+              <Step><span className="text-terminal-up font-medium">Live</span> - Real-time from Tiingo IEX WebSocket</Step>
               <Step><span className="text-blue-400 font-medium">Fresh</span> - Less than 5 minutes old</Step>
               <Step><span className="text-yellow-400 font-medium">Cached</span> - From cache (1 hour for quotes, 24 hours for charts)</Step>
               <Step><span className="text-gray-400 font-medium">Stale</span> - Older cached data, API may be unavailable</Step>
@@ -2772,7 +2775,6 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
             <h3 className="text-white font-semibold mb-3">News not loading</h3>
             <div className="space-y-1 text-gray-300">
               <Step>Check Settings → News Sources to ensure feeds are enabled</Step>
-              <Step>Pro users: Verify your Finnhub API key is valid</Step>
               <Step>RSS feeds may be blocked by network firewalls</Step>
               <Step>Check Activity Log for specific error messages</Step>
             </div>
@@ -2817,15 +2819,15 @@ function HelpContent({ section, onNavigate }: HelpContentProps) {
           {[
             {
               q: 'Is RichDad free to use?',
-              a: 'Yes! RichDad itself is free. You need free API keys from TwelveData (market data) and Ollama for local AI (also free).'
+              a: 'Yes! RichDad itself is free. You need a free API key from Tiingo (market data) and Ollama for local AI (also free).'
             },
             {
               q: 'Why do I need to set up API keys myself?',
               a: `RichDad is 100% free and open-source for retail traders. We don't charge anything.
 
-For market data, we use third-party services (TwelveData, Polygon) that require API keys. For AI analysis, we use Ollama which runs 100% locally on your computer - completely free with no API key needed.
+For market data, we use Tiingo which offers a generous free tier (50 tickers/hour). For AI analysis, we use Ollama which runs 100% locally on your computer - completely free with no API key needed.
 
-Think of it like this: RichDad is the car (free), Ollama is the free AI engine, and you just need gas for market data (API keys from providers).
+Think of it like this: RichDad is the car (free), Ollama is the free AI engine, and you just need gas for market data (Tiingo API key).
 
 Want help getting set up? We're happy to help you complete this process for free. Reach out to our support team at support@lovelacex.com and we'll walk you through it.`
             },
@@ -2890,7 +2892,7 @@ In volatile markets (VIX >25), it becomes more cautious. In choppy markets, it f
             },
             {
               q: 'Can I use RichDad for day trading?',
-              a: 'With the Free plan (TwelveData 800 calls/day), it works well for swing trading. For serious day trading, upgrade to Pro for unlimited Polygon data.'
+              a: 'With the Free plan (Tiingo Starter, 50 tickers/hour), it works well for swing trading with a focused watchlist. For active day trading, upgrade to Tiingo Power ($10/mo) for 5,000 tickers/hour.'
             },
             {
               q: 'Why does only SPY get 5-minute data?',
@@ -2934,17 +2936,16 @@ You can skip any step by clicking the X button. To re-run the wizard, go to Sett
             },
             {
               q: 'What happens when I hit rate limits?',
-              a: `Rate limits apply to market data providers, not AI:
+              a: `Rate limits apply to market data, not AI:
 
-- TwelveData Free: 8 calls/minute, 800 calls/day
-- Polygon Free: 5 calls/minute (Pro tier has no limits)
-- Finnhub Free: 60 calls/minute
+- Tiingo Starter: 50 unique tickers/hour (free)
+- Tiingo Power: 5,000 unique tickers/hour ($10/mo)
 - Ollama (AI): No limits - runs locally!
 
 When market data is rate limited:
 - Data falls back to cached values
 - Charts show "cached" freshness badge
-- Try again in a few minutes`
+- Limits reset hourly`
             },
             {
               q: 'What is the AI Thinking Animation?',
@@ -2953,31 +2954,24 @@ When market data is rate limited:
 2. Fetching Price Data (current quote)
 3. Calculating Indicators (RSI, MACD, MAs)
 4. Detecting Patterns (candlestick patterns)
-5. Gathering News (ticker-specific from Finnhub)
+5. Gathering News (RSS feeds)
 6. Generating Recommendation (AI synthesis)
 
 Each step shows a result preview (e.g., "RSI 65", "2 patterns found").`
             },
             {
-              q: 'What is Finnhub News and do I need it?',
-              a: `Finnhub provides ticker-specific news for AI analysis. Instead of generic RSS keyword matching, the AI gets news specifically about the stock being analyzed.
-
-Benefits:
-- Company-specific news from the last 7 days
-- Much better AI recommendation quality
-- Free tier: 60 API calls/minute
-
-Get a free key at finnhub.io. If not configured, the AI falls back to RSS feeds.`
+              q: 'How does the AI get news for analysis?',
+              a: `News comes from RSS feeds (free, unlimited):
+- General market news from sources like Bloomberg, CNBC, Reuters
+- AI matches news to tickers by keyword
+- Configure your feeds in Settings → News Sources
+- Works well for popular stocks with regular coverage`
             },
             {
-              q: 'Why is my chart data delayed by 15 minutes?',
-              a: `The free tier of Polygon.io (our default data provider) has a 15-minute delay. This is standard for free market data.
+              q: 'Why is my chart data delayed?',
+              a: `Tiingo's free tier (Starter) provides IEX real-time data for stocks traded on IEX. For other exchanges, data may have slight delays.
 
-Options for real-time data:
-- Switch to TwelveData (free, real-time) in Settings → Market Data
-- Upgrade to Pro plan with Polygon for unlimited real-time data
-
-The chart header shows your current data source and whether it's delayed.`
+The chart header shows your current data source and last update time.`
             },
             {
               q: 'How do I validate AI performance with backtesting?',
@@ -3020,7 +3014,6 @@ You own your data. You can export or delete it anytime from Settings.`
 
 macOS: Download from ollama.com or run "brew install ollama"
 Windows: Download from ollama.com
-Linux: Run "curl -fsSL https://ollama.com/install.sh | sh"
 
 After installation, run: ollama pull dolphin-llama3:8b
 
@@ -3043,7 +3036,7 @@ If still not working, see Help → Ollama Setup → Troubleshooting.`
               a: `Minimum requirements:
 - 8GB RAM (16GB recommended)
 - 10GB free disk space
-- macOS 11+, Windows 10+, or Linux
+- macOS 11+ or Windows 10+
 
 The AI runs on your CPU by default. If you have an NVIDIA GPU with 8GB+ VRAM, Ollama will automatically use it for faster responses.
 
@@ -3145,44 +3138,6 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
               <p>We reserve the right to modify these terms at any time. Continued use of RichDad after changes constitutes acceptance of the updated terms.</p>
             </div>
           </div>
-
-          {/* Privacy Promise */}
-          <div className="bg-terminal-up/10 border border-terminal-up/30 rounded-lg p-6">
-            <h3 className="text-terminal-up text-lg font-bold mb-4 flex items-center gap-2">
-              <Shield size={20} />
-              Privacy Promise
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-start gap-3">
-                <Check size={18} className="text-terminal-up flex-shrink-0" />
-                <div>
-                  <p className="text-white font-medium">No Ads, No Trackers</p>
-                  <p className="text-gray-400 text-sm">Ever. Period.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Check size={18} className="text-terminal-up flex-shrink-0" />
-                <div>
-                  <p className="text-white font-medium">Your Trades Are Yours</p>
-                  <p className="text-gray-400 text-sm">Local storage only</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Check size={18} className="text-terminal-up flex-shrink-0" />
-                <div>
-                  <p className="text-white font-medium">No Cloud Servers</p>
-                  <p className="text-gray-400 text-sm">Data stays on your machine</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Check size={18} className="text-terminal-up flex-shrink-0" />
-                <div>
-                  <p className="text-white font-medium">No Crowdsourcing</p>
-                  <p className="text-gray-400 text-sm">Your strategy stays private</p>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       )
 
@@ -3253,7 +3208,7 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
               <h3 className="text-white font-semibold mb-2">Third-Party API Calls</h3>
               <p className="mb-2">Your computer makes direct API calls to:</p>
               <div className="space-y-1">
-                <Step>TwelveData or Polygon.io (market data) - subject to their privacy policy</Step>
+                <Step>Tiingo (market data) - subject to their privacy policy</Step>
                 <Step>Your chosen AI provider - subject to their privacy policy</Step>
                 <Step>RSS feeds (news sources) - publicly available data</Step>
               </div>
@@ -3602,7 +3557,7 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
               <div className="text-sm text-gray-300 space-y-3">
                 <div className="flex items-start gap-2">
                   <Check size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
-                  <span>TwelveData (800 calls/day)</span>
+                  <span>Tiingo Starter (50 tickers/hour)</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <Check size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
@@ -3614,11 +3569,11 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
                 </div>
                 <div className="flex items-start gap-2">
                   <Check size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
-                  <span>Real-time market data</span>
+                  <span>IEX real-time data</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <Check size={16} className="text-green-400 mt-0.5 flex-shrink-0" />
-                  <span>Intraday charts (today)</span>
+                  <span>30+ years historical data</span>
                 </div>
               </div>
             </div>
@@ -3632,11 +3587,11 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
                 <Crown size={24} className="text-terminal-amber" />
                 <span className="text-terminal-amber font-bold text-xl">Pro</span>
               </div>
-              <p className="text-terminal-amber/80 text-sm mb-4">API costs only - Unlimited data</p>
+              <p className="text-terminal-amber/80 text-sm mb-4">$10/mo for Tiingo Power tier</p>
               <div className="text-sm text-gray-300 space-y-3">
                 <div className="flex items-start gap-2">
                   <Check size={16} className="text-terminal-amber mt-0.5 flex-shrink-0" />
-                  <span>Polygon (unlimited calls)</span>
+                  <span>Tiingo Power (5,000 tickers/hour)</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <Check size={16} className="text-terminal-amber mt-0.5 flex-shrink-0" />
@@ -3644,15 +3599,11 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
                 </div>
                 <div className="flex items-start gap-2">
                   <Check size={16} className="text-terminal-amber mt-0.5 flex-shrink-0" />
-                  <span>All news sources</span>
+                  <span>All RSS news sources</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <Check size={16} className="text-terminal-amber mt-0.5 flex-shrink-0" />
-                  <span>Finnhub Ticker News</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Check size={16} className="text-terminal-amber mt-0.5 flex-shrink-0" />
-                  <span>90-day intraday history</span>
+                  <span>30+ years historical data</span>
                 </div>
               </div>
             </div>
@@ -3674,13 +3625,13 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
                 <tbody className="text-gray-300">
                   <tr className="border-b border-terminal-border/50">
                     <td className="py-2 px-4">Market Data Provider</td>
-                    <td className="py-2 px-4 text-center">TwelveData</td>
-                    <td className="py-2 px-4 text-center">Polygon (unlimited)</td>
+                    <td className="py-2 px-4 text-center">Tiingo Starter</td>
+                    <td className="py-2 px-4 text-center">Tiingo Power</td>
                   </tr>
                   <tr className="border-b border-terminal-border/50">
                     <td className="py-2 px-4">API Limits</td>
-                    <td className="py-2 px-4 text-center">800 calls/day</td>
-                    <td className="py-2 px-4 text-center text-terminal-amber">Unlimited</td>
+                    <td className="py-2 px-4 text-center">50 tickers/hour</td>
+                    <td className="py-2 px-4 text-center text-terminal-amber">5,000 tickers/hour</td>
                   </tr>
                   <tr className="border-b border-terminal-border/50">
                     <td className="py-2 px-4">AI Provider</td>
@@ -3688,19 +3639,19 @@ TradingView excels at social features and broker integration. NinjaTrader is bes
                     <td className="py-2 px-4 text-center">Ollama (Local)</td>
                   </tr>
                   <tr className="border-b border-terminal-border/50">
-                    <td className="py-2 px-4">Intraday History</td>
-                    <td className="py-2 px-4 text-center">Today only</td>
-                    <td className="py-2 px-4 text-center text-terminal-amber">90 days</td>
+                    <td className="py-2 px-4">Historical Data</td>
+                    <td className="py-2 px-4 text-center">30+ years</td>
+                    <td className="py-2 px-4 text-center text-terminal-amber">30+ years</td>
                   </tr>
                   <tr className="border-b border-terminal-border/50">
                     <td className="py-2 px-4">News Sources</td>
-                    <td className="py-2 px-4 text-center">RSS only</td>
-                    <td className="py-2 px-4 text-center">All sources + Calendar</td>
+                    <td className="py-2 px-4 text-center">3 RSS feeds</td>
+                    <td className="py-2 px-4 text-center">Unlimited RSS</td>
                   </tr>
                   <tr>
                     <td className="py-2 px-4">Data Freshness</td>
-                    <td className="py-2 px-4 text-center">Real-time</td>
-                    <td className="py-2 px-4 text-center">Real-time</td>
+                    <td className="py-2 px-4 text-center">IEX Real-time</td>
+                    <td className="py-2 px-4 text-center">IEX Real-time</td>
                   </tr>
                 </tbody>
               </table>

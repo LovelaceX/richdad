@@ -270,7 +270,6 @@ export class CircuitBreaker {
 export const circuitBreakers = {
   polygon: new CircuitBreaker('Polygon'),
   twelveData: new CircuitBreaker('TwelveData'),
-  finnhub: new CircuitBreaker('Finnhub'),
   ai: new CircuitBreaker('AI', { failureThreshold: 3, resetTimeoutMs: 60000 })
 }
 

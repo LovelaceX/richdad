@@ -1,10 +1,8 @@
 import { useEffect, useRef } from 'react'
-import { AnimatePresence } from 'framer-motion'
-import { Bot, Loader2 } from 'lucide-react'
+import { Bot } from 'lucide-react'
 import { ActivityLog } from './ActivityLog'
 import { ChatInput } from './ChatInput'
 import { AIPerformanceSummary } from './AIPerformanceSummary'
-import { AnalysisProgress } from './AnalysisProgress'
 import { MorningBriefingButton } from './MorningBriefingButton'
 import { IntelPanel } from '../Intel'
 import { ErrorBoundary } from '../ErrorBoundary'
@@ -13,10 +11,8 @@ import { useMarketStore } from '../../stores/marketStore'
 import { useIntelStore } from '../../stores/intelStore'
 
 export function AIPanel() {
-  const isAnalyzing = useAIStore(state => state.isAnalyzing)
   const messages = useAIStore(state => state.messages)
   const clearMessages = useAIStore(state => state.clearMessages)
-  const analysisProgress = useAIStore(state => state.analysisProgress)
   const selectedTicker = useMarketStore(state => state.selectedTicker)
   const intelPanelEnabled = useIntelStore(state => state.intelPanelEnabled)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -44,15 +40,8 @@ export function AIPanel() {
         <div className="flex items-center gap-2">
           {selectedTicker && (
             <span className="text-terminal-amber text-[10px] font-mono">
-              Analyzing: {selectedTicker}
+              {selectedTicker}
             </span>
-          )}
-
-          {isAnalyzing && (
-            <div className="flex items-center gap-1.5 text-terminal-amber">
-              <Loader2 size={12} className="animate-spin" />
-              <span className="text-[10px] font-normal normal-case">...</span>
-            </div>
           )}
 
           {/* Clear Chat Button */}
@@ -70,13 +59,6 @@ export function AIPanel() {
       {/* Scrollable messages - takes remaining space */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden p-2">
         <ErrorBoundary fallbackTitle="AI Panel Error">
-          {/* Analysis Progress - animated step-by-step display */}
-          <AnimatePresence>
-            {analysisProgress && (
-              <AnalysisProgress progress={analysisProgress} />
-            )}
-          </AnimatePresence>
-
           <ActivityLog />
           <div ref={messagesEndRef} />
         </ErrorBoundary>

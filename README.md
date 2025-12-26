@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-7.0.0-gold?style=for-the-badge" alt="Version 7.0.0"/>
+  <img src="https://img.shields.io/badge/version-8.0.0-gold?style=for-the-badge" alt="Version 8.0.0"/>
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="MIT License"/>
   <img src="https://img.shields.io/badge/tauri-2.x-blue?style=for-the-badge&logo=tauri" alt="Tauri 2.x"/>
   <img src="https://img.shields.io/badge/react-18-61DAFB?style=for-the-badge&logo=react" alt="React 18"/>
@@ -24,7 +24,7 @@
 RichDad is an open-source trading research tool for individual investors who want AI-assisted analysis without subscription fees or cloud dependencies.
 
 **What it does:**
-- Fetches market data from free APIs (TwelveData, Polygon)
+- Fetches market data from Tiingo (free tier: 50 tickers/hour)
 - Uses local AI (Ollama) for private, uncensored analysis
 - Displays recommendations with confidence scores
 - Tracks trade decisions and outcomes over time
@@ -121,9 +121,9 @@ RichDad stores all data locally. There are no user accounts, no cloud servers, a
 ### Third-Party Services
 
 RichDad makes direct API calls to services you configure:
-- **Market Data**: TwelveData or Polygon (your key, your account)
+- **Market Data**: Tiingo (your key, your account)
 - **AI Analysis**: Ollama (runs locally on your machine—no external calls)
-- **News**: Public RSS feeds + Finnhub (optional for ticker-specific news)
+- **News**: Public RSS feeds (10 sources pre-configured)
 - **Sentiment**: Ollama local AI with keyword fallback (100% private)
 
 These calls go directly from your machine to the provider. AI analysis runs entirely locally.
@@ -169,12 +169,10 @@ The app includes guided onboarding:
 
 ### 2. Get API Keys
 
-**Market Data (choose one or more)**:
-| Provider | Free Tier | Paid Tiers | Link |
-|----------|-----------|------------|------|
-| TwelveData | 8 calls/min, 800/day | Basic: 30/min, Pro: 80/min | [Get Key](https://twelvedata.com/account) |
-| Polygon | 5 calls/min | Starter: 100/min, Developer: 1K/min, Advanced: Unlimited | [Get Key](https://polygon.io/dashboard/signup) |
-| Finnhub | 60 calls/min | Premium: Higher limits | [Get Key](https://finnhub.io/register) |
+**Market Data**:
+| Provider | Free Tier | Paid Tier | Link |
+|----------|-----------|-----------|------|
+| Tiingo | Starter: 50 tickers/hour | Power: 5,000 tickers/hour ($10/mo) | [Get Key](https://www.tiingo.com) |
 
 **AI (Local - No API Key Required)**:
 | Provider | Requirements | Link |
@@ -329,6 +327,32 @@ See [LICENSE](./LICENSE) for full text.
 
 ## Changelog
 
+### v8.0.0 - Tiingo Single-Provider Architecture
+
+**Complete Tiingo Migration**
+- Unified single-provider architecture using Tiingo for all market data
+- WebSocket real-time streaming now uses Tiingo IEX (was Polygon)
+- Removed legacy provider references (Polygon, TwelveData, Alpha Vantage)
+- Simplified API key configuration—one provider, one key
+
+**Improved Free Tier**
+- Watchlist limit increased: 5 → 10 symbols
+- Daily backtest limit increased: 5 → 10 backtests
+- Full 30+ years historical data on free tier (same as paid!)
+
+**Bug Fixes (Critical)**
+- Fixed memory leak in DataHeartbeatService (event listener cleanup)
+- Fixed stale closure in useDataHeartbeat (proper dependency management)
+- Added error handling to async operations in background services
+- WebSocket cleanup on max reconnect attempts
+
+**Documentation**
+- Added "Why Tiingo" comparison table in Help Modal
+- Updated Tiingo signup instructions (accurate token retrieval steps)
+- Clearer API tier explanations (Starter 50/hr vs Power 5,000/hr)
+
+---
+
 ### v7.0.0 - Local-First AI
 
 **Simplified AI Architecture**
@@ -393,9 +417,9 @@ See [LICENSE](./LICENSE) for full text.
 ### v5.5.1 - WebSocket UX Fix
 
 **Service Health Improvement**
-- WebSocket status now hidden for non-Polygon users (was showing confusing "disconnected" status)
-- WebSocket is Polygon-only; TwelveData/Alpha Vantage users use HTTP polling (works fine)
-- Status dynamically updates when user adds/removes Polygon API key
+- WebSocket status shows connection to Tiingo IEX real-time data
+- Real-time streaming for Pro users, HTTP polling for all users as fallback
+- Status dynamically updates based on connection state
 
 ---
 
@@ -580,7 +604,7 @@ See [LICENSE](./LICENSE) for full text.
 
 ## Acknowledgments
 
-Built with [Tauri](https://tauri.app), [React](https://react.dev), [Lightweight Charts](https://tradingview.github.io/lightweight-charts/), [Ollama](https://ollama.com), [TwelveData](https://twelvedata.com), and [Polygon](https://polygon.io).
+Built with [Tauri](https://tauri.app), [React](https://react.dev), [Lightweight Charts](https://tradingview.github.io/lightweight-charts/), [Ollama](https://ollama.com), and [Tiingo](https://www.tiingo.com).
 
 ---
 

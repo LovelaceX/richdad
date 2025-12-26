@@ -7,7 +7,7 @@ export function WatchlistGrid() {
   const setSelectedTicker = useMarketStore(state => state.setSelectedTicker)
 
   return (
-    <div className="text-xs min-w-[220px]">
+    <div className="text-xs min-w-[280px]">
       {/* Header - matches WatchlistItem flex layout */}
       <div className="flex items-center px-3 py-2 border-b border-terminal-border text-gray-500 font-semibold sticky top-0 bg-terminal-panel">
         <span className="w-12 flex-shrink-0">Symbol</span>

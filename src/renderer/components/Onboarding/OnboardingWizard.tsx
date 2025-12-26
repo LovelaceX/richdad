@@ -33,7 +33,6 @@ interface OnboardingWizardProps {
   onClose: () => void
 }
 
-type MarketDataProvider = 'polygon' | 'twelvedata'
 type SetupPath = 'free' | 'pro'
 type WizardStepType = 'welcome' | 'terms' | 'path-selection' | 'api-key' | 'ai-provider' | 'persona'
 
@@ -55,8 +54,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
   const [currentStep, setCurrentStep] = useState<WizardStepType>('welcome')
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [setupPath, setSetupPath] = useState<SetupPath>('free')
-  const [polygonKey, setPolygonKey] = useState('')
-  const [twelvedataKey, setTwelvedataKey] = useState('')
+  const [tiingoKey, setTiingoKey] = useState('')
   const [copied, setCopied] = useState(false)
   const [selectedPersona, setSelectedPersona] = useState<PersonaType>('jax')
 
@@ -69,10 +67,6 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
-
-  // Derived state based on selected path
-  // Free uses TwelveData, Pro uses Polygon
-  const selectedProvider: MarketDataProvider = setupPath === 'pro' ? 'polygon' : 'twelvedata'
 
   // Update path selection
   const handlePathChange = (path: SetupPath) => {
@@ -91,25 +85,21 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
     } else if (currentStep === 'terms') {
       setCurrentStep('path-selection')
     } else if (currentStep === 'path-selection') {
-      // Save provider choice and plan
+      // Save plan choice (tiingo is always the provider)
       const limits = getTierLimitsFromPlan(setupPath)
       await updateSettings({
-        marketDataProvider: selectedProvider,
+        marketDataProvider: 'tiingo',
         plan: setupPath
       })
       // Sync tier limits with budget tracker
       updateTierSettings({
-        polygon: limits.polygon,
-        twelveData: limits.twelveData,
-        finnhub: limits.finnhub,
+        tiingo: limits.tiingo,
       })
       setCurrentStep('api-key')
     } else if (currentStep === 'api-key') {
-      // Save the appropriate API key based on selected provider
-      if (selectedProvider === 'polygon' && polygonKey) {
-        await updateSettings({ polygonApiKey: polygonKey })
-      } else if (selectedProvider === 'twelvedata' && twelvedataKey) {
-        await updateSettings({ twelvedataApiKey: twelvedataKey })
+      // Save Tiingo API key
+      if (tiingoKey) {
+        await updateSettings({ tiingoApiKey: tiingoKey })
       }
       setCurrentStep('ai-provider')
     } else if (currentStep === 'ai-provider') {
@@ -202,7 +192,7 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
                     </div>
                     <div className="text-gray-400 text-sm mt-1">Perfect for getting started</div>
                     <div className="text-gray-500 text-xs mt-2 space-y-1">
-                      <div>• TwelveData (800 calls/day)</div>
+                      <div>• Tiingo Starter (50 tickers/hour)</div>
                       <div>• Ollama AI (local, free, private)</div>
                       <div>• RSS News feeds</div>
                     </div>
@@ -225,12 +215,12 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
                     <div className="flex items-center justify-between">
                       <div className="text-white font-medium">Pro</div>
                       <span className="text-terminal-amber text-xs font-medium px-2 py-0.5 bg-terminal-amber/20 rounded">
-                        API costs only
+                        $10/mo API
                       </span>
                     </div>
-                    <div className="text-gray-400 text-sm mt-1">Unlimited data + premium AI</div>
+                    <div className="text-gray-400 text-sm mt-1">For active traders</div>
                     <div className="text-gray-500 text-xs mt-2 space-y-1">
-                      <div>• Polygon (unlimited calls)</div>
+                      <div>• Tiingo Power (5,000 tickers/hour)</div>
                       <div>• Ollama AI (local, free, private)</div>
                       <div>• All news sources</div>
                     </div>
@@ -249,9 +239,8 @@ export function OnboardingWizard({ isOpen, onClose }: OnboardingWizardProps) {
           <WizardStep
             stepNumber={stepNumber}
             totalSteps={totalSteps}
-            provider={selectedProvider === 'polygon' ? 'polygon' : 'twelvedata'}
-            apiKey={selectedProvider === 'polygon' ? polygonKey : twelvedataKey}
-            onApiKeyChange={selectedProvider === 'polygon' ? setPolygonKey : setTwelvedataKey}
+            apiKey={tiingoKey}
+            onApiKeyChange={setTiingoKey}
           />
         )
       case 'ai-provider':

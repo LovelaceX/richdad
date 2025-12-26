@@ -1,7 +1,7 @@
 /**
  * WebSocket Service for Real-time Market Data Streaming
  *
- * Provides real-time quote updates via Polygon WebSocket API
+ * Provides real-time quote updates via Tiingo IEX WebSocket API
  * with automatic reconnection and fallback to polling.
  *
  * Features:
@@ -22,16 +22,15 @@ export type QuoteCallback = (quote: Quote) => void
 // Status change callback
 export type StatusCallback = (state: WebSocketState, message?: string) => void
 
-// Polygon WebSocket message types
-interface PolygonMessage {
-  ev: string  // Event type: 'status', 'T' (trade), 'Q' (quote), 'A' (aggregate)
-  status?: string
-  message?: string
-  sym?: string  // Symbol
-  p?: number    // Price
-  s?: number    // Size/volume
-  t?: number    // Timestamp (nanoseconds)
-  c?: number[]  // Conditions
+// Tiingo IEX WebSocket message types
+interface TiingoMessage {
+  messageType: string  // 'A' = data, 'H' = heartbeat, 'I' = info, 'E' = error
+  service?: string     // 'iex'
+  data?: (string | number)[]  // Array: [type, ticker, timestamp, unix_ts, price, size, ...]
+  response?: {
+    code: number
+    message: string
+  }
 }
 
 class WebSocketService {
@@ -47,8 +46,8 @@ class WebSocketService {
   private heartbeatTimer: NodeJS.Timeout | null = null
   private lastPrices: Map<string, number> = new Map() // For calculating change
 
-  // Polygon WebSocket endpoints
-  private readonly WS_URL = 'wss://socket.polygon.io/stocks'
+  // Tiingo IEX WebSocket endpoint
+  private readonly WS_URL = 'wss://api.tiingo.com/iex'
 
   /**
    * Initialize the WebSocket service with API key
@@ -60,7 +59,7 @@ class WebSocketService {
     }
 
     this.apiKey = apiKey
-    console.log('[WebSocket] Service initialized')
+    console.log('[WebSocket] Service initialized with Tiingo IEX')
   }
 
   /**
@@ -100,9 +99,9 @@ class WebSocketService {
         this.ws = new WebSocket(this.WS_URL)
 
         this.ws.onopen = () => {
-          console.log('[WebSocket] Connection opened, authenticating...')
+          console.log('[WebSocket] Connection opened to Tiingo IEX, subscribing...')
           this.updateState('authenticating')
-          this.authenticate()
+          this.sendSubscription()
         }
 
         this.ws.onmessage = (event) => {
@@ -194,7 +193,7 @@ class WebSocketService {
 
       // Send subscribe message if connected
       if (this.state === 'connected') {
-        this.sendSubscribe(upperSymbol)
+        this.sendSubscription()
       }
     }
 
@@ -206,12 +205,10 @@ class WebSocketService {
       if (callbacks) {
         callbacks.delete(callback)
 
-        // If no more subscribers, unsubscribe from symbol
+        // If no more subscribers, remove from subscriptions
         if (callbacks.size === 0) {
           this.subscriptions.delete(upperSymbol)
-          if (this.state === 'connected') {
-            this.sendUnsubscribe(upperSymbol)
-          }
+          // Note: Tiingo doesn't require explicit unsubscribe - just don't include in next subscription
         }
       }
     }
@@ -289,131 +286,128 @@ class WebSocketService {
 
   // Private methods
 
-  private authenticate(): void {
+  /**
+   * Send subscription message to Tiingo
+   * Tiingo uses a single subscription message with auth + tickers
+   */
+  private sendSubscription(): void {
     if (!this.ws || !this.apiKey) return
 
-    this.ws.send(JSON.stringify({
-      action: 'auth',
-      params: this.apiKey
-    }))
-  }
+    // Get all subscribed tickers (lowercase for Tiingo)
+    const tickers = Array.from(this.subscriptions.keys()).map(s => s.toLowerCase())
 
-  private sendSubscribe(symbol: string): void {
-    if (!this.ws || this.state !== 'connected') return
+    // If no tickers, subscribe to SPY as default for connection test
+    const tickersToSubscribe = tickers.length > 0 ? tickers : ['spy']
 
-    // Subscribe to trades for the symbol
-    this.ws.send(JSON.stringify({
-      action: 'subscribe',
-      params: `T.${symbol}`
-    }))
+    const subscriptionMessage = {
+      eventName: 'subscribe',
+      authorization: this.apiKey,
+      eventData: {
+        thresholdLevel: 5, // Get all updates (most granular)
+        tickers: tickersToSubscribe
+      }
+    }
 
-    console.log(`[WebSocket] Subscribed to ${symbol}`)
-  }
-
-  private sendUnsubscribe(symbol: string): void {
-    if (!this.ws || this.state !== 'connected') return
-
-    this.ws.send(JSON.stringify({
-      action: 'unsubscribe',
-      params: `T.${symbol}`
-    }))
-
-    console.log(`[WebSocket] Unsubscribed from ${symbol}`)
+    this.ws.send(JSON.stringify(subscriptionMessage))
+    console.log(`[WebSocket] Sent subscription for ${tickersToSubscribe.length} tickers`)
   }
 
   private handleMessage(data: string): void {
     try {
-      const messages: PolygonMessage[] = JSON.parse(data)
+      const msg: TiingoMessage = JSON.parse(data)
 
-      for (const msg of messages) {
-        switch (msg.ev) {
-          case 'status':
-            this.handleStatus(msg)
-            break
-          case 'T': // Trade
-            this.handleTrade(msg)
-            break
-          case 'Q': // Quote (bid/ask)
-            // Could handle bid/ask quotes here if needed
-            break
-          case 'A': // Aggregate (per-second/minute)
-            this.handleAggregate(msg)
-            break
-        }
+      switch (msg.messageType) {
+        case 'I': // Info/status message
+          this.handleInfo(msg)
+          break
+        case 'H': // Heartbeat
+          // Just log occasionally, don't spam
+          break
+        case 'A': // Data message (trade/quote)
+          if (msg.data && msg.service === 'iex') {
+            this.handleData(msg.data)
+          }
+          break
+        case 'E': // Error
+          console.error('[WebSocket] Tiingo error:', msg.response?.message)
+          if (msg.response?.code === 401) {
+            this.updateState('failed', 'Authentication failed - check API key')
+            this.ws?.close()
+          }
+          break
       }
     } catch (error) {
       console.error('[WebSocket] Failed to parse message:', error)
     }
   }
 
-  private handleStatus(msg: PolygonMessage): void {
-    console.log(`[WebSocket] Status: ${msg.status} - ${msg.message}`)
+  private handleInfo(msg: TiingoMessage): void {
+    if (msg.response) {
+      console.log(`[WebSocket] Info: ${msg.response.code} - ${msg.response.message}`)
 
-    if (msg.status === 'auth_success') {
-      this.updateState('connected')
-      this.reconnectAttempts = 0
-      this.startHeartbeat()
-
-      // Resubscribe to all symbols
-      for (const symbol of this.subscriptions.keys()) {
-        this.sendSubscribe(symbol)
+      if (msg.response.code === 200) {
+        // Successfully subscribed
+        this.updateState('connected')
+        this.reconnectAttempts = 0
+        this.startHeartbeat()
       }
-    } else if (msg.status === 'auth_failed') {
-      this.updateState('failed', 'Authentication failed - check API key')
-      this.ws?.close()
     }
   }
 
-  private handleTrade(msg: PolygonMessage): void {
-    if (!msg.sym || !msg.p) return
+  /**
+   * Handle Tiingo IEX data message
+   * Format: [type, ticker, timestamp, unix_ts, last_price, last_size, ...]
+   * Type: 'T' = trade, 'Q' = quote, 'B' = break
+   */
+  private handleData(data: (string | number)[]): void {
+    if (data.length < 6) return
 
-    const symbol = msg.sym
-    const price = msg.p
-    const volume = msg.s || 0
-    const timestamp = msg.t ? Math.floor(msg.t / 1000000) : Date.now() // Convert nanoseconds to ms
+    const type = data[0] as string
+    const ticker = (data[1] as string).toUpperCase()
+    // data[2] = ISO timestamp string
+    const timestamp = data[3] as number // Unix timestamp in milliseconds
+    const price = data[4] as number
+    const size = data[5] as number
+
+    // Only process trade messages
+    if (type !== 'T') return
 
     // Calculate change from last price
-    const lastPrice = this.lastPrices.get(symbol) || price
+    const lastPrice = this.lastPrices.get(ticker) || price
     const change = price - lastPrice
     const changePercent = lastPrice > 0 ? (change / lastPrice) * 100 : 0
 
     // Update last price
-    this.lastPrices.set(symbol, price)
+    this.lastPrices.set(ticker, price)
 
     // Create quote object
     const quote: Quote = {
-      symbol,
+      symbol: ticker,
       price,
       change: Math.round(change * 100) / 100,
       changePercent: Math.round(changePercent * 100) / 100,
-      volume,
+      volume: size,
       high: price, // Would need to track intraday high/low
       low: price,
       open: lastPrice, // Approximation
       previousClose: lastPrice,
-      timestamp,
+      timestamp: timestamp || Date.now(),
       cacheAge: 0,
       dataSource: 'api',
       isFresh: true
     }
 
     // Notify subscribers
-    const callbacks = this.subscriptions.get(symbol)
+    const callbacks = this.subscriptions.get(ticker)
     if (callbacks) {
       callbacks.forEach(callback => {
         try {
           callback(quote)
         } catch (error) {
-          console.error(`[WebSocket] Callback error for ${symbol}:`, error)
+          console.error(`[WebSocket] Callback error for ${ticker}:`, error)
         }
       })
     }
-  }
-
-  private handleAggregate(msg: PolygonMessage): void {
-    // Handle per-second/minute aggregates similar to trades
-    if (!msg.sym || !msg.p) return
-    // Could use this for more accurate high/low/volume tracking
   }
 
   private attemptReconnect(): void {
@@ -448,11 +442,15 @@ class WebSocketService {
   }
 
   private startHeartbeat(): void {
-    // Send periodic ping to keep connection alive
+    // Tiingo sends heartbeats automatically, but we can send pings too
     this.heartbeatTimer = setInterval(() => {
       if (this.ws && this.state === 'connected') {
         try {
-          this.ws.send(JSON.stringify({ action: 'ping' }))
+          // Tiingo doesn't require explicit pings, but we can check readyState
+          if (this.ws.readyState !== WebSocket.OPEN) {
+            console.warn('[WebSocket] Connection not open, attempting reconnect')
+            this.attemptReconnect()
+          }
         } catch {
           // Connection might be dead
         }

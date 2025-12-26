@@ -12,20 +12,14 @@ import { exportDecisions } from '../../../lib/export'
 
 export function MyProfileSection() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
-  const [lastTrade, setLastTrade] = useState<TradeDecision | null>(null)
   const [exportStartDate, setExportStartDate] = useState('')
   const [exportEndDate, setExportEndDate] = useState('')
   const [exportPreviewData, setExportPreviewData] = useState<TradeDecision[]>([])
   const [showExportDropdown, setShowExportDropdown] = useState(false)
 
-  // Load profile and last trade
+  // Load profile
   useEffect(() => {
     getProfile().then(setProfile)
-    getTradeDecisions(1).then((trades) => {
-      if (trades.length > 0) {
-        setLastTrade(trades[0])
-      }
-    })
   }, [])
 
   // Load export preview data when dates change
@@ -78,63 +72,6 @@ export function MyProfileSection() {
       <div className="bg-terminal-panel border border-terminal-border rounded-lg p-6 mb-6">
         <h3 className="text-white font-medium mb-4">Performance History</h3>
         <AIPerformanceDetail />
-      </div>
-
-      {/* Last Trade */}
-      <div className="bg-terminal-panel border border-terminal-border rounded-lg p-6 mb-6">
-        <h3 className="text-white font-medium mb-4">Last Trade</h3>
-
-        {lastTrade ? (
-          <div className="bg-terminal-bg rounded-lg p-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-terminal-amber font-medium text-lg">{lastTrade.symbol}</span>
-              <span
-                className={`font-medium ${
-                  lastTrade.action === 'BUY'
-                    ? 'text-terminal-up'
-                    : lastTrade.action === 'SELL'
-                    ? 'text-terminal-down'
-                    : 'text-gray-400'
-                }`}
-              >
-                {lastTrade.action}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-gray-500">Decision: </span>
-                <span
-                  className={`capitalize ${
-                    lastTrade.decision === 'execute' ? 'text-terminal-up' : 'text-gray-400'
-                  }`}
-                >
-                  {lastTrade.decision}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500">Confidence: </span>
-                <span className="text-white">{lastTrade.confidence}%</span>
-              </div>
-              {lastTrade.priceAtDecision && (
-                <div>
-                  <span className="text-gray-500">Price: </span>
-                  <span className="text-white font-mono">
-                    ${lastTrade.priceAtDecision.toFixed(2)}
-                  </span>
-                </div>
-              )}
-              <div>
-                <span className="text-gray-500">Date: </span>
-                <span className="text-white">
-                  {new Date(lastTrade.timestamp).toLocaleDateString()}
-                </span>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <p className="text-gray-500 text-sm">No trades yet</p>
-        )}
       </div>
 
       {/* Export Section */}

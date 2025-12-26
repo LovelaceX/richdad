@@ -1,53 +1,36 @@
-import { BarChart3, ExternalLink, Database } from 'lucide-react'
+import { TrendingUp, ExternalLink } from 'lucide-react'
 import { ApiKeyInput } from './ApiKeyInput'
 
 interface WizardStepProps {
   stepNumber: number
   totalSteps: number
-  provider: 'twelvedata' | 'polygon'
   apiKey: string
   onApiKeyChange: (value: string) => void
 }
 
-const PROVIDER_CONFIG = {
-  'polygon': {
-    name: 'Massive.com (Polygon.io)',
-    icon: Database,
-    description: 'Professional market data with 2 years of history',
-    signupUrl: 'https://massive.com/dashboard/signup',
-    instructions: [
-      'Visit massive.com/dashboard/signup',
-      'Create an account or sign in with Google',
-      'Click "API Keys" in your dashboard',
-      'Copy your API key and paste it below',
-    ],
-    freeTier: '5 calls/min, EOD data, 2 years history',
-    budgetNote: 'Best for charts and historical analysis. Reliable EOD data.',
-  },
-  'twelvedata': {
-    name: 'TwelveData',
-    icon: BarChart3,
-    description: 'Real-time data for all US markets with generous free tier',
-    signupUrl: 'https://twelvedata.com/register',
-    instructions: [
-      'Visit twelvedata.com/register',
-      'Enter your details or sign up with Google/Apple',
-      'Under "Current plan", click "API keys"',
-      'Click "Reveal" and copy your key',
-    ],
-    freeTier: '800 calls/day, real-time data',
-    budgetNote: 'Best free tier for real-time data. Great for live trading.',
-  },
+const TIINGO_CONFIG = {
+  name: 'Tiingo',
+  icon: TrendingUp,
+  description: 'Real-time IEX data with 30+ years of dividend-adjusted history',
+  signupUrl: 'https://www.tiingo.com',
+  instructions: [
+    'Go to tiingo.com and click "Sign Up"',
+    'Fill in your details and confirm your email',
+    'Once logged in, click your username (top-right)',
+    'Select "Token" from the dropdown menu',
+    'Copy your API token and paste below',
+  ],
+  freeTier: '50 unique tickers/hour, IEX real-time data',
+  budgetNote: 'Best value for retail traders. 30+ years of historical data for AI backtesting.',
 }
 
 export function WizardStep({
   stepNumber,
   totalSteps,
-  provider,
   apiKey,
   onApiKeyChange,
 }: WizardStepProps) {
-  const config = PROVIDER_CONFIG[provider]
+  const config = TIINGO_CONFIG
   const Icon = config.icon
 
   return (
@@ -102,10 +85,10 @@ export function WizardStep({
 
       {/* API Key Input */}
       <ApiKeyInput
-        provider={provider}
+        provider="tiingo"
         value={apiKey}
         onChange={onApiKeyChange}
-        placeholder={`Paste your ${config.name} API key here`}
+        placeholder={`Paste your ${config.name} API token here`}
       />
 
       {/* Budget Note */}
@@ -115,15 +98,13 @@ export function WizardStep({
         </p>
       </div>
 
-      {/* Rate Limit Warning for TwelveData */}
-      {provider === 'twelvedata' && (
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-3">
-          <p className="text-yellow-400 text-xs">
-            <span className="font-medium">Rate limit:</span> Free tier allows 8 API calls per minute.
-            You may briefly see rate limit messages while initial data loads — this is normal and will resolve quickly.
-          </p>
-        </div>
-      )}
+      {/* Rate Limit Info */}
+      <div className="bg-blue-500/10 border border-blue-500/30 rounded p-3">
+        <p className="text-blue-400 text-xs">
+          <span className="font-medium">Rate limit:</span> Free Starter tier allows 50 unique tickers per hour.
+          Upgrade to Power ($10/mo) for 5,000 tickers/hour.
+        </p>
+      </div>
     </div>
   )
 }

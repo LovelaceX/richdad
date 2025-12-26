@@ -91,8 +91,7 @@ export default function App() {
     const checkOnboarding = async () => {
       const settings = await getSettings()
       const needsOnboarding = !settings.hasCompletedOnboarding &&
-                             !settings.twelvedataApiKey &&
-                             !settings.polygonApiKey
+                             !settings.tiingoApiKey
       setShowWizard(needsOnboarding)
       setIsCheckingOnboarding(false)
     }

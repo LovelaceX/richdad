@@ -22,7 +22,7 @@ let marketChangedHandler: ((e: Event) => void) | null = null
 type Timeframe = '1min' | '5min' | '15min' | '30min' | '45min' | '60min' | '120min' | '240min' | '300min' | 'daily' | 'weekly'
 
 // Data source tracking for transparency
-export type DataProvider = 'polygon' | 'twelvedata' | 'mock' | null
+export type DataProvider = 'tiingo' | 'mock' | null
 
 export interface DataSource {
   provider: DataProvider

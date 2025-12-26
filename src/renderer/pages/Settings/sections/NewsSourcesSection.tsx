@@ -14,9 +14,11 @@ import {
   Brain,
   Filter,
   Check,
-  Info,
   Globe,
-  AlertTriangle
+  AlertTriangle,
+  GripVertical,
+  Crown,
+  Clock
 } from 'lucide-react'
 import { useProTraderStore } from '../../../stores/proTraderStore'
 import { getSettings, updateSettings, type UserSettings } from '../../../lib/db'
@@ -41,8 +43,11 @@ const POPULAR_RSS_FEEDS: RSSFeed[] = [
   { name: 'Barchart', url: 'https://www.barchart.com/news/authors/rss', description: 'Market data and financial news' },
 ]
 
+// Free plan limit for news sources
+const FREE_SOURCE_LIMIT = 3
+
 export function NewsSourcesSection() {
-  const { traders, loadTraders, addTrader, removeTrader, toggleTrader } = useProTraderStore()
+  const { traders, loadTraders, addTrader, removeTrader, toggleTrader, reorderTraders } = useProTraderStore()
   const [showFeedDropdown, setShowFeedDropdown] = useState(false)
   const [newTraderName, setNewTraderName] = useState('')
   const [newTraderUrl, setNewTraderUrl] = useState('')
@@ -51,9 +56,13 @@ export function NewsSourcesSection() {
   const [showSaved, setShowSaved] = useState(false)
   const [urlError, setUrlError] = useState<string | null>(null)
   const [validatingUrl, setValidatingUrl] = useState(false)
+  const [draggedId, setDraggedId] = useState<number | null>(null)
+  const [dragOverId, setDragOverId] = useState<number | null>(null)
 
-  // Check if Finnhub is configured (provides ticker-specific news)
-  const providerHasNews = Boolean(settings?.finnhubApiKey)
+  // Plan-based limits
+  const isPro = settings?.plan === 'pro'
+  const enabledSources = traders.filter(t => t.enabled)
+  const canAddMore = isPro || enabledSources.length < FREE_SOURCE_LIMIT
 
   useEffect(() => {
     loadTraders()
@@ -61,6 +70,8 @@ export function NewsSourcesSection() {
   }, [loadTraders])
 
   const handleAddFeed = (feed: RSSFeed) => {
+    // Assign next priority (after existing sources)
+    const nextPriority = traders.length + 1
     addTrader({
       name: feed.name,
       handle: feed.url,
@@ -68,8 +79,48 @@ export function NewsSourcesSection() {
       feedUrl: feed.url,
       enabled: true,
       addedAt: Date.now(),
+      priority: nextPriority,
     })
     setShowFeedDropdown(false)
+  }
+
+  // Drag and drop handlers
+  const handleDragStart = (id: number) => {
+    setDraggedId(id)
+  }
+
+  const handleDragOver = (e: React.DragEvent, targetId: number) => {
+    e.preventDefault()
+    if (draggedId && draggedId !== targetId) {
+      setDragOverId(targetId)
+    }
+  }
+
+  const handleDragLeave = () => {
+    setDragOverId(null)
+  }
+
+  const handleDrop = (e: React.DragEvent, targetId: number) => {
+    e.preventDefault()
+    if (draggedId && draggedId !== targetId) {
+      // Reorder: move draggedId to targetId's position
+      const currentOrder = traders.map(t => t.id!)
+      const draggedIndex = currentOrder.indexOf(draggedId)
+      const targetIndex = currentOrder.indexOf(targetId)
+
+      // Remove dragged item and insert at target position
+      currentOrder.splice(draggedIndex, 1)
+      currentOrder.splice(targetIndex, 0, draggedId)
+
+      reorderTraders(currentOrder)
+    }
+    setDraggedId(null)
+    setDragOverId(null)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedId(null)
+    setDragOverId(null)
   }
 
   const handleAddManualFeed = async () => {
@@ -140,6 +191,7 @@ export function NewsSourcesSection() {
     setValidatingUrl(false)
 
     // Add the feed if validation passed
+    const nextPriority = traders.length + 1
     addTrader({
       name: newTraderName.trim(),
       handle: newTraderUrl,
@@ -147,6 +199,7 @@ export function NewsSourcesSection() {
       feedUrl: newTraderUrl,
       enabled: true,
       addedAt: Date.now(),
+      priority: nextPriority,
     })
     setNewTraderName('')
     setNewTraderUrl('')
@@ -228,6 +281,32 @@ export function NewsSourcesSection() {
         </p>
       </div>
 
+      {/* Auto-Clear Headlines */}
+      <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-terminal-amber" />
+            <h3 className="text-white text-sm font-medium">Auto-Clear Headlines</h3>
+            <HelpTooltip content="Automatically clear all headlines at 4 PM ET (market close) to start fresh each trading day." />
+          </div>
+          <button
+            onClick={() => saveSettings({ autoClearNews: !(settings.autoClearNews ?? true) })}
+            className={`w-10 h-5 rounded-full transition-colors ${
+              (settings.autoClearNews ?? true) ? 'bg-terminal-amber' : 'bg-terminal-border'
+            }`}
+          >
+            <div
+              className={`w-4 h-4 rounded-full transition-transform ${
+                (settings.autoClearNews ?? true) ? 'translate-x-5 bg-yellow-900' : 'translate-x-0.5 bg-white'
+              }`}
+            />
+          </button>
+        </div>
+        <p className="text-gray-500 text-xs mt-2">
+          Clear all news headlines at 4 PM ET (market close) to start each trading day with a clean slate.
+        </p>
+      </div>
+
       {/* Sentiment Analysis (Ollama-powered) */}
       <div className="bg-terminal-panel border border-terminal-border rounded-lg p-4">
         <div className="flex items-center gap-2 mb-3">
@@ -286,21 +365,6 @@ export function NewsSourcesSection() {
           <h3 className="text-white text-sm font-medium">RSS Feeds</h3>
           <HelpTooltip content="Add financial news RSS feeds. Headlines scroll in the news ticker. Popular sources include Reuters, Bloomberg, and CNBC." />
         </div>
-
-        {/* Provider has news notice */}
-        {providerHasNews && (
-          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-4">
-            <div className="flex items-start gap-2">
-              <Info className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-              <div className="text-blue-200 text-xs">
-                <p className="font-medium mb-1">Your market data provider includes news</p>
-                <p className="text-blue-300/70">
-                  Finnhub provides ticker-specific news. RSS feeds are still available but may show duplicate headlines.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         <p className="text-gray-500 text-xs mb-4">
           Follow market news and analysis via RSS feeds
@@ -391,46 +455,120 @@ export function NewsSourcesSection() {
         </div>
       </div>
 
-      {/* Feeds List */}
+      {/* Feeds List with Drag & Drop */}
       {traders.length > 0 && (
         <div className="space-y-2">
-          <h3 className="text-white text-sm font-medium mb-3">Active Feeds ({traders.length})</h3>
-          {traders.map((trader) => (
-            <div
-              key={trader.id}
-              className="flex items-center justify-between p-3 bg-terminal-panel border border-terminal-border rounded-lg"
-            >
-              <div className="flex items-center gap-3">
-                <Rss className="w-4 h-4 text-orange-400" />
-                <div>
-                  <p className="text-white text-sm">{trader.name}</p>
-                  <p className="text-gray-500 text-xs truncate max-w-xs">{trader.handle}</p>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-white text-sm font-medium">
+              Active Feeds ({enabledSources.length}{!isPro && `/${FREE_SOURCE_LIMIT}`})
+            </h3>
+            {!isPro && enabledSources.length >= FREE_SOURCE_LIMIT && (
+              <div className="flex items-center gap-1 text-terminal-amber text-xs">
+                <Crown className="w-3 h-3" />
+                <span>Pro = Unlimited</span>
+              </div>
+            )}
+          </div>
+
+          <p className="text-gray-500 text-xs mb-3">
+            Drag to reorder. Priority 1 gets more headlines in your feed.
+          </p>
+
+          {traders.map((trader, index) => {
+            const priorityNum = index + 1
+            const isDragging = draggedId === trader.id
+            const isDragOver = dragOverId === trader.id
+
+            return (
+              <div
+                key={trader.id}
+                draggable
+                onDragStart={() => trader.id && handleDragStart(trader.id)}
+                onDragOver={(e) => trader.id && handleDragOver(e, trader.id)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => trader.id && handleDrop(e, trader.id)}
+                onDragEnd={handleDragEnd}
+                className={`flex items-center justify-between p-3 bg-terminal-panel border rounded-lg cursor-move transition-all ${
+                  isDragging
+                    ? 'opacity-50 border-terminal-amber'
+                    : isDragOver
+                    ? 'border-terminal-amber bg-terminal-amber/10'
+                    : 'border-terminal-border hover:border-gray-600'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  {/* Drag handle */}
+                  <GripVertical className="w-4 h-4 text-gray-500 flex-shrink-0" />
+
+                  {/* Priority badge */}
+                  <div
+                    className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                      priorityNum === 1
+                        ? 'bg-terminal-amber text-black'
+                        : priorityNum === 2
+                        ? 'bg-gray-600 text-white'
+                        : priorityNum === 3
+                        ? 'bg-amber-800 text-amber-200'
+                        : 'bg-terminal-border text-gray-400'
+                    }`}
+                  >
+                    {priorityNum}
+                  </div>
+
+                  <Rss className="w-4 h-4 text-orange-400 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-white text-sm truncate">{trader.name}</p>
+                    <p className="text-gray-500 text-xs truncate max-w-xs">{trader.handle}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (trader.id) {
+                        // Check if enabling and at limit
+                        if (!trader.enabled && !canAddMore) {
+                          return // Don't allow enabling more than limit on free plan
+                        }
+                        toggleTrader(trader.id)
+                      }
+                    }}
+                    disabled={!trader.enabled && !canAddMore}
+                    className={`w-10 h-5 rounded-full transition-colors ${
+                      trader.enabled ? 'bg-terminal-amber' : 'bg-terminal-border'
+                    } ${!trader.enabled && !canAddMore ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <div
+                      className={`w-4 h-4 rounded-full transition-transform ${
+                        trader.enabled ? 'translate-x-5 bg-yellow-900' : 'translate-x-0.5 bg-white'
+                      }`}
+                    />
+                  </button>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      trader.id && removeTrader(trader.id)
+                    }}
+                    className="p-1.5 text-gray-500 hover:text-terminal-down hover:bg-terminal-down/10 rounded transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
+            )
+          })}
 
+          {/* Free plan limit message */}
+          {!isPro && enabledSources.length >= FREE_SOURCE_LIMIT && (
+            <div className="p-3 bg-terminal-amber/10 border border-terminal-amber/30 rounded-lg text-xs text-terminal-amber mt-3">
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => trader.id && toggleTrader(trader.id)}
-                  className={`w-10 h-5 rounded-full transition-colors ${
-                    trader.enabled ? 'bg-terminal-amber' : 'bg-terminal-border'
-                  }`}
-                >
-                  <div
-                    className={`w-4 h-4 rounded-full transition-transform ${
-                      trader.enabled ? 'translate-x-5 bg-yellow-900' : 'translate-x-0.5 bg-white'
-                    }`}
-                  />
-                </button>
-
-                <button
-                  onClick={() => trader.id && removeTrader(trader.id)}
-                  className="p-1.5 text-gray-500 hover:text-terminal-down hover:bg-terminal-down/10 rounded transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <Crown className="w-4 h-4" />
+                <span>Free plan limited to {FREE_SOURCE_LIMIT} active news sources. Upgrade to Pro for unlimited.</span>
               </div>
             </div>
-          ))}
+          )}
         </div>
       )}
 

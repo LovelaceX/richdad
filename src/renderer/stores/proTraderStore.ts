@@ -8,6 +8,8 @@ interface ProTraderState {
   addTrader: (trader: Omit<ProTrader, 'id'>) => Promise<void>
   removeTrader: (id: number) => Promise<void>
   toggleTrader: (id: number) => Promise<void>
+  updateTrader: (id: number, updates: Partial<ProTrader>) => Promise<void>
+  reorderTraders: (orderedIds: number[]) => Promise<void>
 }
 
 export const useProTraderStore = create<ProTraderState>((set, get) => ({
@@ -18,6 +20,8 @@ export const useProTraderStore = create<ProTraderState>((set, get) => ({
     set({ loading: true })
     try {
       const traders = await db.proTraders.toArray()
+      // Sort by priority (lower = higher priority), undefined goes last
+      traders.sort((a, b) => (a.priority || 99) - (b.priority || 99))
       set({ traders, loading: false })
     } catch (err) {
       console.error('Failed to load pro traders:', err)
@@ -57,6 +61,40 @@ export const useProTraderStore = create<ProTraderState>((set, get) => ({
       }
     } catch (err) {
       console.error('Failed to toggle pro trader:', err)
+    }
+  },
+
+  updateTrader: async (id, updates) => {
+    try {
+      await db.proTraders.update(id, updates)
+      set(state => ({
+        traders: state.traders.map(t =>
+          t.id === id ? { ...t, ...updates } : t
+        )
+      }))
+    } catch (err) {
+      console.error('Failed to update pro trader:', err)
+    }
+  },
+
+  reorderTraders: async (orderedIds) => {
+    try {
+      // Update priorities in DB based on new order
+      for (let i = 0; i < orderedIds.length; i++) {
+        await db.proTraders.update(orderedIds[i], { priority: i + 1 })
+      }
+
+      // Update local state with new priorities
+      set(state => ({
+        traders: state.traders
+          .map(t => ({
+            ...t,
+            priority: orderedIds.indexOf(t.id!) + 1
+          }))
+          .sort((a, b) => (a.priority || 99) - (b.priority || 99))
+      }))
+    } catch (err) {
+      console.error('Failed to reorder traders:', err)
     }
   },
 }))

@@ -277,6 +277,7 @@ export function NewsPanel({ isOpen, onClose }: NewsPanelProps) {
   const [filter, setFilter] = useState<SentimentFilter>('all')
   const [sort, setSort] = useState<SortOption>('latest')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [displayLimit, setDisplayLimit] = useState(20)
 
   // Get watchlist symbols for filtering
   const watchlistSymbols = useMemo(() =>
@@ -322,6 +323,18 @@ export function NewsPanel({ isOpen, onClose }: NewsPanelProps) {
 
     return filtered
   }, [headlines, filter, sort, watchlistSymbols])
+
+  // Paginate: only show up to displayLimit headlines
+  const visibleHeadlines = useMemo(() => {
+    return filteredHeadlines.slice(0, displayLimit)
+  }, [filteredHeadlines, displayLimit])
+
+  const hasMoreHeadlines = filteredHeadlines.length > displayLimit
+
+  // Reset display limit when filter changes
+  useEffect(() => {
+    setDisplayLimit(20)
+  }, [filter])
 
   if (!isOpen) return null
 
@@ -420,19 +433,31 @@ export function NewsPanel({ isOpen, onClose }: NewsPanelProps) {
               </button>
             </div>
           ) : (
-            filteredHeadlines.map((item) => (
-              <NewsRow
-                key={item.id}
-                item={item}
-                isInWatchlist={
-                  (item.ticker && watchlistSymbols.has(item.ticker)) ||
-                  (item.tickers?.some(t => watchlistSymbols.has(t))) ||
-                  false
-                }
-                expanded={expandedId === item.id}
-                onToggleExpand={() => setExpandedId(expandedId === item.id ? null : item.id)}
-              />
-            ))
+            <>
+              {visibleHeadlines.map((item) => (
+                <NewsRow
+                  key={item.id}
+                  item={item}
+                  isInWatchlist={
+                    (item.ticker && watchlistSymbols.has(item.ticker)) ||
+                    (item.tickers?.some(t => watchlistSymbols.has(t))) ||
+                    false
+                  }
+                  expanded={expandedId === item.id}
+                  onToggleExpand={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                />
+              ))}
+              {hasMoreHeadlines && (
+                <div className="p-4 text-center border-t border-terminal-border">
+                  <button
+                    onClick={() => setDisplayLimit(prev => prev + 20)}
+                    className="text-terminal-amber hover:underline text-sm"
+                  >
+                    Load More ({filteredHeadlines.length - displayLimit} remaining)
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
 

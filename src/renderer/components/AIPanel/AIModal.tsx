@@ -5,11 +5,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Bot, Loader2, AlertTriangle } from 'lucide-react'
+import { X, Bot, AlertTriangle } from 'lucide-react'
 import { ActivityLog } from './ActivityLog'
 import { ChatInput } from './ChatInput'
 import { AIPerformanceSummary } from './AIPerformanceSummary'
-import { AnalysisProgress } from './AnalysisProgress'
 import { ErrorBoundary } from '../ErrorBoundary'
 import { useAIStore } from '../../stores/aiStore'
 import { useMarketStore } from '../../stores/marketStore'
@@ -20,10 +19,8 @@ interface AIModalProps {
 }
 
 export function AIModal({ isOpen, onClose }: AIModalProps) {
-  const isAnalyzing = useAIStore(state => state.isAnalyzing)
   const messages = useAIStore(state => state.messages)
   const clearMessages = useAIStore(state => state.clearMessages)
-  const analysisProgress = useAIStore(state => state.analysisProgress)
   const selectedTicker = useMarketStore(state => state.selectedTicker)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
@@ -106,12 +103,6 @@ export function AIModal({ isOpen, onClose }: AIModalProps) {
                     {selectedTicker}
                   </span>
                 )}
-                {isAnalyzing && (
-                  <div className="flex items-center gap-1.5 text-terminal-amber">
-                    <Loader2 size={14} className="animate-spin" />
-                    <span className="text-xs">Analyzing...</span>
-                  </div>
-                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -161,13 +152,6 @@ export function AIModal({ isOpen, onClose }: AIModalProps) {
                           <X size={14} />
                         </button>
                       </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {/* Analysis Progress */}
-                  <AnimatePresence>
-                    {analysisProgress && (
-                      <AnalysisProgress progress={analysisProgress} />
                     )}
                   </AnimatePresence>
 
