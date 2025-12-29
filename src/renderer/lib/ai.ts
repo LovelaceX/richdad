@@ -1,4 +1,5 @@
 import { getEnabledProviders, AI_PROVIDERS, type AIProviderConfig, type AIProvider, getSettings, getProfile, getAISettings } from './db'
+import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
 import type { AIMessage, PersonaType, Quote } from '../types'
 import { searchWeb, formatSearchResultsForPrompt } from '../../services/webSearchService'
 import { useMarketStore } from '../stores/marketStore'
@@ -463,7 +464,8 @@ async function fetchWithTimeout(
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
-    const response = await fetch(url, {
+    // Use Tauri HTTP plugin to bypass CORS/WebView restrictions on Windows
+    const response = await tauriFetch(url, {
       ...options,
       signal: controller.signal
     })

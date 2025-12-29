@@ -9,6 +9,7 @@
  */
 
 import type { NewsItem } from '../renderer/types'
+import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
 
 // Ollama API endpoint
 const OLLAMA_API = 'http://localhost:11434'
@@ -119,7 +120,11 @@ function analyzeWithKeywords(text: string): 'positive' | 'negative' | 'neutral' 
  */
 async function analyzeWithOllama(text: string): Promise<'positive' | 'negative' | 'neutral' | null> {
   try {
-    const response = await fetch(`${OLLAMA_API}/api/chat`, {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), OLLAMA_TIMEOUT)
+
+    // Use Tauri HTTP plugin to bypass CORS/WebView restrictions on Windows
+    const response = await tauriFetch(`${OLLAMA_API}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -137,8 +142,10 @@ Sentiment:`
         stream: false,
         options: { temperature: 0 }
       }),
-      signal: AbortSignal.timeout(OLLAMA_TIMEOUT)
+      signal: controller.signal
     })
+
+    clearTimeout(timeoutId)
 
     if (!response.ok) return null
 
@@ -244,10 +251,16 @@ export function initializeSentimentAnalysis(): void {
  */
 export async function isSentimentModelReady(): Promise<boolean> {
   try {
-    const response = await fetch(`${OLLAMA_API}/api/tags`, {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 2000)
+
+    // Use Tauri HTTP plugin to bypass CORS/WebView restrictions on Windows
+    const response = await tauriFetch(`${OLLAMA_API}/api/tags`, {
       method: 'GET',
-      signal: AbortSignal.timeout(2000)
+      signal: controller.signal
     })
+
+    clearTimeout(timeoutId)
     return response.ok
   } catch {
     // Ollama not running, but keywords still work
